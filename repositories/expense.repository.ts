@@ -6,6 +6,11 @@ import type {
 import type { SQLiteDatabase } from "expo-sqlite";
 import { BaseRepository } from "./base.repository";
 
+function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export class ExpenseRepository extends BaseRepository<
   Expense,
   CreateExpenseInput,
@@ -32,25 +37,29 @@ export class ExpenseRepository extends BaseRepository<
     return created;
   }
 
-  /** Monthly total grouped by category. */
-  async monthlySummaryByCategory(): Promise<
-    { category: ExpenseCategory; total: number }[]
-  > {
+  /** Monthly total grouped by category. Pass YYYY-MM or omit for current. */
+  async monthlySummaryByCategory(
+    month?: string,
+  ): Promise<{ category: ExpenseCategory; total: number }[]> {
+    const m = month ?? currentMonth();
     return this.db.getAllAsync<{ category: ExpenseCategory; total: number }>(
       `SELECT category, COALESCE(SUM(amount), 0) as total
        FROM expenses
-       WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now', 'localtime')
+       WHERE strftime('%Y-%m', date) = ?
        GROUP BY category
        ORDER BY total DESC`,
+      [m],
     );
   }
 
-  /** Total expenses for the current month. */
-  async monthlyTotal(): Promise<number> {
+  /** Total expenses for a month. Pass YYYY-MM or omit for current. */
+  async monthlyTotal(month?: string): Promise<number> {
+    const m = month ?? currentMonth();
     const row = await this.db.getFirstAsync<{ total: number }>(
       `SELECT COALESCE(SUM(amount), 0) as total
        FROM expenses
-       WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now', 'localtime')`,
+       WHERE strftime('%Y-%m', date) = ?`,
+      [m],
     );
     return row?.total ?? 0;
   }

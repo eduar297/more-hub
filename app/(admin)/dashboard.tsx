@@ -10,29 +10,191 @@ import type { Unit, UnitCategory } from "@/models/unit";
 import {
     AlertTriangle,
     BarChart3,
+    ChevronLeft,
+    ChevronRight,
     DollarSign,
     LayoutDashboard,
     Package,
     PackageX,
-    Receipt,
     Ruler,
     ShoppingBag,
     Tag,
     TrendingDown,
     TrendingUp,
-    Truck,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollView } from "react-native";
-import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
+import {
+    Button,
+    Card,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
+} from "tamagui";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const MONTH_NAMES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatCurrency(val: number): string {
-  if (val >= 100_000) return `$${(val / 1000).toFixed(0)}k`;
-  if (val >= 1_000) return `$${(val / 1000).toFixed(1)}k`;
-  return `$${val.toFixed(0)}`;
+function currentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseYearMonth(ym: string): { year: number; month: number } {
+  const [y, m] = ym.split("-").map(Number);
+  return { year: y, month: m };
+}
+
+function shiftMonth(ym: string, delta: number): string {
+  const { year, month } = parseYearMonth(ym);
+  const d = new Date(year, month - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(ym: string): string {
+  const { year, month } = parseYearMonth(ym);
+  return `${MONTH_NAMES[month - 1]} ${year}`;
+}
+
+function daysInMonthCount(ym: string): number {
+  const { year, month } = parseYearMonth(ym);
+  return new Date(year, month, 0).getDate();
+}
+
+function fmtMoney(val: number): string {
+  const abs = Math.abs(val);
+  if (abs >= 1_000_000) return (abs / 1_000_000).toFixed(1) + "M";
+  if (abs >= 10_000) return (abs / 1_000).toFixed(1) + "k";
+  return abs.toFixed(2);
+}
+
+// ── Mini Bar Chart (daily sales) ──────────────────────────────────────────────
+
+function DailySalesChart({
+  data,
+  days,
+}: {
+  data: { day: number; total: number }[];
+  days: number;
+}) {
+  const dataMap = new Map(data.map((d) => [d.day, d.total]));
+  const maxVal = Math.max(...data.map((d) => d.total), 1);
+  const CHART_H = 100;
+
+  const bars = Array.from({ length: days }, (_, i) => ({
+    day: i + 1,
+    value: dataMap.get(i + 1) ?? 0,
+  }));
+
+  return (
+    <YStack gap="$1">
+      <XStack height={CHART_H} style={{ alignItems: "flex-end" }} gap={1}>
+        {bars.map((b) => {
+          const h =
+            b.value > 0 ? Math.max((b.value / maxVal) * CHART_H * 0.9, 4) : 2;
+          return (
+            <YStack key={b.day} flex={1} style={{ alignItems: "center" }}>
+              <YStack
+                bg={b.value > 0 ? "$green8" : "$color4"}
+                width="70%"
+                height={h}
+                style={{ borderRadius: 2 }}
+              />
+            </YStack>
+          );
+        })}
+      </XStack>
+      <XStack>
+        {bars.map((b) => (
+          <YStack key={b.day} flex={1} style={{ alignItems: "center" }}>
+            {b.day === 1 || b.day % 5 === 0 || b.day === days ? (
+              <Text fontSize={9} color="$color8">
+                {b.day}
+              </Text>
+            ) : null}
+          </YStack>
+        ))}
+      </XStack>
+    </YStack>
+  );
+}
+
+// ── Horizontal bar chart (expense breakdown) ──────────────────────────────────
+
+function ExpenseBreakdownChart({
+  items,
+}: {
+  items: { label: string; value: number; color: string }[];
+}) {
+  const total = items.reduce((s, i) => s + i.value, 0);
+  const maxVal = Math.max(...items.map((i) => i.value), 1);
+
+  if (items.length === 0) {
+    return (
+      <YStack py="$3" style={{ alignItems: "center" }}>
+        <Text color="$color8" fontSize="$3">
+          Sin egresos este mes
+        </Text>
+      </YStack>
+    );
+  }
+
+  return (
+    <YStack gap="$3">
+      {items.map((item, idx) => {
+        const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : "0";
+        const barW = Math.max((item.value / maxVal) * 100, 2);
+        return (
+          <YStack key={idx} gap="$1">
+            <XStack
+              style={{
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Text fontSize="$3" color="$color10">
+                {item.label}
+              </Text>
+              <Text fontSize="$3" fontWeight="600" color="$color">
+                ${fmtMoney(item.value)} · {pct}%
+              </Text>
+            </XStack>
+            <YStack
+              bg="$color3"
+              height={8}
+              style={{ borderRadius: 4 }}
+              overflow="hidden"
+            >
+              <YStack
+                bg={item.color as any}
+                height={8}
+                style={{ borderRadius: 4, width: `${barW}%` }}
+              />
+            </YStack>
+          </YStack>
+        );
+      })}
+    </YStack>
+  );
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -135,12 +297,16 @@ export default function DashboardScreen() {
   const purchaseRepo = usePurchaseRepository();
   const expenseRepo = useExpenseRepository();
 
+  // ── Date filter ───────────────────────────────────────────────────────────
+  const [selectedMonth, setSelectedMonth] = useState(currentYearMonth);
+  const isCurrentMonth = selectedMonth === currentYearMonth();
+
+  // ── Data state ────────────────────────────────────────────────────────────
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allUnits, setAllUnits] = useState<Unit[]>([]);
   const [allCategories, setAllCategories] = useState<UnitCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Financial state
   const [todaySales, setTodaySales] = useState({
     totalSales: 0,
     ticketCount: 0,
@@ -149,6 +315,17 @@ export default function DashboardScreen() {
     totalSales: 0,
     ticketCount: 0,
   });
+  const [dailySalesData, setDailySalesData] = useState<
+    { day: number; total: number }[]
+  >([]);
+  const [topProductsData, setTopProductsData] = useState<
+    {
+      productId: number;
+      productName: string;
+      totalQty: number;
+      totalRevenue: number;
+    }[]
+  >([]);
   const [monthlyPurchases, setMonthlyPurchases] = useState({
     totalSpent: 0,
     totalTransport: 0,
@@ -159,41 +336,65 @@ export default function DashboardScreen() {
     { category: ExpenseCategory; total: number }[]
   >([]);
 
-  const loadStats = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [prods, units, cats, todayS, monthS, monthP, monthE, expByCat] =
-        await Promise.all([
+  // ── Data loading ──────────────────────────────────────────────────────────
+  const loadStats = useCallback(
+    async (month: string) => {
+      setLoading(true);
+      try {
+        const [
+          prods,
+          units,
+          cats,
+          todayS,
+          monthS,
+          daily,
+          topP,
+          monthP,
+          monthE,
+          expByCat,
+        ] = await Promise.all([
           productRepo.findAll(),
           unitRepo.findAll(),
           unitRepo.findAllCategories(),
           ticketRepo.todaySummary(),
-          ticketRepo.monthlySummary(),
-          purchaseRepo.monthlySummary(),
-          expenseRepo.monthlyTotal(),
-          expenseRepo.monthlySummaryByCategory(),
+          ticketRepo.monthlySummary(month),
+          ticketRepo.dailySales(month),
+          ticketRepo.topProducts(month),
+          purchaseRepo.monthlySummary(month),
+          expenseRepo.monthlyTotal(month),
+          expenseRepo.monthlySummaryByCategory(month),
         ]);
-      setAllProducts(prods);
-      setAllUnits(units);
-      setAllCategories(cats);
-      setTodaySales(todayS);
-      setMonthlySales(monthS);
-      setMonthlyPurchases(monthP);
-      setMonthlyExpenseTotal(monthE);
-      setExpensesByCategory(expByCat);
-    } finally {
-      setLoading(false);
-    }
-  }, [productRepo, unitRepo, ticketRepo, purchaseRepo, expenseRepo]);
+        setAllProducts(prods);
+        setAllUnits(units);
+        setAllCategories(cats);
+        setTodaySales(todayS);
+        setMonthlySales(monthS);
+        setDailySalesData(daily);
+        setTopProductsData(topP);
+        setMonthlyPurchases(monthP);
+        setMonthlyExpenseTotal(monthE);
+        setExpensesByCategory(expByCat);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [productRepo, unitRepo, ticketRepo, purchaseRepo, expenseRepo],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      loadStats();
-    }, [loadStats]),
+      loadStats(selectedMonth);
+    }, [loadStats, selectedMonth]),
   );
 
-  // ── Derived analytics ────────────────────────────────────────────────────────
+  // ── Month navigation ──────────────────────────────────────────────────────
+  const goPrevMonth = () => setSelectedMonth((m) => shiftMonth(m, -1));
+  const goNextMonth = () => {
+    const next = shiftMonth(selectedMonth, 1);
+    if (next <= currentYearMonth()) setSelectedMonth(next);
+  };
 
+  // ── Derived analytics ────────────────────────────────────────────────────
   const unitMap = useMemo(
     () => new Map(allUnits.map((u) => [u.id, u])),
     [allUnits],
@@ -205,15 +406,6 @@ export default function DashboardScreen() {
         (sum, p) => sum + p.pricePerBaseUnit * p.stockBaseQty,
         0,
       ),
-    [allProducts],
-  );
-
-  const avgPrice = useMemo(
-    () =>
-      allProducts.length > 0
-        ? allProducts.reduce((s, p) => s + p.pricePerBaseUnit, 0) /
-          allProducts.length
-        : 0,
     [allProducts],
   );
 
@@ -258,8 +450,49 @@ export default function DashboardScreen() {
       .sort((a, b) => b.count - a.count);
   }, [allProducts, allCategories, unitMap]);
 
-  // ── Loading ───────────────────────────────────────────────────────────────────
+  // ── Financial derived ──────────────────────────────────────────────────────
+  const purchaseMerchandise =
+    monthlyPurchases.totalSpent - monthlyPurchases.totalTransport;
+  const totalEgresos = monthlyPurchases.totalSpent + monthlyExpenseTotal;
+  const monthlyProfit = monthlySales.totalSales - totalEgresos;
 
+  const egresoItems = useMemo(() => {
+    const items: { label: string; value: number; color: string }[] = [];
+    if (purchaseMerchandise > 0)
+      items.push({
+        label: "Compras de mercancía",
+        value: purchaseMerchandise,
+        color: "$blue9",
+      });
+    if (monthlyPurchases.totalTransport > 0)
+      items.push({
+        label: "Transporte (compras)",
+        value: monthlyPurchases.totalTransport,
+        color: "$purple9",
+      });
+    const catColors: Record<string, string> = {
+      TRANSPORT: "$orange9",
+      ELECTRICITY: "$yellow9",
+      RENT: "$pink9",
+      REPAIRS: "$red9",
+      SUPPLIES: "$green9",
+      OTHER: "$color8",
+    };
+    for (const ec of expensesByCategory) {
+      items.push({
+        label: EXPENSE_CATEGORIES[ec.category],
+        value: ec.total,
+        color: catColors[ec.category] ?? "$color8",
+      });
+    }
+    return items;
+  }, [
+    purchaseMerchandise,
+    monthlyPurchases.totalTransport,
+    expensesByCategory,
+  ]);
+
+  // ── Loading spinner ───────────────────────────────────────────────────────
   if (loading) {
     return (
       <YStack
@@ -274,21 +507,15 @@ export default function DashboardScreen() {
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
-
-  // ── Financial derived ──────────────────────────────────────────────────────
-
-  const totalEgresos = monthlyPurchases.totalSpent + monthlyExpenseTotal;
-  const monthlyProfit = monthlySales.totalSales - totalEgresos;
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <YStack flex={1} bg="$background">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack bg="$background" p="$4" gap="$5" pb="$10">
-          {/* Page title */}
+        <YStack bg="$background" p="$4" gap="$4" pb="$10">
+          {/* ── Header ──────────────────────────────────────────────── */}
           <XStack gap="$3" mt="$2" style={{ alignItems: "center" }}>
             <LayoutDashboard size={26} color="$blue10" />
-            <YStack>
+            <YStack flex={1}>
               <Text fontSize="$6" fontWeight="bold" color="$color">
                 Dashboard
               </Text>
@@ -298,9 +525,41 @@ export default function DashboardScreen() {
             </YStack>
           </XStack>
 
-          {/* ── FINANCIAL OVERVIEW ──────────────────────────────────────── */}
+          {/* ── Month Selector ──────────────────────────────────────── */}
+          <Card
+            bg="$color1"
+            borderWidth={1}
+            borderColor="$borderColor"
+            style={{ borderRadius: 12 }}
+            p="$2"
+          >
+            <XStack
+              style={{
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Button
+                size="$3"
+                chromeless
+                icon={ChevronLeft}
+                onPress={goPrevMonth}
+              />
+              <Text fontSize="$5" fontWeight="bold" color="$color">
+                {monthLabel(selectedMonth)}
+              </Text>
+              <Button
+                size="$3"
+                chromeless
+                icon={ChevronRight}
+                onPress={goNextMonth}
+                disabled={isCurrentMonth}
+                opacity={isCurrentMonth ? 0.3 : 1}
+              />
+            </XStack>
+          </Card>
 
-          {/* Sales today */}
+          {/* ── Sales Overview ──────────────────────────────────────── */}
           <Card
             bg="$color1"
             borderWidth={1}
@@ -312,26 +571,37 @@ export default function DashboardScreen() {
               <XStack gap="$2" style={{ alignItems: "center" }}>
                 <DollarSign size={18} color="$green10" />
                 <Text fontSize="$5" fontWeight="bold" color="$color">
-                  Ventas hoy
+                  Ventas
                 </Text>
               </XStack>
               <XStack gap="$3">
+                {isCurrentMonth && (
+                  <>
+                    <YStack flex={1}>
+                      <Text fontSize="$2" color="$color10" mb="$0.5">
+                        Hoy
+                      </Text>
+                      <Text fontSize="$7" fontWeight="bold" color="$green10">
+                        ${fmtMoney(todaySales.totalSales)}
+                      </Text>
+                      <Text fontSize="$2" color="$color10">
+                        {todaySales.ticketCount}{" "}
+                        {todaySales.ticketCount === 1 ? "ticket" : "tickets"}
+                      </Text>
+                    </YStack>
+                    <Separator vertical />
+                  </>
+                )}
                 <YStack flex={1}>
-                  <Text fontSize="$7" fontWeight="bold" color="$green10">
-                    ${formatCurrency(todaySales.totalSales)}
+                  <Text fontSize="$2" color="$color10" mb="$0.5">
+                    {isCurrentMonth ? "Este mes" : monthLabel(selectedMonth)}
                   </Text>
-                  <Text fontSize="$3" color="$color10">
-                    {todaySales.ticketCount}{" "}
-                    {todaySales.ticketCount === 1 ? "ticket" : "tickets"}
-                  </Text>
-                </YStack>
-                <Separator vertical />
-                <YStack flex={1}>
-                  <Text fontSize="$3" color="$color10" mb="$1">
-                    Este mes
-                  </Text>
-                  <Text fontSize="$5" fontWeight="bold" color="$green10">
-                    ${formatCurrency(monthlySales.totalSales)}
+                  <Text
+                    fontSize={isCurrentMonth ? "$5" : "$7"}
+                    fontWeight="bold"
+                    color="$green10"
+                  >
+                    ${fmtMoney(monthlySales.totalSales)}
                   </Text>
                   <Text fontSize="$2" color="$color10">
                     {monthlySales.ticketCount} tickets
@@ -341,7 +611,129 @@ export default function DashboardScreen() {
             </YStack>
           </Card>
 
-          {/* Monthly Egresos breakdown */}
+          {/* ── Daily Sales Chart ───────────────────────────────────── */}
+          <Card
+            bg="$color1"
+            borderWidth={1}
+            borderColor="$borderColor"
+            style={{ borderRadius: 14 }}
+            p="$4"
+          >
+            <YStack gap="$3">
+              <XStack gap="$2" style={{ alignItems: "center" }}>
+                <BarChart3 size={18} color="$blue10" />
+                <Text fontSize="$4" fontWeight="bold" color="$color">
+                  Ventas diarias
+                </Text>
+              </XStack>
+              {dailySalesData.length > 0 ? (
+                <DailySalesChart
+                  data={dailySalesData}
+                  days={daysInMonthCount(selectedMonth)}
+                />
+              ) : (
+                <YStack py="$4" style={{ alignItems: "center" }}>
+                  <Text color="$color8" fontSize="$3">
+                    Sin ventas en este período
+                  </Text>
+                </YStack>
+              )}
+            </YStack>
+          </Card>
+
+          {/* ── Balance ─────────────────────────────────────────────── */}
+          <Card
+            bg={monthlyProfit >= 0 ? "$green2" : "$red2"}
+            borderWidth={1}
+            borderColor={monthlyProfit >= 0 ? "$green6" : "$red6"}
+            style={{ borderRadius: 14 }}
+            p="$4"
+          >
+            <YStack gap="$3">
+              <XStack gap="$2" style={{ alignItems: "center" }}>
+                <TrendingUp
+                  size={18}
+                  color={monthlyProfit >= 0 ? "$green10" : "$red10"}
+                />
+                <Text fontSize="$5" fontWeight="bold" color="$color">
+                  Balance del mes
+                </Text>
+              </XStack>
+
+              {/* Income */}
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text fontSize="$3" color="$color10">
+                  Ingresos (ventas)
+                </Text>
+                <Text fontSize="$4" fontWeight="600" color="$green10">
+                  +${fmtMoney(monthlySales.totalSales)}
+                </Text>
+              </XStack>
+
+              {/* Purchases */}
+              {monthlyPurchases.totalSpent > 0 && (
+                <XStack
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text fontSize="$3" color="$color10">
+                    Compras
+                  </Text>
+                  <Text fontSize="$4" fontWeight="600" color="$red10">
+                    -${fmtMoney(monthlyPurchases.totalSpent)}
+                  </Text>
+                </XStack>
+              )}
+
+              {/* Expenses */}
+              {monthlyExpenseTotal > 0 && (
+                <XStack
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text fontSize="$3" color="$color10">
+                    Gastos operativos
+                  </Text>
+                  <Text fontSize="$4" fontWeight="600" color="$red10">
+                    -${fmtMoney(monthlyExpenseTotal)}
+                  </Text>
+                </XStack>
+              )}
+
+              <Separator />
+
+              {/* Profit/Loss */}
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text fontSize="$5" fontWeight="bold" color="$color">
+                  {monthlyProfit >= 0 ? "Ganancia" : "Pérdida"}
+                </Text>
+                <Text
+                  fontSize="$7"
+                  fontWeight="bold"
+                  color={monthlyProfit >= 0 ? "$green10" : "$red10"}
+                >
+                  {monthlyProfit >= 0 ? "+" : "-"}$
+                  {fmtMoney(Math.abs(monthlyProfit))}
+                </Text>
+              </XStack>
+            </YStack>
+          </Card>
+
+          {/* ── Expense Breakdown ───────────────────────────────────── */}
           <Card
             bg="$color1"
             borderWidth={1}
@@ -352,140 +744,103 @@ export default function DashboardScreen() {
             <YStack gap="$3">
               <XStack gap="$2" style={{ alignItems: "center" }}>
                 <ShoppingBag size={18} color="$red10" />
-                <Text fontSize="$5" fontWeight="bold" color="$color">
-                  Inversión del mes
+                <Text fontSize="$4" fontWeight="bold" color="$color">
+                  Desglose de egresos
                 </Text>
+                {totalEgresos > 0 && (
+                  <Text fontSize="$3" color="$color10" ml="auto">
+                    Total: ${fmtMoney(totalEgresos)}
+                  </Text>
+                )}
               </XStack>
+              <ExpenseBreakdownChart items={egresoItems} />
+            </YStack>
+          </Card>
 
-              {/* Purchases */}
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+          {/* ── Top Products ────────────────────────────────────────── */}
+          {topProductsData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              overflow="hidden"
+            >
+              <YStack p="$4" pb="$2" gap="$1">
                 <XStack gap="$2" style={{ alignItems: "center" }}>
-                  <ShoppingBag size={14} color="$color10" />
-                  <Text fontSize="$3" color="$color10">
-                    Compras de mercancía
+                  <TrendingUp size={18} color="$yellow10" />
+                  <Text fontSize="$4" fontWeight="bold" color="$color">
+                    Más vendidos del mes
                   </Text>
                 </XStack>
-                <Text fontSize="$4" fontWeight="600" color="$color">
-                  $
-                  {formatCurrency(
-                    monthlyPurchases.totalSpent -
-                      monthlyPurchases.totalTransport,
-                  )}
-                </Text>
-              </XStack>
-
-              {/* Transport */}
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <XStack gap="$2" style={{ alignItems: "center" }}>
-                  <Truck size={14} color="$color10" />
-                  <Text fontSize="$3" color="$color10">
-                    Transporte (compras)
-                  </Text>
-                </XStack>
-                <Text fontSize="$4" fontWeight="600" color="$color">
-                  ${formatCurrency(monthlyPurchases.totalTransport)}
-                </Text>
-              </XStack>
-
-              {/* Expenses by category */}
-              {expensesByCategory.map((ec) => (
-                <XStack
-                  key={ec.category}
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <XStack gap="$2" style={{ alignItems: "center" }}>
-                    <Receipt size={14} color="$color10" />
-                    <Text fontSize="$3" color="$color10">
-                      {EXPENSE_CATEGORIES[ec.category]}
+              </YStack>
+              {topProductsData.map((tp, idx) => (
+                <YStack key={tp.productId}>
+                  {idx > 0 && <Separator />}
+                  <XStack
+                    px="$4"
+                    py="$3"
+                    style={{ alignItems: "center" }}
+                    gap="$3"
+                  >
+                    <YStack
+                      width={28}
+                      height={28}
+                      bg={
+                        idx === 0
+                          ? "$yellow4"
+                          : idx === 1
+                            ? "$color3"
+                            : "$color2"
+                      }
+                      style={{
+                        borderRadius: 14,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text
+                        fontSize="$2"
+                        fontWeight="bold"
+                        color={idx === 0 ? "$yellow10" : "$color10"}
+                      >
+                        {idx + 1}
+                      </Text>
+                    </YStack>
+                    <YStack flex={1}>
+                      <Text
+                        fontSize="$3"
+                        fontWeight="600"
+                        color="$color"
+                        numberOfLines={1}
+                      >
+                        {tp.productName}
+                      </Text>
+                      <Text fontSize="$2" color="$color10">
+                        {tp.totalQty}{" "}
+                        {tp.totalQty === 1 ? "unidad" : "unidades"}
+                      </Text>
+                    </YStack>
+                    <Text fontSize="$4" fontWeight="bold" color="$green10">
+                      ${fmtMoney(tp.totalRevenue)}
                     </Text>
                   </XStack>
-                  <Text fontSize="$4" fontWeight="600" color="$color">
-                    ${formatCurrency(ec.total)}
-                  </Text>
-                </XStack>
-              ))}
-
-              <Separator />
-
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text fontSize="$4" fontWeight="bold" color="$color">
-                  Total invertido
-                </Text>
-                <Text fontSize="$5" fontWeight="bold" color="$red10">
-                  ${formatCurrency(totalEgresos)}
-                </Text>
-              </XStack>
-            </YStack>
-          </Card>
-
-          {/* Balance */}
-          <Card
-            bg={monthlyProfit >= 0 ? "$green2" : "$red2"}
-            borderWidth={1}
-            borderColor={monthlyProfit >= 0 ? "$green6" : "$red6"}
-            style={{ borderRadius: 14 }}
-            p="$4"
-          >
-            <YStack gap="$2">
-              <XStack gap="$2" style={{ alignItems: "center" }}>
-                <BarChart3
-                  size={18}
-                  color={monthlyProfit >= 0 ? "$green10" : "$red10"}
-                />
-                <Text fontSize="$5" fontWeight="bold" color="$color">
-                  Balance del mes
-                </Text>
-              </XStack>
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <YStack>
-                  <Text fontSize="$3" color="$color10">
-                    Ingresos − Egresos
-                  </Text>
-                  <Text fontSize="$2" color="$color10">
-                    ${formatCurrency(monthlySales.totalSales)} − $
-                    {formatCurrency(totalEgresos)}
-                  </Text>
                 </YStack>
-                <Text
-                  fontSize="$7"
-                  fontWeight="bold"
-                  color={monthlyProfit >= 0 ? "$green10" : "$red10"}
-                >
-                  {monthlyProfit >= 0 ? "+" : ""}$
-                  {formatCurrency(Math.abs(monthlyProfit))}
-                </Text>
-              </XStack>
-            </YStack>
-          </Card>
+              ))}
+            </Card>
+          )}
 
-          {/* ── INVENTORY STATS ─────────────────────────────────────────── */}
-
+          {/* ── INVENTORY SECTION ───────────────────────────────────── */}
           <Separator />
 
-          {/* Row 1: totals */}
+          <XStack gap="$2" style={{ alignItems: "center" }}>
+            <Package size={20} color="$blue10" />
+            <Text fontSize="$5" fontWeight="bold" color="$color">
+              Inventario
+            </Text>
+          </XStack>
+
+          {/* Quick stats row 1 */}
           <XStack gap="$3">
             <StatCard
               label="Productos"
@@ -495,19 +850,19 @@ export default function DashboardScreen() {
             />
             <StatCard
               label="Valor inv."
-              value={formatCurrency(inventoryValue)}
+              value={`$${fmtMoney(inventoryValue)}`}
               color="$green10"
               icon={<DollarSign size={18} color="$green10" />}
             />
             <StatCard
-              label="Categ."
+              label="Categorías"
               value={allCategories.length}
               color="$pink10"
               icon={<Tag size={18} color="$pink10" />}
             />
           </XStack>
 
-          {/* Row 2: risk indicators */}
+          {/* Quick stats row 2 */}
           <XStack gap="$3">
             <StatCard
               label="Sin stock"
@@ -531,20 +886,14 @@ export default function DashboardScreen() {
                 />
               }
             />
-            <StatCard
-              label="Precio prom"
-              value={`$${avgPrice.toFixed(2)}`}
-              color="$blue10"
-              icon={<BarChart3 size={18} color="$blue10" />}
-            />
           </XStack>
 
-          {/* Alerts: low/out of stock */}
+          {/* Stock alerts */}
           {(lowStockProducts.length > 0 || outOfStockCount > 0) && (
             <YStack gap="$3">
               <XStack gap="$2" style={{ alignItems: "center" }}>
                 <AlertTriangle size={18} color="$orange10" />
-                <Text fontSize="$5" fontWeight="bold" color="$color">
+                <Text fontSize="$4" fontWeight="bold" color="$color">
                   Alertas de stock
                 </Text>
               </XStack>
@@ -577,7 +926,7 @@ export default function DashboardScreen() {
             <YStack gap="$3">
               <XStack gap="$2" style={{ alignItems: "center" }}>
                 <TrendingUp size={18} color="$green10" />
-                <Text fontSize="$5" fontWeight="bold" color="$color">
+                <Text fontSize="$4" fontWeight="bold" color="$color">
                   Mayor stock
                 </Text>
               </XStack>
@@ -602,12 +951,12 @@ export default function DashboardScreen() {
             </YStack>
           )}
 
-          {/* Bottom stocked (excluding 0) */}
+          {/* Bottom stocked */}
           {bottomStocked.length > 0 && (
             <YStack gap="$3">
               <XStack gap="$2" style={{ alignItems: "center" }}>
                 <TrendingDown size={18} color="$orange10" />
-                <Text fontSize="$5" fontWeight="bold" color="$color">
+                <Text fontSize="$4" fontWeight="bold" color="$color">
                   Menor stock
                 </Text>
               </XStack>
@@ -636,7 +985,7 @@ export default function DashboardScreen() {
           <YStack gap="$3">
             <XStack gap="$2" style={{ alignItems: "center" }}>
               <Ruler size={18} color="$pink10" />
-              <Text fontSize="$5" fontWeight="bold" color="$color">
+              <Text fontSize="$4" fontWeight="bold" color="$color">
                 Productos por categoría
               </Text>
             </XStack>

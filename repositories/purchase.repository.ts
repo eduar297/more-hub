@@ -6,6 +6,11 @@ import type {
 import type { SQLiteDatabase } from "expo-sqlite";
 import { BaseRepository } from "./base.repository";
 
+function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export class PurchaseRepository extends BaseRepository<
   Purchase,
   CreatePurchaseInput,
@@ -76,12 +81,13 @@ export class PurchaseRepository extends BaseRepository<
     );
   }
 
-  /** Total spend and purchase count for the current calendar month. */
-  async monthlySummary(): Promise<{
+  /** Total spend and purchase count for a month. Pass YYYY-MM or omit for current. */
+  async monthlySummary(month?: string): Promise<{
     totalSpent: number;
     totalTransport: number;
     purchaseCount: number;
   }> {
+    const m = month ?? currentMonth();
     const row = await this.db.getFirstAsync<{
       totalSpent: number;
       totalTransport: number;
@@ -91,7 +97,8 @@ export class PurchaseRepository extends BaseRepository<
               COALESCE(SUM(transportCost), 0) as totalTransport,
               COUNT(*) as purchaseCount
        FROM purchases
-       WHERE strftime('%Y-%m', createdAt) = strftime('%Y-%m', 'now', 'localtime')`,
+       WHERE strftime('%Y-%m', createdAt) = ?`,
+      [m],
     );
     return row ?? { totalSpent: 0, totalTransport: 0, purchaseCount: 0 };
   }

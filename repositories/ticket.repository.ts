@@ -2,6 +2,11 @@ import type { CreateTicketInput, Ticket, TicketItem } from "@/models/ticket";
 import { BaseRepository } from "@/repositories/base.repository";
 import type { SQLiteDatabase } from "expo-sqlite";
 
+function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export class TicketRepository extends BaseRepository<
   Ticket,
   CreateTicketInput,
@@ -89,16 +94,61 @@ export class TicketRepository extends BaseRepository<
     return row ?? { totalSales: 0, ticketCount: 0 };
   }
 
-  /** Get current month's sales summary. */
-  async monthlySummary(): Promise<{ totalSales: number; ticketCount: number }> {
+  /** Get monthly sales summary. Pass YYYY-MM or omit for current month. */
+  async monthlySummary(
+    month?: string,
+  ): Promise<{ totalSales: number; ticketCount: number }> {
+    const m = month ?? currentMonth();
     const row = await this.db.getFirstAsync<{
       totalSales: number;
       ticketCount: number;
     }>(
       `SELECT COALESCE(SUM(total), 0) as totalSales, COUNT(*) as ticketCount
        FROM tickets
-       WHERE strftime('%Y-%m', createdAt) = strftime('%Y-%m', 'now', 'localtime')`,
+       WHERE strftime('%Y-%m', createdAt) = ?`,
+      [m],
     );
     return row ?? { totalSales: 0, ticketCount: 0 };
+  }
+
+  /** Daily sales totals for a given month (for charts). */
+  async dailySales(month?: string): Promise<{ day: number; total: number }[]> {
+    const m = month ?? currentMonth();
+    return this.db.getAllAsync<{ day: number; total: number }>(
+      `SELECT CAST(strftime('%d', createdAt) AS INTEGER) as day,
+              COALESCE(SUM(total), 0) as total
+       FROM tickets
+       WHERE strftime('%Y-%m', createdAt) = ?
+       GROUP BY day
+       ORDER BY day`,
+      [m],
+    );
+  }
+
+  /** Top selling products by revenue for a given month. */
+  async topProducts(
+    month?: string,
+    limit = 5,
+  ): Promise<
+    {
+      productId: number;
+      productName: string;
+      totalQty: number;
+      totalRevenue: number;
+    }[]
+  > {
+    const m = month ?? currentMonth();
+    return this.db.getAllAsync(
+      `SELECT ti.productId, ti.productName,
+              SUM(ti.quantity) as totalQty,
+              SUM(ti.subtotal) as totalRevenue
+       FROM ticket_items ti
+       JOIN tickets t ON ti.ticketId = t.id
+       WHERE strftime('%Y-%m', t.createdAt) = ?
+       GROUP BY ti.productId, ti.productName
+       ORDER BY totalRevenue DESC
+       LIMIT ?`,
+      [m, limit],
+    );
   }
 }
