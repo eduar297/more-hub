@@ -1,1 +1,3 @@
-export default function Sales() { return null; }
+export default function Sales() {
+  return null;
+}

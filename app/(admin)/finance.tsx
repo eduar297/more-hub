@@ -1,1 +1,3 @@
-export default function Finance() { return null; }
+export default function Finance() {
+  return null;
+}

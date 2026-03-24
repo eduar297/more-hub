@@ -1,1 +1,3 @@
-export default function Inventory() { return null; }
+export default function Inventory() {
+  return null;
+}
