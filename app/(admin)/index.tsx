@@ -1,15 +1,10 @@
 import { ProductDetail } from "@/components/product/product-detail";
-import { ProductEditForm } from "@/components/product/product-edit-form";
 import { ProductForm } from "@/components/product/product-form";
 import { BarcodeScannerView } from "@/components/ui/barcode-scanner-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
-import type {
-  CreateProductInput,
-  Product,
-  UpdateProductInput,
-} from "@/models/product";
+import type { CreateProductInput, Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
 import { Package, Plus, ScanLine } from "@tamagui/lucide-icons";
@@ -272,7 +267,7 @@ export default function ProductsScreen() {
     }
   };
 
-  const handleEdit = async (data: UpdateProductInput) => {
+  const handleEdit = async (data: CreateProductInput) => {
     if (!selectedProduct) return;
     setEditSaving(true);
     setError(null);
@@ -515,7 +510,7 @@ export default function ProductsScreen() {
             automaticallyAdjustKeyboardInsets
           >
             {selectedProduct && (
-              <ProductEditForm
+              <ProductForm
                 product={selectedProduct}
                 units={allUnits}
                 onSubmit={handleEdit}
