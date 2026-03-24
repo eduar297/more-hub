@@ -1,19 +1,48 @@
 import { Camera, Image as ImageIcon, Trash2 } from "@tamagui/lucide-icons";
+import * as FileSystem from "expo-file-system";
 import {
-    launchCameraAsync,
-    launchImageLibraryAsync,
-    MediaType,
-    useCameraPermissions,
-    useMediaLibraryPermissions,
+  launchCameraAsync,
+  launchImageLibraryAsync,
+  MediaType,
+  useCameraPermissions,
+  useMediaLibraryPermissions,
 } from "expo-image-picker";
 import { Image, StyleSheet } from "react-native";
 import { Button, Text, XStack, YStack } from "tamagui";
+
+// Persistent directory for product photos
+const PHOTOS_DIR = FileSystem.documentDirectory + "product-photos/";
+
+/** Copy a picked image to the persistent documents directory. */
+async function persistImage(cacheUri: string): Promise<string> {
+  const dirInfo = await FileSystem.getInfoAsync(PHOTOS_DIR);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(PHOTOS_DIR, { intermediates: true });
+  }
+  const filename = `photo_${Date.now()}.jpg`;
+  const destUri = PHOTOS_DIR + filename;
+  await FileSystem.copyAsync({ from: cacheUri, to: destUri });
+  return destUri;
+}
+
+/** Delete a previously persisted photo. */
+async function deletePersistedImage(uri: string): Promise<void> {
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists) {
+      await FileSystem.deleteAsync(uri);
+    }
+  } catch {
+    // ignore — file may already be gone
+  }
+}
 
 // ── PhotoPicker ───────────────────────────────────────────────────────────────
 
 export interface PhotoPickerProps {
   /** Current photo URI, or null if no photo is set. */
   uri: string | null;
+
   /** Called with the new URI after picking, or null when the photo is removed. */
   onChange: (uri: string | null) => void;
 }
@@ -44,7 +73,9 @@ export function PhotoPicker({ uri, onChange }: PhotoPickerProps) {
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      onChange(result.assets[0].uri);
+      const persisted = await persistImage(result.assets[0].uri);
+      if (uri) await deletePersistedImage(uri);
+      onChange(persisted);
     }
   };
 
@@ -61,7 +92,9 @@ export function PhotoPicker({ uri, onChange }: PhotoPickerProps) {
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      onChange(result.assets[0].uri);
+      const persisted = await persistImage(result.assets[0].uri);
+      if (uri) await deletePersistedImage(uri);
+      onChange(persisted);
     }
   };
 
@@ -106,7 +139,10 @@ export function PhotoPicker({ uri, onChange }: PhotoPickerProps) {
             size="$3"
             theme="red"
             icon={Trash2}
-            onPress={() => onChange(null)}
+            onPress={() => {
+              if (uri) deletePersistedImage(uri);
+              onChange(null);
+            }}
           />
         )}
       </XStack>

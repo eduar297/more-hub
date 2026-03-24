@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { seedUnits } from "./seed";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 2;
+  const DATABASE_VERSION = 3;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -48,6 +48,31 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   if (currentVersion === 1) {
     await db.execAsync(`ALTER TABLE products ADD COLUMN photoUri TEXT`);
     currentVersion = 2;
+  }
+
+  if (currentVersion === 2) {
+    await db.execAsync(`
+      CREATE TABLE tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        paymentMethod TEXT CHECK (paymentMethod IN ('CASH','CARD')) NOT NULL,
+        total REAL NOT NULL,
+        itemCount INTEGER NOT NULL
+      );
+
+      CREATE TABLE ticket_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticketId INTEGER NOT NULL,
+        productId INTEGER NOT NULL,
+        productName TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unitPrice REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        FOREIGN KEY (ticketId) REFERENCES tickets(id),
+        FOREIGN KEY (productId) REFERENCES products(id)
+      );
+    `);
+    currentVersion = 3;
   }
 
   await seedUnits(db);
