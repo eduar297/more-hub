@@ -1,6 +1,6 @@
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductForm } from "@/components/product/product-form";
-import { BarcodeScannerView } from "@/components/ui/barcode-scanner-view";
+import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
@@ -9,8 +9,8 @@ import type { Unit, UnitCategory } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
 import { Package, Plus, ScanLine } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Image, Keyboard, ScrollView, StyleSheet } from "react-native";
 import {
   Button,
   Input,
@@ -155,7 +155,6 @@ export default function ProductsScreen() {
   const [loading, setLoading] = useState(true);
 
   // Sheets
-  const [showScanner, setShowScanner] = useState(false);
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
@@ -168,6 +167,37 @@ export default function ProductsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [stockQty, setStockQty] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Track keyboard so the stock sheet can grow above it
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardWillShow", () =>
+      setKeyboardVisible(true),
+    );
+    const hide = Keyboard.addListener("keyboardWillHide", () =>
+      setKeyboardVisible(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  // Barcode scanner
+  const scan = useBarcodeScanner({
+    onResult(result) {
+      if (result.kind === "found") {
+        setSelectedProduct(result.product);
+        setShowDetailSheet(true);
+      } else {
+        setCreateBarcode(result.barcode);
+        setShowCreateSheet(true);
+      }
+    },
+    onError(msg) {
+      setError(msg);
+    },
+  });
 
   // ── Data loading ───────────────────────────────────────────────────────────
 
@@ -225,26 +255,6 @@ export default function ProductsScreen() {
   }, [allProducts, unitMap, categories]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-
-  const handleBarcodeScanned = useCallback(
-    async (barcode: string) => {
-      setShowScanner(false);
-      setError(null);
-      try {
-        const found = await products.findByBarcode(barcode);
-        if (found) {
-          setSelectedProduct(found);
-          setShowDetailSheet(true);
-        } else {
-          setCreateBarcode(barcode);
-          setShowCreateSheet(true);
-        }
-      } catch (e) {
-        setError("Error buscando producto: " + (e as Error).message);
-      }
-    },
-    [products],
-  );
 
   const handleAddManual = () => {
     setCreateBarcode(generateEAN13());
@@ -338,13 +348,7 @@ export default function ProductsScreen() {
     <YStack flex={1} bg="$background">
       {/* Action bar */}
       <XStack gap="$3" px="$4" pt="$4" pb="$3">
-        <Button
-          flex={1}
-          theme="blue"
-          icon={ScanLine}
-          size="$4"
-          onPress={() => setShowScanner(true)}
-        >
+        <Button flex={1} theme="blue" icon={ScanLine} size="$4" onPress={scan}>
           Escanear
         </Button>
         <Button
@@ -409,28 +413,6 @@ export default function ProductsScreen() {
           ))}
         </ScrollView>
       )}
-
-      {/* Scanner sheet */}
-      <Sheet
-        open={showScanner}
-        onOpenChange={setShowScanner}
-        modal
-        snapPoints={[70]}
-        dismissOnSnapToBottom
-      >
-        <Sheet.Overlay
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
-        />
-        <Sheet.Frame theme={themeName as any}>
-          <Sheet.Handle />
-          <BarcodeScannerView
-            onScanned={handleBarcodeScanned}
-            onCancel={() => setShowScanner(false)}
-          />
-        </Sheet.Frame>
-      </Sheet>
 
       {/* Create product sheet */}
       <Sheet
@@ -526,7 +508,7 @@ export default function ProductsScreen() {
         open={showStockSheet}
         onOpenChange={setShowStockSheet}
         modal
-        snapPoints={[50]}
+        snapPoints={[keyboardVisible ? 85 : 50]}
         dismissOnSnapToBottom
       >
         <Sheet.Overlay
