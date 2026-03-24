@@ -2,10 +2,6 @@ import { ProductDetail } from "@/components/product/product-detail";
 import { ProductEditForm } from "@/components/product/product-edit-form";
 import { ProductForm } from "@/components/product/product-form";
 import { BarcodeScannerView } from "@/components/ui/barcode-scanner-view";
-import {
-  KEYBOARD_DONE_ID,
-  KeyboardDoneBar,
-} from "@/components/ui/keyboard-done-bar";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
@@ -535,7 +531,7 @@ export default function ProductsScreen() {
         open={showStockSheet}
         onOpenChange={setShowStockSheet}
         modal
-        snapPoints={[45]}
+        snapPoints={[50]}
         dismissOnSnapToBottom
       >
         <Sheet.Overlay
@@ -569,7 +565,7 @@ export default function ProductsScreen() {
                   value={stockQty}
                   onChangeText={setStockQty}
                   keyboardType="numeric"
-                  inputAccessoryViewID={KEYBOARD_DONE_ID}
+                  returnKeyType="done"
                   size="$4"
                 />
               </YStack>
@@ -587,7 +583,6 @@ export default function ProductsScreen() {
               >
                 {addingStock ? "Guardando..." : "Confirmar entrada"}
               </Button>
-              <KeyboardDoneBar />
             </YStack>
           </ScrollView>
         </Sheet.Frame>

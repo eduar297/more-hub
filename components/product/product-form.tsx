@@ -1,8 +1,4 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
-import {
-  KEYBOARD_DONE_ID,
-  KeyboardDoneBar,
-} from "@/components/ui/keyboard-done-bar";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
 import type { CreateProductInput, SaleMode } from "@/models/product";
@@ -92,9 +88,9 @@ export function ProductForm({
           placeholder="Nombre del producto"
           value={name}
           onChangeText={setName}
-          size="$4"
           returnKeyType="done"
-          blurOnSubmit
+          keyboardType="default"
+          size="$4"
         />
       </YStack>
 
@@ -110,7 +106,7 @@ export function ProductForm({
             value={price}
             onChangeText={setPrice}
             keyboardType="decimal-pad"
-            inputAccessoryViewID={KEYBOARD_DONE_ID}
+            returnKeyType="done"
             size="$4"
           />
         </YStack>
@@ -125,7 +121,7 @@ export function ProductForm({
             value={stock}
             onChangeText={setStock}
             keyboardType="numeric"
-            inputAccessoryViewID={KEYBOARD_DONE_ID}
+            returnKeyType="done"
             size="$4"
           />
         </YStack>
@@ -149,8 +145,6 @@ export function ProductForm({
       >
         {loading ? "Guardando..." : "Crear producto"}
       </Button>
-
-      <KeyboardDoneBar />
     </YStack>
   );
 }

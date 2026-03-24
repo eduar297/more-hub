@@ -1,8 +1,4 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
-import {
-  KEYBOARD_DONE_ID,
-  KeyboardDoneBar,
-} from "@/components/ui/keyboard-done-bar";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
 import type { Product, SaleMode, UpdateProductInput } from "@/models/product";
@@ -92,14 +88,7 @@ export function ProductEditForm({
         <Label htmlFor="ef-name" color="$color10" fontSize="$3">
           Nombre
         </Label>
-        <Input
-          id="ef-name"
-          value={name}
-          onChangeText={setName}
-          size="$4"
-          returnKeyType="done"
-          blurOnSubmit
-        />
+        <Input id="ef-name" value={name} onChangeText={setName} size="$4" />
       </YStack>
 
       {/* Price */}
@@ -112,7 +101,6 @@ export function ProductEditForm({
           value={price}
           onChangeText={setPrice}
           keyboardType="decimal-pad"
-          inputAccessoryViewID={KEYBOARD_DONE_ID}
           size="$4"
         />
       </YStack>
@@ -160,8 +148,6 @@ export function ProductEditForm({
       >
         {loading ? "Guardando..." : "Guardar cambios"}
       </Button>
-
-      <KeyboardDoneBar />
     </YStack>
   );
 }
