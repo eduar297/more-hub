@@ -21,12 +21,13 @@ export class SupplierRepository extends BaseRepository<
 
   async create(input: CreateSupplierInput): Promise<Supplier> {
     const result = await this.db.runAsync(
-      `INSERT INTO suppliers (name, contactName, phone, email, notes)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO suppliers (name, contactName, phone, email, address, notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       input.name,
       input.contactName ?? null,
       input.phone ?? null,
       input.email ?? null,
+      input.address ?? null,
       input.notes ?? null,
     );
     const created = await this.findById(result.lastInsertRowId);

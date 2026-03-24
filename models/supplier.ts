@@ -4,6 +4,7 @@ export interface Supplier {
   contactName: string | null;
   phone: string | null;
   email: string | null;
+  address: string | null;
   notes: string | null;
   createdAt: string;
 }

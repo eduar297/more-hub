@@ -5,7 +5,10 @@ export interface Purchase {
   /** Snapshot of supplier name at purchase time */
   supplierName: string;
   notes: string | null;
+  /** Sum of item costs + transportCost */
   total: number;
+  /** Cost of transport for this purchase */
+  transportCost: number;
   itemCount: number;
   createdAt: string;
 }
@@ -26,6 +29,7 @@ export interface CreatePurchaseInput {
   supplierId: number | null;
   supplierName: string;
   notes: string | null;
+  transportCost: number;
   items: {
     productId: number;
     productName: string;

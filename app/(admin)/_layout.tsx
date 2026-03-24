@@ -7,6 +7,7 @@ import {
   Building2,
   LayoutDashboard,
   PackageSearch,
+  Receipt,
   ShoppingBag,
 } from "@tamagui/lucide-icons";
 import { useTheme } from "tamagui";
@@ -62,6 +63,13 @@ export default function AdminLayout() {
           tabBarIcon: ({ color }) => (
             <ShoppingBag size={26} color={color as any} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="expenses"
+        options={{
+          title: "Gastos",
+          tabBarIcon: ({ color }) => <Receipt size={26} color={color as any} />,
         }}
       />
     </Tabs>

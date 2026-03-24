@@ -1,18 +1,26 @@
+import { useExpenseRepository } from "@/hooks/use-expense-repository";
 import { useProductRepository } from "@/hooks/use-product-repository";
+import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
+import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
+import type { ExpenseCategory } from "@/models/expense";
+import { EXPENSE_CATEGORIES } from "@/models/expense";
 import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import {
-  AlertTriangle,
-  BarChart3,
-  DollarSign,
-  LayoutDashboard,
-  Package,
-  PackageX,
-  Ruler,
-  Tag,
-  TrendingDown,
-  TrendingUp,
+    AlertTriangle,
+    BarChart3,
+    DollarSign,
+    LayoutDashboard,
+    Package,
+    PackageX,
+    Receipt,
+    Ruler,
+    ShoppingBag,
+    Tag,
+    TrendingDown,
+    TrendingUp,
+    Truck,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -123,27 +131,60 @@ function StockRow({
 export default function DashboardScreen() {
   const productRepo = useProductRepository();
   const unitRepo = useUnitRepository();
+  const ticketRepo = useTicketRepository();
+  const purchaseRepo = usePurchaseRepository();
+  const expenseRepo = useExpenseRepository();
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allUnits, setAllUnits] = useState<Unit[]>([]);
   const [allCategories, setAllCategories] = useState<UnitCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Financial state
+  const [todaySales, setTodaySales] = useState({
+    totalSales: 0,
+    ticketCount: 0,
+  });
+  const [monthlySales, setMonthlySales] = useState({
+    totalSales: 0,
+    ticketCount: 0,
+  });
+  const [monthlyPurchases, setMonthlyPurchases] = useState({
+    totalSpent: 0,
+    totalTransport: 0,
+    purchaseCount: 0,
+  });
+  const [monthlyExpenseTotal, setMonthlyExpenseTotal] = useState(0);
+  const [expensesByCategory, setExpensesByCategory] = useState<
+    { category: ExpenseCategory; total: number }[]
+  >([]);
+
   const loadStats = useCallback(async () => {
     setLoading(true);
     try {
-      const [prods, units, cats] = await Promise.all([
-        productRepo.findAll(),
-        unitRepo.findAll(),
-        unitRepo.findAllCategories(),
-      ]);
+      const [prods, units, cats, todayS, monthS, monthP, monthE, expByCat] =
+        await Promise.all([
+          productRepo.findAll(),
+          unitRepo.findAll(),
+          unitRepo.findAllCategories(),
+          ticketRepo.todaySummary(),
+          ticketRepo.monthlySummary(),
+          purchaseRepo.monthlySummary(),
+          expenseRepo.monthlyTotal(),
+          expenseRepo.monthlySummaryByCategory(),
+        ]);
       setAllProducts(prods);
       setAllUnits(units);
       setAllCategories(cats);
+      setTodaySales(todayS);
+      setMonthlySales(monthS);
+      setMonthlyPurchases(monthP);
+      setMonthlyExpenseTotal(monthE);
+      setExpensesByCategory(expByCat);
     } finally {
       setLoading(false);
     }
-  }, [productRepo, unitRepo]);
+  }, [productRepo, unitRepo, ticketRepo, purchaseRepo, expenseRepo]);
 
   useFocusEffect(
     useCallback(() => {
@@ -235,6 +276,11 @@ export default function DashboardScreen() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  // ── Financial derived ──────────────────────────────────────────────────────
+
+  const totalEgresos = monthlyPurchases.totalSpent + monthlyExpenseTotal;
+  const monthlyProfit = monthlySales.totalSales - totalEgresos;
+
   return (
     <YStack flex={1} bg="$background">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -247,10 +293,197 @@ export default function DashboardScreen() {
                 Dashboard
               </Text>
               <Text fontSize="$3" color="$color10">
-                Resumen del inventario
+                Resumen financiero e inventario
               </Text>
             </YStack>
           </XStack>
+
+          {/* ── FINANCIAL OVERVIEW ──────────────────────────────────────── */}
+
+          {/* Sales today */}
+          <Card
+            bg="$color1"
+            borderWidth={1}
+            borderColor="$borderColor"
+            style={{ borderRadius: 14 }}
+            p="$4"
+          >
+            <YStack gap="$3">
+              <XStack gap="$2" style={{ alignItems: "center" }}>
+                <DollarSign size={18} color="$green10" />
+                <Text fontSize="$5" fontWeight="bold" color="$color">
+                  Ventas hoy
+                </Text>
+              </XStack>
+              <XStack gap="$3">
+                <YStack flex={1}>
+                  <Text fontSize="$7" fontWeight="bold" color="$green10">
+                    ${formatCurrency(todaySales.totalSales)}
+                  </Text>
+                  <Text fontSize="$3" color="$color10">
+                    {todaySales.ticketCount}{" "}
+                    {todaySales.ticketCount === 1 ? "ticket" : "tickets"}
+                  </Text>
+                </YStack>
+                <Separator vertical />
+                <YStack flex={1}>
+                  <Text fontSize="$3" color="$color10" mb="$1">
+                    Este mes
+                  </Text>
+                  <Text fontSize="$5" fontWeight="bold" color="$green10">
+                    ${formatCurrency(monthlySales.totalSales)}
+                  </Text>
+                  <Text fontSize="$2" color="$color10">
+                    {monthlySales.ticketCount} tickets
+                  </Text>
+                </YStack>
+              </XStack>
+            </YStack>
+          </Card>
+
+          {/* Monthly Egresos breakdown */}
+          <Card
+            bg="$color1"
+            borderWidth={1}
+            borderColor="$borderColor"
+            style={{ borderRadius: 14 }}
+            p="$4"
+          >
+            <YStack gap="$3">
+              <XStack gap="$2" style={{ alignItems: "center" }}>
+                <ShoppingBag size={18} color="$red10" />
+                <Text fontSize="$5" fontWeight="bold" color="$color">
+                  Inversión del mes
+                </Text>
+              </XStack>
+
+              {/* Purchases */}
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <ShoppingBag size={14} color="$color10" />
+                  <Text fontSize="$3" color="$color10">
+                    Compras de mercancía
+                  </Text>
+                </XStack>
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  $
+                  {formatCurrency(
+                    monthlyPurchases.totalSpent -
+                      monthlyPurchases.totalTransport,
+                  )}
+                </Text>
+              </XStack>
+
+              {/* Transport */}
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <Truck size={14} color="$color10" />
+                  <Text fontSize="$3" color="$color10">
+                    Transporte (compras)
+                  </Text>
+                </XStack>
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  ${formatCurrency(monthlyPurchases.totalTransport)}
+                </Text>
+              </XStack>
+
+              {/* Expenses by category */}
+              {expensesByCategory.map((ec) => (
+                <XStack
+                  key={ec.category}
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                    <Receipt size={14} color="$color10" />
+                    <Text fontSize="$3" color="$color10">
+                      {EXPENSE_CATEGORIES[ec.category]}
+                    </Text>
+                  </XStack>
+                  <Text fontSize="$4" fontWeight="600" color="$color">
+                    ${formatCurrency(ec.total)}
+                  </Text>
+                </XStack>
+              ))}
+
+              <Separator />
+
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text fontSize="$4" fontWeight="bold" color="$color">
+                  Total invertido
+                </Text>
+                <Text fontSize="$5" fontWeight="bold" color="$red10">
+                  ${formatCurrency(totalEgresos)}
+                </Text>
+              </XStack>
+            </YStack>
+          </Card>
+
+          {/* Balance */}
+          <Card
+            bg={monthlyProfit >= 0 ? "$green2" : "$red2"}
+            borderWidth={1}
+            borderColor={monthlyProfit >= 0 ? "$green6" : "$red6"}
+            style={{ borderRadius: 14 }}
+            p="$4"
+          >
+            <YStack gap="$2">
+              <XStack gap="$2" style={{ alignItems: "center" }}>
+                <BarChart3
+                  size={18}
+                  color={monthlyProfit >= 0 ? "$green10" : "$red10"}
+                />
+                <Text fontSize="$5" fontWeight="bold" color="$color">
+                  Balance del mes
+                </Text>
+              </XStack>
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <YStack>
+                  <Text fontSize="$3" color="$color10">
+                    Ingresos − Egresos
+                  </Text>
+                  <Text fontSize="$2" color="$color10">
+                    ${formatCurrency(monthlySales.totalSales)} − $
+                    {formatCurrency(totalEgresos)}
+                  </Text>
+                </YStack>
+                <Text
+                  fontSize="$7"
+                  fontWeight="bold"
+                  color={monthlyProfit >= 0 ? "$green10" : "$red10"}
+                >
+                  {monthlyProfit >= 0 ? "+" : ""}$
+                  {formatCurrency(Math.abs(monthlyProfit))}
+                </Text>
+              </XStack>
+            </YStack>
+          </Card>
+
+          {/* ── INVENTORY STATS ─────────────────────────────────────────── */}
+
+          <Separator />
 
           {/* Row 1: totals */}
           <XStack gap="$3">

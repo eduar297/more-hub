@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { seedUnits } from "./seed";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 4;
+  const DATABASE_VERSION = 5;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -111,6 +111,24 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       );
     `);
     currentVersion = 4;
+  }
+
+  if (currentVersion === 4) {
+    await db.execAsync(`
+      ALTER TABLE suppliers ADD COLUMN address TEXT;
+
+      ALTER TABLE purchases ADD COLUMN transportCost REAL NOT NULL DEFAULT 0;
+
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL CHECK (category IN ('TRANSPORT','ELECTRICITY','RENT','REPAIRS','SUPPLIES','OTHER')),
+        description TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+    `);
+    currentVersion = 5;
   }
 
   await seedUnits(db);

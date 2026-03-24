@@ -146,6 +146,7 @@ export default function PurchasesScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [monthlyStats, setMonthlyStats] = useState({
     totalSpent: 0,
+    totalTransport: 0,
     purchaseCount: 0,
   });
 
@@ -164,6 +165,7 @@ export default function PurchasesScreen() {
     null,
   );
   const [purchaseNotes, setPurchaseNotes] = useState("");
+  const [transportCost, setTransportCost] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [creating, setCreating] = useState(false);
 
@@ -234,6 +236,7 @@ export default function PurchasesScreen() {
     setSuppliers(list);
     setSelectedSupplier(null);
     setPurchaseNotes("");
+    setTransportCost("");
     setCart([]);
     setShowCreateSheet(true);
   };
@@ -258,11 +261,14 @@ export default function PurchasesScreen() {
   const removeFromCart = (idx: number) =>
     setCart((prev) => prev.filter((_, i) => i !== idx));
 
-  const cartTotal = cart.reduce((sum, item) => {
+  const cartItemsTotal = cart.reduce((sum, item) => {
     const qty = parseFloat(item.qty) || 0;
     const cost = parseFloat(item.unitCost) || 0;
     return sum + qty * cost;
   }, 0);
+
+  const parsedTransport = parseFloat(transportCost) || 0;
+  const cartTotal = cartItemsTotal + parsedTransport;
 
   const canConfirm =
     cart.length > 0 &&
@@ -282,6 +288,7 @@ export default function PurchasesScreen() {
         supplierId: selectedSupplier?.id ?? null,
         supplierName: selectedSupplier?.name ?? "Sin proveedor",
         notes: purchaseNotes.trim() || null,
+        transportCost: parsedTransport,
         items: cart.map((i) => ({
           productId: i.productId,
           productName: i.productName,
@@ -515,6 +522,22 @@ export default function PurchasesScreen() {
 
                 <Separator />
 
+                {selectedPurchase.transportCost > 0 && (
+                  <XStack
+                    style={{
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text fontSize="$3" color="$color10">
+                      Transporte
+                    </Text>
+                    <Text fontSize="$4" color="$color">
+                      ${fmtCurrency(selectedPurchase.transportCost)}
+                    </Text>
+                  </XStack>
+                )}
+
                 <XStack
                   style={{
                     justifyContent: "space-between",
@@ -604,6 +627,21 @@ export default function PurchasesScreen() {
                 />
               </YStack>
 
+              {/* Transport cost */}
+              <YStack gap="$1">
+                <Text fontSize="$3" color="$color10" fontWeight="600">
+                  Costo de transporte (opcional)
+                </Text>
+                <Input
+                  placeholder="0.00"
+                  value={transportCost}
+                  onChangeText={setTransportCost}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                  size="$4"
+                />
+              </YStack>
+
               <Separator />
 
               {/* Cart header */}
@@ -655,6 +693,36 @@ export default function PurchasesScreen() {
               {cart.length > 0 && (
                 <>
                   <Separator />
+                  {parsedTransport > 0 && (
+                    <>
+                      <XStack
+                        style={{
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text fontSize="$3" color="$color10">
+                          Subtotal productos
+                        </Text>
+                        <Text fontSize="$4" color="$color">
+                          ${fmtCurrency(cartItemsTotal)}
+                        </Text>
+                      </XStack>
+                      <XStack
+                        style={{
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text fontSize="$3" color="$color10">
+                          Transporte
+                        </Text>
+                        <Text fontSize="$4" color="$color">
+                          ${fmtCurrency(parsedTransport)}
+                        </Text>
+                      </XStack>
+                    </>
+                  )}
                   <XStack
                     style={{
                       justifyContent: "space-between",

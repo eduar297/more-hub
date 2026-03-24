@@ -36,6 +36,7 @@ function SupplierForm({ initial, onSubmit, loading }: SupplierFormProps) {
   const [contactName, setContactName] = useState(initial?.contactName ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
+  const [address, setAddress] = useState(initial?.address ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
   // Reset when switching between different suppliers
@@ -44,6 +45,7 @@ function SupplierForm({ initial, onSubmit, loading }: SupplierFormProps) {
     setContactName(initial?.contactName ?? "");
     setPhone(initial?.phone ?? "");
     setEmail(initial?.email ?? "");
+    setAddress(initial?.address ?? "");
     setNotes(initial?.notes ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
@@ -117,6 +119,20 @@ function SupplierForm({ initial, onSubmit, loading }: SupplierFormProps) {
       </XStack>
 
       <YStack gap="$1">
+        <Label htmlFor={`${uid}-address`} color="$color10" fontSize="$3">
+          Dirección
+        </Label>
+        <Input
+          id={`${uid}-address`}
+          placeholder="Av. Principal, Local #12..."
+          value={address}
+          onChangeText={setAddress}
+          returnKeyType="next"
+          size="$4"
+        />
+      </YStack>
+
+      <YStack gap="$1">
         <Label htmlFor={`${uid}-notes`} color="$color10" fontSize="$3">
           Notas
         </Label>
@@ -141,6 +157,7 @@ function SupplierForm({ initial, onSubmit, loading }: SupplierFormProps) {
             contactName: contactName.trim() || null,
             phone: phone.trim() || null,
             email: email.trim() || null,
+            address: address.trim() || null,
             notes: notes.trim() || null,
           })
         }
@@ -421,6 +438,9 @@ export default function SuppliersScreen() {
               ) : null}
               {selectedSupplier.email ? (
                 <InfoRow label="Email" value={selectedSupplier.email} />
+              ) : null}
+              {selectedSupplier.address ? (
+                <InfoRow label="Dirección" value={selectedSupplier.address} />
               ) : null}
               {selectedSupplier.notes ? (
                 <InfoRow label="Notas" value={selectedSupplier.notes} />

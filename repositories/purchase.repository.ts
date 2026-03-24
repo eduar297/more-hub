@@ -22,20 +22,23 @@ export class PurchaseRepository extends BaseRepository<
 
   /** Record a purchase, add stock to each product — all in one transaction. */
   async create(input: CreatePurchaseInput): Promise<Purchase> {
-    const total = input.items.reduce(
+    const itemsTotal = input.items.reduce(
       (sum, i) => sum + i.quantity * i.unitCost,
       0,
     );
+    const transportCost = input.transportCost ?? 0;
+    const total = itemsTotal + transportCost;
     let purchaseId = 0;
 
     await this.db.withExclusiveTransactionAsync(async (tx) => {
       const result = await tx.runAsync(
-        `INSERT INTO purchases (supplierId, supplierName, notes, total, itemCount)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO purchases (supplierId, supplierName, notes, total, transportCost, itemCount)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         input.supplierId ?? null,
         input.supplierName,
         input.notes ?? null,
         total,
+        transportCost,
         input.items.length,
       );
       purchaseId = result.lastInsertRowId;
@@ -76,16 +79,20 @@ export class PurchaseRepository extends BaseRepository<
   /** Total spend and purchase count for the current calendar month. */
   async monthlySummary(): Promise<{
     totalSpent: number;
+    totalTransport: number;
     purchaseCount: number;
   }> {
     const row = await this.db.getFirstAsync<{
       totalSpent: number;
+      totalTransport: number;
       purchaseCount: number;
     }>(
-      `SELECT COALESCE(SUM(total), 0) as totalSpent, COUNT(*) as purchaseCount
+      `SELECT COALESCE(SUM(total), 0) as totalSpent,
+              COALESCE(SUM(transportCost), 0) as totalTransport,
+              COUNT(*) as purchaseCount
        FROM purchases
        WHERE strftime('%Y-%m', createdAt) = strftime('%Y-%m', 'now', 'localtime')`,
     );
-    return row ?? { totalSpent: 0, purchaseCount: 0 };
+    return row ?? { totalSpent: 0, totalTransport: 0, purchaseCount: 0 };
   }
 }

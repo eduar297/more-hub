@@ -88,4 +88,17 @@ export class TicketRepository extends BaseRepository<
     );
     return row ?? { totalSales: 0, ticketCount: 0 };
   }
+
+  /** Get current month's sales summary. */
+  async monthlySummary(): Promise<{ totalSales: number; ticketCount: number }> {
+    const row = await this.db.getFirstAsync<{
+      totalSales: number;
+      ticketCount: number;
+    }>(
+      `SELECT COALESCE(SUM(total), 0) as totalSales, COUNT(*) as ticketCount
+       FROM tickets
+       WHERE strftime('%Y-%m', createdAt) = strftime('%Y-%m', 'now', 'localtime')`,
+    );
+    return row ?? { totalSales: 0, ticketCount: 0 };
+  }
 }
