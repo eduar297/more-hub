@@ -1,3 +1,5 @@
+import * as Crypto from "expo-crypto";
+
 /**
  * Calculates the EAN-13 check digit from the first 12 digits.
  * Uses alternating weights 1 and 3.
@@ -11,13 +13,13 @@ function calcCheckDigit(digits: number[]): number {
 }
 
 /**
- * Generates a random valid EAN-13 barcode.
- * Produces 12 random digits plus a computed check digit.
+ * Generates a unique valid EAN-13 barcode using cryptographically
+ * random bytes from expo-crypto, so each call yields a different code.
  */
 export function generateEAN13(): string {
-  const digits: number[] = Array.from({ length: 12 }, () =>
-    Math.floor(Math.random() * 10),
-  );
+  // Get 12 random bytes (one per digit) and map each to 0-9.
+  const randomBytes = Crypto.getRandomBytes(12);
+  const digits = Array.from(randomBytes).map((b) => b % 10);
   const check = calcCheckDigit(digits);
   return [...digits, check].join("");
 }

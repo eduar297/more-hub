@@ -1,9 +1,22 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
 import type { Product } from "@/models/product";
-import { Card, Separator, Text, XStack, YStack } from "tamagui";
+import { PackagePlus, Pencil, Trash2 } from "@tamagui/lucide-icons";
+import {
+  Button,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
+} from "tamagui";
 
 export interface ProductDetailProps {
   product: Product;
+  onEdit?: () => void;
+  onAddStock?: () => void;
+  onDelete?: () => void;
+  deleting?: boolean;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -22,7 +35,13 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ProductDetail({ product }: ProductDetailProps) {
+export function ProductDetail({
+  product,
+  onEdit,
+  onAddStock,
+  onDelete,
+  deleting,
+}: ProductDetailProps) {
   return (
     <Card
       borderWidth={1}
@@ -74,6 +93,41 @@ export function ProductDetail({ product }: ProductDetailProps) {
           label="Modo de venta"
           value={product.saleMode === "UNIT" ? "Por unidad" : "Variable"}
         />
+
+        {/* Action buttons */}
+        {(onEdit || onAddStock || onDelete) && (
+          <YStack gap="$2" mt="$4">
+            <Separator mb="$2" />
+            {onAddStock && (
+              <Button
+                theme="green"
+                icon={PackagePlus}
+                size="$4"
+                onPress={onAddStock}
+              >
+                Añadir stock
+              </Button>
+            )}
+            {onEdit && (
+              <Button theme="blue" icon={Pencil} size="$4" onPress={onEdit}>
+                Editar producto
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                theme="red"
+                icon={
+                  deleting ? <Spinner size="small" /> : <Trash2 size={16} />
+                }
+                size="$4"
+                onPress={onDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Eliminando..." : "Eliminar producto"}
+              </Button>
+            )}
+          </YStack>
+        )}
       </YStack>
     </Card>
   );

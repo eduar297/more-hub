@@ -1,16 +1,31 @@
 import { ProductDetail } from "@/components/product/product-detail";
+import { ProductEditForm } from "@/components/product/product-edit-form";
 import { ProductForm } from "@/components/product/product-form";
 import { BarcodeScannerView } from "@/components/ui/barcode-scanner-view";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
-import type { CreateProductInput, Product } from "@/models/product";
+import type {
+  CreateProductInput,
+  Product,
+  UpdateProductInput,
+} from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
+import { generateEAN13 } from "@/utils/barcode";
 import { Package, Plus, ScanLine } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView } from "react-native";
-import { Button, Sheet, Spinner, Text, XStack, YStack } from "tamagui";
+import { Alert, ScrollView } from "react-native";
+import {
+  Button,
+  Input,
+  Label,
+  Sheet,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
+} from "tamagui";
 
 // ── Product row ──────────────────────────────────────────────────────────────
 
@@ -118,9 +133,15 @@ export default function ProductsScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
-  const [createBarcode, setCreateBarcode] = useState<string | undefined>();
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showStockSheet, setShowStockSheet] = useState(false);
+  const [createBarcode, setCreateBarcode] = useState<string>("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [addingStock, setAddingStock] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [stockQty, setStockQty] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // ── Data loading ───────────────────────────────────────────────────────────
@@ -201,7 +222,7 @@ export default function ProductsScreen() {
   );
 
   const handleAddManual = () => {
-    setCreateBarcode(undefined);
+    setCreateBarcode(generateEAN13());
     setShowCreateSheet(true);
   };
 
@@ -219,6 +240,71 @@ export default function ProductsScreen() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleEdit = async (data: UpdateProductInput) => {
+    if (!selectedProduct) return;
+    setEditSaving(true);
+    setError(null);
+    try {
+      const updated = await products.update(selectedProduct.id, data);
+      setSelectedProduct(updated);
+      setShowEditSheet(false);
+      await loadData();
+    } catch (e) {
+      setError("Error actualizando: " + (e as Error).message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleAddStock = async () => {
+    if (!selectedProduct) return;
+    const qty = parseFloat(stockQty);
+    if (isNaN(qty) || qty <= 0) return;
+    setAddingStock(true);
+    setError(null);
+    try {
+      const updated = await products.update(selectedProduct.id, {
+        stockBaseQty: selectedProduct.stockBaseQty + qty,
+      });
+      setSelectedProduct(updated);
+      setStockQty("");
+      setShowStockSheet(false);
+      await loadData();
+    } catch (e) {
+      setError("Error añadiendo stock: " + (e as Error).message);
+    } finally {
+      setAddingStock(false);
+    }
+  };
+
+  const executeDelete = async () => {
+    if (!selectedProduct) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await products.delete(selectedProduct.id);
+      setShowDetailSheet(false);
+      setSelectedProduct(null);
+      await loadData();
+    } catch (e) {
+      setError("Error eliminando: " + (e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeletePress = () => {
+    if (!selectedProduct) return;
+    Alert.alert(
+      "Eliminar producto",
+      `¿Estás seguro de eliminar "${selectedProduct.name}"? Esta acción no puede deshacerse.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Eliminar", style: "destructive", onPress: executeDelete },
+      ],
+    );
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -363,8 +449,100 @@ export default function ProductsScreen() {
         <Sheet.Frame p="$4" theme={themeName as any}>
           <Sheet.Handle />
           <ScrollView>
-            {selectedProduct && <ProductDetail product={selectedProduct} />}
+            {selectedProduct && (
+              <ProductDetail
+                product={selectedProduct}
+                onEdit={() => setShowEditSheet(true)}
+                onAddStock={() => setShowStockSheet(true)}
+                onDelete={handleDeletePress}
+                deleting={deleting}
+              />
+            )}
           </ScrollView>
+        </Sheet.Frame>
+      </Sheet>
+
+      {/* Edit product sheet */}
+      <Sheet
+        open={showEditSheet}
+        onOpenChange={setShowEditSheet}
+        modal
+        snapPoints={[95]}
+        dismissOnSnapToBottom
+      >
+        <Sheet.Overlay
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="rgba(0,0,0,0.5)"
+        />
+        <Sheet.Frame theme={themeName as any}>
+          <Sheet.Handle />
+          <ScrollView>
+            {selectedProduct && (
+              <ProductEditForm
+                product={selectedProduct}
+                units={allUnits}
+                onSubmit={handleEdit}
+                loading={editSaving}
+              />
+            )}
+          </ScrollView>
+        </Sheet.Frame>
+      </Sheet>
+
+      {/* Stock entry sheet */}
+      <Sheet
+        open={showStockSheet}
+        onOpenChange={setShowStockSheet}
+        modal
+        snapPoints={[45]}
+        dismissOnSnapToBottom
+      >
+        <Sheet.Overlay
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="rgba(0,0,0,0.5)"
+        />
+        <Sheet.Frame p="$4" theme={themeName as any}>
+          <Sheet.Handle />
+          <YStack gap="$3">
+            <Text fontSize="$5" fontWeight="bold" color="$color">
+              Añadir stock
+            </Text>
+            {selectedProduct && (
+              <Text color="$color10" fontSize="$3">
+                Stock actual: {selectedProduct.stockBaseQty}{" "}
+                {unitMap.get(selectedProduct.baseUnitId)?.symbol ?? "uds"}
+              </Text>
+            )}
+            <YStack gap="$1">
+              <Label htmlFor="stock-qty-input" color="$color10" fontSize="$3">
+                Cantidad recibida
+              </Label>
+              <Input
+                id="stock-qty-input"
+                placeholder="0"
+                value={stockQty}
+                onChangeText={setStockQty}
+                keyboardType="numeric"
+                size="$4"
+              />
+            </YStack>
+            <Button
+              theme="green"
+              size="$4"
+              icon={addingStock ? <Spinner /> : undefined}
+              disabled={
+                addingStock ||
+                !stockQty ||
+                isNaN(parseFloat(stockQty)) ||
+                parseFloat(stockQty) <= 0
+              }
+              onPress={handleAddStock}
+            >
+              {addingStock ? "Guardando..." : "Confirmar entrada"}
+            </Button>
+          </YStack>
         </Sheet.Frame>
       </Sheet>
     </YStack>
