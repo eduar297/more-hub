@@ -3,7 +3,7 @@ import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
 import type { CreateProductInput, Product, SaleMode } from "@/models/product";
 import type { Unit } from "@/models/unit";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button, Input, Label, Spinner, Text, XStack, YStack } from "tamagui";
 
 // ── ProductForm (create + edit) ───────────────────────────────────────────────
@@ -26,6 +26,7 @@ export function ProductForm({
   onSubmit,
   loading,
 }: ProductFormProps) {
+  const uid = useId();
   const isEdit = product !== undefined;
   const barcode = isEdit ? product.barcode : (barcodeProp ?? "");
 
@@ -102,11 +103,11 @@ export function ProductForm({
 
       {/* Name */}
       <YStack gap="$1">
-        <Label htmlFor="pf-name" color="$color10" fontSize="$3">
+        <Label htmlFor={`${uid}-name`} color="$color10" fontSize="$3">
           Nombre
         </Label>
         <Input
-          id="pf-name"
+          id={`${uid}-name`}
           placeholder="Nombre del producto"
           value={name}
           onChangeText={setName}
@@ -118,11 +119,11 @@ export function ProductForm({
       {/* Price + Stock (stock only shown when creating) */}
       <XStack gap="$3">
         <YStack flex={1} gap="$1">
-          <Label htmlFor="pf-price" color="$color10" fontSize="$3">
+          <Label htmlFor={`${uid}-price`} color="$color10" fontSize="$3">
             Precio
           </Label>
           <Input
-            id="pf-price"
+            id={`${uid}-price`}
             placeholder="0.00"
             value={price}
             onChangeText={setPrice}
@@ -134,11 +135,11 @@ export function ProductForm({
 
         {!isEdit && (
           <YStack flex={1} gap="$1">
-            <Label htmlFor="pf-stock" color="$color10" fontSize="$3">
+            <Label htmlFor={`${uid}-stock`} color="$color10" fontSize="$3">
               Stock inicial
             </Label>
             <Input
-              id="pf-stock"
+              id={`${uid}-stock`}
               placeholder="0"
               value={stock}
               onChangeText={setStock}
