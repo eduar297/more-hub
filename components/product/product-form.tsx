@@ -1,4 +1,5 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { CreateProductInput, SaleMode } from "@/models/product";
 import type { Unit } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
@@ -13,7 +14,7 @@ import {
   Spinner,
   Text,
   XStack,
-  YStack,
+  YStack
 } from "tamagui";
 
 // ── Unit picker ──────────────────────────────────────────────────────────────
@@ -27,6 +28,8 @@ function UnitPicker({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const colorScheme = useColorScheme();
+  const themeName = colorScheme === "dark" ? "dark" : "light";
   const [open, setOpen] = useState(false);
   const selected = units.find((u) => String(u.id) === value);
 
@@ -46,7 +49,7 @@ function UnitPicker({
         dismissOnSnapToBottom
       >
         <Sheet.Overlay />
-        <Sheet.Frame p="$4">
+        <Sheet.Frame p="$4" theme={themeName as any}>
           <Sheet.Handle />
           <Text fontWeight="bold" fontSize="$5" color="$color" mb="$3">
             Unidad base

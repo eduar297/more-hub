@@ -23,21 +23,24 @@ function StatCard({
   return (
     <Card
       flex={1}
-      p="$4"
+      p="$3"
       bg="$background"
       borderWidth={1}
       borderColor="$borderColor"
-      style={{ borderRadius: 14 }}
+      style={{ borderRadius: 12 }}
     >
-      <YStack gap="$2">
-        <XStack style={{ alignItems: "center" }} gap="$2">
-          {icon}
-          <Text fontSize="$3" color="$color10">
-            {label}
-          </Text>
-        </XStack>
-        <Text fontSize="$8" fontWeight="bold" color={color as any}>
+      <YStack gap="$1">
+        {icon}
+        <Text
+          fontSize="$6"
+          fontWeight="bold"
+          color={color as any}
+          numberOfLines={1}
+        >
           {value}
+        </Text>
+        <Text fontSize="$2" color="$color10" numberOfLines={1}>
+          {label}
         </Text>
       </YStack>
     </Card>

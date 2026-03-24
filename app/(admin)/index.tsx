@@ -1,6 +1,7 @@
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductForm } from "@/components/product/product-form";
 import { BarcodeScannerView } from "@/components/ui/barcode-scanner-view";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
 import type { CreateProductInput, Product } from "@/models/product";
@@ -105,6 +106,8 @@ function CategorySection({
 export default function ProductsScreen() {
   const products = useProductRepository();
   const units = useUnitRepository();
+  const colorScheme = useColorScheme();
+  const themeName = colorScheme === "dark" ? "dark" : "light";
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allUnits, setAllUnits] = useState<Unit[]>([]);
@@ -305,7 +308,7 @@ export default function ProductsScreen() {
         dismissOnSnapToBottom
       >
         <Sheet.Overlay />
-        <Sheet.Frame>
+        <Sheet.Frame theme={themeName as any}>
           <Sheet.Handle />
           <BarcodeScannerView
             onScanned={handleBarcodeScanned}
@@ -323,7 +326,7 @@ export default function ProductsScreen() {
         dismissOnSnapToBottom
       >
         <Sheet.Overlay />
-        <Sheet.Frame>
+        <Sheet.Frame theme={themeName as any}>
           <Sheet.Handle />
           <ScrollView>
             <ProductForm
@@ -345,7 +348,7 @@ export default function ProductsScreen() {
         dismissOnSnapToBottom
       >
         <Sheet.Overlay />
-        <Sheet.Frame p="$4">
+        <Sheet.Frame p="$4" theme={themeName as any}>
           <Sheet.Handle />
           {selectedProduct && <ProductDetail product={selectedProduct} />}
         </Sheet.Frame>

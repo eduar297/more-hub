@@ -1,7 +1,7 @@
 import {
-    BarcodeScanningResult,
-    CameraView,
-    useCameraPermissions,
+  BarcodeScanningResult,
+  CameraView,
+  useCameraPermissions,
 } from "expo-camera";
 import { useState } from "react";
 import { Button, StyleSheet, View } from "react-native";
@@ -60,7 +60,7 @@ export function BarcodeScannerView({
         }}
         autofocus="on"
         ratio="16:9"
-        zoom={0.2}
+        zoom={0}
         onBarcodeScanned={handleBarcodeScanned}
       />
       <Button title="Cancelar" onPress={onCancel} />

@@ -35,7 +35,7 @@ export default function WorkerLayout() {
       <Tabs.Screen
         name="historial"
         options={{
-          title: "Historial",
+          title: "Registro",
           tabBarIcon: ({ color }) => (
             <LayoutList size={26} color={color as any} />
           ),
