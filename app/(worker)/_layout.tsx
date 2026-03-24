@@ -15,7 +15,6 @@ export default function WorkerLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: tint,
-        headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: colorScheme === "dark" ? "#151718" : "#ffffff",

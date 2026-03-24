@@ -7,7 +7,8 @@ export default function TestLayout() {
       <Stack.Screen
         name="index"
         options={{
-          headerShown: false,
+          headerShown: true,
+          title: "Panel Test",
         }}
       />
     </Stack>

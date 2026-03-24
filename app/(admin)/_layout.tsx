@@ -21,7 +21,6 @@ export default function AdminLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: tint,
-        headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: colorScheme === "dark" ? "#151718" : "#ffffff",
@@ -32,7 +31,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Resumen",
+          title: "Dashboard",
           tabBarIcon: ({ color }) => (
             <LayoutDashboard size={26} color={color as any} />
           ),

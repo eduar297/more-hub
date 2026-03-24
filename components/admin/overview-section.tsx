@@ -481,16 +481,20 @@ export function OverviewSection() {
       <CalendarSheet
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
-        mode={period === "range" ? "range" : "day"}
+        mode={period}
         selectedDay={selectedDay}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
         range={dateRange}
         onSelectDay={(d) => {
           setSelectedDay(d);
-          if (period !== "day") setPeriod("day");
+          setPeriod("day");
         }}
+        onSelectMonth={(m) => setSelectedMonth(m)}
+        onSelectYear={(y) => setSelectedYear(y)}
         onSelectRange={(r) => {
           setDateRange(r);
-          if (period !== "range") setPeriod("range");
+          setPeriod("range");
         }}
       />
     </>
