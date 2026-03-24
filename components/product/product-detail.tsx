@@ -1,6 +1,4 @@
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { StyleSheet } from "react-native";
+import { Card, Separator, Text, XStack, YStack } from "tamagui";
 
 export interface ProductDetailProps {
   product: {
@@ -14,24 +12,55 @@ export interface ProductDetailProps {
   };
 }
 
-export function ProductDetail({ product }: ProductDetailProps) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">{product.name}</ThemedText>
-      <ThemedText>Código: {product.barcode}</ThemedText>
-      <ThemedText>Precio: {product.pricePerBaseUnit}</ThemedText>
-      <ThemedText>Stock: {product.stockBaseQty}</ThemedText>
-      <ThemedText>Modo de venta: {product.saleMode}</ThemedText>
-      {/* Puedes agregar más detalles aquí */}
-    </ThemedView>
+    <XStack
+      py="$2"
+      style={{ justifyContent: "space-between", alignItems: "center" }}
+    >
+      <Text color="$color10" fontSize="$3">
+        {label}
+      </Text>
+      <Text color="$color" fontSize="$4" fontWeight="500">
+        {value}
+      </Text>
+    </XStack>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    borderRadius: 8,
-    marginVertical: 8,
-    gap: 8,
-  },
-});
+export function ProductDetail({ product }: ProductDetailProps) {
+  return (
+    <Card
+      borderWidth={1}
+      borderColor="$borderColor"
+      borderRadius="$4"
+      p="$4"
+      bg="$background"
+    >
+      <YStack gap="$1">
+        <Text fontSize="$7" fontWeight="bold" color="$color" mb="$2">
+          {product.name}
+        </Text>
+
+        <Separator />
+
+        <DetailRow label="Código de barras" value={product.barcode} />
+        <Separator />
+        <DetailRow
+          label="Precio por unidad"
+          value={`$${product.pricePerBaseUnit.toFixed(2)}`}
+        />
+        <Separator />
+        <DetailRow
+          label="Stock disponible"
+          value={`${product.stockBaseQty} uds`}
+        />
+        <Separator />
+        <DetailRow
+          label="Modo de venta"
+          value={product.saleMode === "UNIT" ? "Por unidad" : "Variable"}
+        />
+      </YStack>
+    </Card>
+  );
+}

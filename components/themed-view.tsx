@@ -1,14 +1,15 @@
-import { View, type ViewProps } from 'react-native';
+import type { YStackProps } from "tamagui";
+import { YStack } from "tamagui";
 
-import { useThemeColor } from '@/hooks/use-theme-color';
-
-export type ThemedViewProps = ViewProps & {
+export type ThemedViewProps = YStackProps & {
   lightColor?: string;
   darkColor?: string;
 };
 
-export function ThemedView({ style, lightColor, darkColor, ...otherProps }: ThemedViewProps) {
-  const backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'background');
-
-  return <View style={[{ backgroundColor }, style]} {...otherProps} />;
+export function ThemedView({
+  lightColor,
+  darkColor,
+  ...otherProps
+}: ThemedViewProps) {
+  return <YStack background="$background" {...otherProps} />;
 }

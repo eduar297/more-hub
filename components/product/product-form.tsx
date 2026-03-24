@@ -1,7 +1,5 @@
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { useState } from "react";
-import { Button, StyleSheet, TextInput } from "react-native";
+import { Button, Input, Label, Spinner, Text, XStack, YStack } from "tamagui";
 
 export interface ProductFormProps {
   barcode: string;
@@ -23,42 +21,81 @@ export function ProductForm({ barcode, onSubmit, loading }: ProductFormProps) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
-  const [saleMode, setSaleMode] = useState("UNIT");
+  const [saleMode] = useState("UNIT");
   const [baseUnitId, setBaseUnitId] = useState("");
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">Crear producto</ThemedText>
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Precio"
-        value={price}
-        onChangeText={setPrice}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Stock inicial"
-        value={stock}
-        onChangeText={setStock}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="ID unidad base"
-        value={baseUnitId}
-        onChangeText={setBaseUnitId}
-        keyboardType="numeric"
-      />
-      {/* Aquí podrías poner un picker para saleMode y baseUnitId */}
+    <YStack gap="$3" p="$4">
+      <Text fontSize="$7" fontWeight="bold" color="$color">
+        Crear producto
+      </Text>
+
+      <Text fontSize="$3" color="$color10">
+        Código: {barcode}
+      </Text>
+
+      <YStack gap="$1">
+        <Label htmlFor="name" color="$color10" fontSize="$3">
+          Nombre
+        </Label>
+        <Input
+          id="name"
+          placeholder="Nombre del producto"
+          value={name}
+          onChangeText={setName}
+          size="$4"
+        />
+      </YStack>
+
+      <YStack gap="$1">
+        <Label htmlFor="price" color="$color10" fontSize="$3">
+          Precio por unidad base
+        </Label>
+        <Input
+          id="price"
+          placeholder="0.00"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="numeric"
+          size="$4"
+        />
+      </YStack>
+
+      <XStack gap="$3">
+        <YStack flex={1} gap="$1">
+          <Label htmlFor="stock" color="$color10" fontSize="$3">
+            Stock inicial
+          </Label>
+          <Input
+            id="stock"
+            placeholder="0"
+            value={stock}
+            onChangeText={setStock}
+            keyboardType="numeric"
+            size="$4"
+          />
+        </YStack>
+
+        <YStack flex={1} gap="$1">
+          <Label htmlFor="unitId" color="$color10" fontSize="$3">
+            ID unidad base
+          </Label>
+          <Input
+            id="unitId"
+            placeholder="1"
+            value={baseUnitId}
+            onChangeText={setBaseUnitId}
+            keyboardType="numeric"
+            size="$4"
+          />
+        </YStack>
+      </XStack>
+
       <Button
-        title={loading ? "Guardando..." : "Crear"}
+        size="$5"
+        theme="blue"
+        mt="$2"
+        disabled={loading}
         onPress={() =>
           onSubmit({
             name,
@@ -69,26 +106,10 @@ export function ProductForm({ barcode, onSubmit, loading }: ProductFormProps) {
             baseUnitId: parseInt(baseUnitId, 10),
           })
         }
-        disabled={loading}
-      />
-    </ThemedView>
+        icon={loading ? <Spinner /> : undefined}
+      >
+        {loading ? "Guardando..." : "Crear producto"}
+      </Button>
+    </YStack>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    borderRadius: 8,
-    marginVertical: 8,
-    gap: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 8,
-    backgroundColor: "transparent",
-    color: undefined, // Let system theme override this if needed
-  },
-});

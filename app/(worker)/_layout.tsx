@@ -2,36 +2,42 @@ import { Tabs } from "expo-router";
 import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { LayoutList, ScanLine } from "@tamagui/lucide-icons";
+import { useTheme } from "tamagui";
 
 export default function WorkerLayout() {
   const colorScheme = useColorScheme();
+  const theme = useTheme();
+  const tint = theme.green10?.val ?? "#22c55e";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: colorScheme === "dark" ? "#151718" : "#ffffff",
+          borderTopColor: colorScheme === "dark" ? "#2a2a2a" : "#e5e5e5",
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Index",
+          title: "Ventas",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <ScanLine size={26} color={color as any} />
           ),
         }}
       />
       <Tabs.Screen
         name="b1"
         options={{
-          title: "B1",
+          title: "Historial",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+            <LayoutList size={26} color={color as any} />
           ),
         }}
       />

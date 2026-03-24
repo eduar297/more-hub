@@ -1,91 +1,103 @@
+import {
+  ChevronRight,
+  FlaskConical,
+  Monitor,
+  Receipt,
+  ShieldCheck,
+} from "@tamagui/lucide-icons";
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet } from "react-native";
+import { Card, H1, Text, XStack, YStack } from "tamagui";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+const ROLES = [
+  {
+    icon: ShieldCheck,
+    label: "Administrador",
+    desc: "Gestión de productos e inventario",
+    path: "/(admin)" as const,
+    color: "$blue10",
+    bg: "$blue2",
+  },
+  {
+    icon: Receipt,
+    label: "Vendedor",
+    desc: "Panel de ventas y cobros",
+    path: "/(worker)" as const,
+    color: "$green10",
+    bg: "$green2",
+  },
+  {
+    icon: Monitor,
+    label: "Display",
+    desc: "Pantalla de mostrador en landscape",
+    path: "/(display)" as const,
+    color: "$purple10",
+    bg: "$purple2",
+  },
+  {
+    icon: FlaskConical,
+    label: "Test",
+    desc: "Pantalla de pruebas",
+    path: "/(test)" as const,
+    color: "$orange10",
+    bg: "$orange2",
+  },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        El More
-      </ThemedText>
+    <YStack
+      flex={1}
+      bg="$background"
+      px="$5"
+      py="$8"
+      gap="$3"
+      style={{ justifyContent: "center" }}
+    >
+      <YStack mb="$6" style={{ alignItems: "center" }}>
+        <H1 color="$color" fontSize="$10" letterSpacing={-1}>
+          ElMore
+        </H1>
+      </YStack>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={() => router.push("/(admin)")}
-      >
-        <ThemedText type="subtitle" style={styles.buttonText}>
-          👤 Administrador
-        </ThemedText>
-      </Pressable>
+      {ROLES.map(({ icon: Icon, label, desc, path, color, bg }) => (
+        <Card
+          key={path}
+          borderWidth={1}
+          borderColor="$borderColor"
+          pressStyle={{ scale: 0.97, opacity: 0.9 }}
+          onPress={() => router.push(path)}
+          p="$4"
+          borderRadius="$6"
+          bg="$background"
+        >
+          <XStack gap="$4" style={{ alignItems: "center" }}>
+            <YStack
+              bg={bg as any}
+              p="$3"
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 12,
+              }}
+            >
+              <Icon size={26} color={color as any} />
+            </YStack>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={() => router.push("/(worker)")}
-      >
-        <ThemedText type="subtitle" style={styles.buttonText}>
-          🧾 Trabajador / Vendedor
-        </ThemedText>
-      </Pressable>
+            <YStack flex={1} gap="$1">
+              <Text fontSize="$5" fontWeight="700" color="$color">
+                {label}
+              </Text>
+              <Text fontSize="$3" color="$color10">
+                {desc}
+              </Text>
+            </YStack>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={() => router.push("/(display)")}
-      >
-        <ThemedText type="subtitle" style={styles.buttonText}>
-          🖥️ Display
-        </ThemedText>
-      </Pressable>
-
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={() => router.push("/(test)")}
-      >
-        <ThemedText type="subtitle" style={styles.buttonText}>
-          🧪 Test
-        </ThemedText>
-      </Pressable>
-    </ThemedView>
+            <ChevronRight size={18} color="$color10" />
+          </XStack>
+        </Card>
+      ))}
+    </YStack>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-    gap: 24,
-  },
-  title: {
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  button: {
-    paddingVertical: 18,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#2f95dc",
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonText: {
-    color: "white",
-  },
-});

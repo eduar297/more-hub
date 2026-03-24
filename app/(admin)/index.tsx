@@ -1,12 +1,12 @@
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductForm } from "@/components/product/product-form";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { BarcodeScannerView } from "@/components/ui/barcode-scanner-view";
+import { ScanLine, ShieldCheck } from "@tamagui/lucide-icons";
 import { useCameraPermissions } from "expo-camera";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { Button, Modal, StyleSheet, View } from "react-native";
+import { View } from "react-native";
+import { Button, Sheet, Text, XStack, YStack } from "tamagui";
 
 export default function AdminScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -16,7 +16,7 @@ export default function AdminScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [product, setProduct] = useState<any | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const handleBarcodeScanned = useCallback(
@@ -36,7 +36,7 @@ export default function AdminScreen() {
           setProduct(found);
         } else {
           setProduct(null);
-          setShowCreateModal(true);
+          setShowCreateSheet(true);
         }
       } catch (e) {
         setProduct(null);
@@ -46,106 +46,150 @@ export default function AdminScreen() {
     [db, scanned],
   );
 
+  const handleCreate = async (data: any) => {
+    setCreating(true);
+    try {
+      await db.runAsync(
+        `INSERT INTO products (name, barcode, pricePerBaseUnit, baseUnitId, stockBaseQty, saleMode) VALUES (?, ?, ?, ?, ?, ?)`,
+        data.name,
+        data.barcode,
+        data.pricePerBaseUnit,
+        data.baseUnitId,
+        data.stockBaseQty,
+        data.saleMode,
+      );
+      const created = await db.getFirstAsync<any>(
+        "SELECT * FROM products WHERE barcode = ?",
+        [data.barcode],
+      );
+      setProduct(created);
+      setShowCreateSheet(false);
+      setLookupError(null);
+    } catch (e) {
+      setLookupError("Error creando producto: " + (e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (!permission) {
-    // Permisos cargando
     return <View />;
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <ThemedText type="title">👤 Panel Administrador</ThemedText>
-        <ThemedText>
-          Se requiere permiso de cámara para escanear productos.
-        </ThemedText>
-        <Button onPress={requestPermission} title="Conceder permiso" />
-      </View>
+      <YStack
+        flex={1}
+        p="$5"
+        gap="$4"
+        bg="$background"
+        style={{ justifyContent: "center", alignItems: "center" }}
+      >
+        <ShieldCheck size={56} color="$blue10" />
+        <Text
+          fontSize="$6"
+          fontWeight="bold"
+          color="$color"
+          style={{ textAlign: "center" }}
+        >
+          Permiso de cámara requerido
+        </Text>
+        <Text color="$color10" style={{ textAlign: "center" }} fontSize="$4">
+          Necesitamos acceso a tu cámara para escanear productos.
+        </Text>
+        <Button theme="blue" size="$5" onPress={requestPermission}>
+          Conceder permiso
+        </Button>
+      </YStack>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">👤 Panel Administrador</ThemedText>
-      <ThemedText>
-        Aquí podrás escanear productos, crearlos y editarlos.
-      </ThemedText>
+    <YStack flex={1} bg="$background" p="$5" gap="$4">
+      {/* Header */}
+      <XStack gap="$3" mb="$2" style={{ alignItems: "center" }}>
+        <ShieldCheck size={28} color="$blue10" />
+        <YStack>
+          <Text fontSize="$6" fontWeight="bold" color="$color">
+            Panel Administrador
+          </Text>
+          <Text fontSize="$3" color="$color10">
+            Gestión de productos e inventario
+          </Text>
+        </YStack>
+      </XStack>
+
+      {/* Scanner toggle button */}
       <Button
-        title="Escanear código de barras"
+        theme="blue"
+        size="$5"
+        icon={ScanLine}
         onPress={() => {
-          setShowScanner(true);
+          setShowScanner((prev) => !prev);
           setScanned(false);
           setBarcode(null);
         }}
-      />
+      >
+        {showScanner ? "Cerrar escáner" : "Escanear código de barras"}
+      </Button>
+
+      {/* Scanner view */}
       {showScanner && (
-        <View style={{ flex: 1, minHeight: 300, marginVertical: 16 }}>
+        <YStack
+          flex={1}
+          style={{ minHeight: 300, borderRadius: 12 }}
+          overflow="hidden"
+        >
           <BarcodeScannerView
             onScanned={handleBarcodeScanned}
             onCancel={() => setShowScanner(false)}
           />
-        </View>
+        </YStack>
       )}
+
+      {/* Product result */}
       {barcode && product && (
-        <>
-          <ThemedText type="default">Código escaneado: {barcode}</ThemedText>
+        <YStack gap="$3">
+          <Text fontSize="$3" color="$color10">
+            Código escaneado: {barcode}
+          </Text>
           <ProductDetail product={product} />
-          {lookupError && (
-            <ThemedText type="subtitle" style={{ color: "red", marginTop: 8 }}>
-              {lookupError}
-            </ThemedText>
-          )}
-        </>
+        </YStack>
       )}
-      <Modal
-        visible={showCreateModal}
-        animationType="slide"
-        onRequestClose={() => setShowCreateModal(false)}
-        presentationStyle="formSheet"
+
+      {/* Lookup error */}
+      {lookupError && (
+        <Text color="$red10" fontSize="$4">
+          {lookupError}
+        </Text>
+      )}
+
+      {/* Create product Sheet */}
+      <Sheet
+        modal
+        open={showCreateSheet}
+        onOpenChange={(open) => {
+          if (!open) setShowCreateSheet(false);
+        }}
+        snapPoints={[90]}
+        dismissOnSnapToBottom
+        zIndex={100_000}
       >
-        <ProductForm
-          barcode={barcode || ""}
-          loading={creating}
-          onSubmit={async (data) => {
-            setCreating(true);
-            try {
-              await db.runAsync(
-                `INSERT INTO products (name, barcode, pricePerBaseUnit, baseUnitId, stockBaseQty, saleMode) VALUES (?, ?, ?, ?, ?, ?)`,
-                data.name,
-                data.barcode,
-                data.pricePerBaseUnit,
-                data.baseUnitId,
-                data.stockBaseQty,
-                data.saleMode,
-              );
-              // Buscar el producto recién creado para mostrarlo
-              const created = await db.getFirstAsync<any>(
-                "SELECT * FROM products WHERE barcode = ?",
-                [data.barcode],
-              );
-              setProduct(created);
-              setShowCreateModal(false);
-              setLookupError(null);
-            } catch (e) {
-              setLookupError("Error creando producto: " + (e as Error).message);
-            } finally {
-              setCreating(false);
-            }
-          }}
-        />
-        {lookupError && (
-          <ThemedText type="subtitle" style={{ color: "red", margin: 16 }}>
-            {lookupError}
-          </ThemedText>
-        )}
-      </Modal>
-    </ThemedView>
+        <Sheet.Overlay />
+        <Sheet.Frame bg="$background">
+          <Sheet.Handle />
+          <ProductForm
+            barcode={barcode || ""}
+            loading={creating}
+            onSubmit={handleCreate}
+          />
+          {lookupError && (
+            <Text color="$red10" mx="$4" mb="$4" fontSize="$4">
+              {lookupError}
+            </Text>
+          )}
+        </Sheet.Frame>
+      </Sheet>
+    </YStack>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 16,
-  },
-});

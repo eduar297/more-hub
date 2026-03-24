@@ -4,8 +4,16 @@
     "strict": true,
     "noImplicitAny": false,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "app/expo-env.d.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "app/expo-env.d.ts",
+    "expo-env.d.ts"
+  ]
 }
