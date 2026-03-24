@@ -8,7 +8,7 @@ import {
     Trash2,
 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
-import { Alert, FlatList } from "react-native";
+import { Alert, FlatList, Image, StyleSheet } from "react-native";
 import {
     Button,
     Card,
@@ -25,6 +25,7 @@ import {
 
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useSupplierRepository } from "@/hooks/use-supplier-repository";
 import type { Purchase, PurchaseItem } from "@/models/purchase";
@@ -35,6 +36,7 @@ import type { Supplier } from "@/models/supplier";
 interface CartItem {
   productId: number;
   productName: string;
+  photoUri: string | null;
   qty: string;
   unitCost: string;
 }
@@ -62,16 +64,28 @@ function CartItemRow({
         <XStack
           style={{ alignItems: "center", justifyContent: "space-between" }}
         >
-          <Text
-            fontSize="$4"
-            fontWeight="600"
-            color="$color"
-            flex={1}
-            mr="$2"
-            numberOfLines={1}
-          >
-            {item.productName}
-          </Text>
+          <XStack style={{ alignItems: "center" }} gap="$2" flex={1} mr="$2">
+            {item.photoUri ? (
+              <Image
+                source={{ uri: item.photoUri }}
+                style={thumbStyles.thumb}
+                resizeMode="cover"
+              />
+            ) : (
+              <YStack style={thumbStyles.placeholder}>
+                <Package size={18} color="$color8" />
+              </YStack>
+            )}
+            <Text
+              fontSize="$4"
+              fontWeight="600"
+              color="$color"
+              flex={1}
+              numberOfLines={1}
+            >
+              {item.productName}
+            </Text>
+          </XStack>
           <Button
             size="$2"
             theme="red"
@@ -138,6 +152,7 @@ function CartItemRow({
 export default function PurchasesScreen() {
   const purchaseRepo = usePurchaseRepository();
   const supplierRepo = useSupplierRepository();
+  const productRepo = useProductRepository();
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
 
@@ -155,6 +170,9 @@ export default function PurchasesScreen() {
     null,
   );
   const [detailItems, setDetailItems] = useState<PurchaseItem[]>([]);
+  const [detailPhotoMap, setDetailPhotoMap] = useState<Record<number, string>>(
+    {},
+  );
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
   // ── create ────────────────────────────────────────────────────────────────
@@ -196,6 +214,7 @@ export default function PurchasesScreen() {
           {
             productId: p.id,
             productName: p.name,
+            photoUri: p.photoUri ?? null,
             qty: "1",
             unitCost: "",
           },
@@ -228,6 +247,15 @@ export default function PurchasesScreen() {
     setSelectedPurchase(purchase);
     const items = await purchaseRepo.findItemsByPurchaseId(purchase.id);
     setDetailItems(items);
+    // Build photo map from current product data
+    const photoMap: Record<number, string> = {};
+    await Promise.all(
+      items.map(async (it) => {
+        const product = await productRepo.findById(it.productId);
+        if (product?.photoUri) photoMap[it.productId] = product.photoUri;
+      }),
+    );
+    setDetailPhotoMap(photoMap);
     setShowDetailSheet(true);
   };
 
@@ -494,18 +522,17 @@ export default function PurchasesScreen() {
                     borderBottomWidth={1}
                     borderBottomColor="$color3"
                   >
-                    <YStack
-                      width={36}
-                      height={36}
-                      bg="$color3"
-                      style={{
-                        borderRadius: 18,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Package size={16} color="$color10" />
-                    </YStack>
+                    {detailPhotoMap[item.productId] ? (
+                      <Image
+                        source={{ uri: detailPhotoMap[item.productId] }}
+                        style={thumbStyles.thumb}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <YStack style={thumbStyles.placeholder}>
+                        <Package size={18} color="$color8" />
+                      </YStack>
+                    )}
                     <YStack flex={1}>
                       <Text fontSize="$4" fontWeight="500" color="$color">
                         {item.productName}
@@ -575,7 +602,10 @@ export default function PurchasesScreen() {
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
-          <Sheet.ScrollView keyboardShouldPersistTaps="handled">
+          <Sheet.ScrollView
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
             <YStack gap="$3" p="$4" pb="$10">
               <Text fontSize="$6" fontWeight="bold" color="$color">
                 Nueva Compra
@@ -844,3 +874,15 @@ export default function PurchasesScreen() {
     </YStack>
   );
 }
+
+const thumbStyles = StyleSheet.create({
+  thumb: { width: 40, height: 40, borderRadius: 8 },
+  placeholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "rgba(128,128,128,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
