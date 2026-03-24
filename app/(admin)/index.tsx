@@ -8,32 +8,32 @@ import { EXPENSE_CATEGORIES } from "@/models/expense";
 import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import {
-    AlertTriangle,
-    BarChart3,
-    ChevronLeft,
-    ChevronRight,
-    DollarSign,
-    LayoutDashboard,
-    Package,
-    PackageX,
-    Ruler,
-    ShoppingBag,
-    Tag,
-    TrendingDown,
-    TrendingUp,
+  AlertTriangle,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  LayoutDashboard,
+  Package,
+  PackageX,
+  Ruler,
+  ShoppingBag,
+  Tag,
+  TrendingDown,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Dimensions, ScrollView } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import {
-    Button,
-    Card,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -177,8 +177,7 @@ function ExpenseBreakdownChart({
       </YStack>
       <YStack gap="$2">
         {items.map((item, idx) => {
-          const pct =
-            total > 0 ? ((item.value / total) * 100).toFixed(0) : "0";
+          const pct = total > 0 ? ((item.value / total) * 100).toFixed(0) : "0";
           return (
             <XStack key={idx} style={{ alignItems: "center" }} gap="$2">
               <YStack

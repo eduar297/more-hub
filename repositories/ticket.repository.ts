@@ -151,4 +151,99 @@ export class TicketRepository extends BaseRepository<
       [m, limit],
     );
   }
+
+  /** Tickets in a date range [from, to] inclusive (YYYY-MM-DD). */
+  findByDateRange(from: string, to: string): Promise<Ticket[]> {
+    return this.db.getAllAsync<Ticket>(
+      `SELECT * FROM tickets
+       WHERE date(createdAt) >= ? AND date(createdAt) <= ?
+       ORDER BY createdAt DESC`,
+      [from, to],
+    );
+  }
+
+  /** Weekly sales totals for a given month (week number 1-5). */
+  async weeklySales(
+    month?: string,
+  ): Promise<{ week: number; total: number; tickets: number }[]> {
+    const m = month ?? currentMonth();
+    return this.db.getAllAsync(
+      `SELECT ((CAST(strftime('%d', createdAt) AS INTEGER) - 1) / 7 + 1) as week,
+              COALESCE(SUM(total), 0) as total,
+              COUNT(*) as tickets
+       FROM tickets
+       WHERE strftime('%Y-%m', createdAt) = ?
+       GROUP BY week
+       ORDER BY week`,
+      [m],
+    );
+  }
+
+  /** Monthly sales totals for a given year (for year charts). */
+  async monthlySalesForYear(
+    year?: string,
+  ): Promise<{ month: number; total: number; tickets: number }[]> {
+    const y = year ?? String(new Date().getFullYear());
+    return this.db.getAllAsync(
+      `SELECT CAST(strftime('%m', createdAt) AS INTEGER) as month,
+              COALESCE(SUM(total), 0) as total,
+              COUNT(*) as tickets
+       FROM tickets
+       WHERE strftime('%Y', createdAt) = ?
+       GROUP BY month
+       ORDER BY month`,
+      [y],
+    );
+  }
+
+  /** Payment method breakdown for a month. */
+  async paymentMethodBreakdown(
+    month?: string,
+  ): Promise<{ method: string; total: number; count: number }[]> {
+    const m = month ?? currentMonth();
+    return this.db.getAllAsync(
+      `SELECT paymentMethod as method,
+              COALESCE(SUM(total), 0) as total,
+              COUNT(*) as count
+       FROM tickets
+       WHERE strftime('%Y-%m', createdAt) = ?
+       GROUP BY paymentMethod`,
+      [m],
+    );
+  }
+
+  /** Summary for a single day. */
+  async daySummary(
+    date: string,
+  ): Promise<{ totalSales: number; ticketCount: number; avgTicket: number }> {
+    const row = await this.db.getFirstAsync<{
+      totalSales: number;
+      ticketCount: number;
+      avgTicket: number;
+    }>(
+      `SELECT COALESCE(SUM(total), 0) as totalSales,
+              COUNT(*) as ticketCount,
+              COALESCE(AVG(total), 0) as avgTicket
+       FROM tickets
+       WHERE date(createdAt) = ?`,
+      [date],
+    );
+    return row ?? { totalSales: 0, ticketCount: 0, avgTicket: 0 };
+  }
+
+  /** Hourly sales for a given day (for day-detail charts). */
+  async hourlySales(
+    date: string,
+  ): Promise<{ hour: number; total: number; tickets: number }[]> {
+    return this.db.getAllAsync(
+      `SELECT CAST(strftime('%H', createdAt) AS INTEGER) as hour,
+              COALESCE(SUM(total), 0) as total,
+              COUNT(*) as tickets
+       FROM tickets
+       WHERE date(createdAt) = ?
+       GROUP BY hour
+       ORDER BY hour`,
+      [date],
+    );
+  }
 }

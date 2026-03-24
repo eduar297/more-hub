@@ -63,4 +63,20 @@ export class ExpenseRepository extends BaseRepository<
     );
     return row?.total ?? 0;
   }
+
+  /** Monthly expense totals for a year (for trend charts). */
+  async monthlyTotalsForYear(
+    year?: string,
+  ): Promise<{ month: number; total: number }[]> {
+    const y = year ?? String(new Date().getFullYear());
+    return this.db.getAllAsync(
+      `SELECT CAST(strftime('%m', date) AS INTEGER) as month,
+              COALESCE(SUM(amount), 0) as total
+       FROM expenses
+       WHERE strftime('%Y', date) = ?
+       GROUP BY month
+       ORDER BY month`,
+      [y],
+    );
+  }
 }
