@@ -294,8 +294,17 @@ export function OverviewSection() {
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack p="$4" gap="$4" pb="$10">
+      {/* Sticky period selector card */}
+      <Card
+        mx="$4"
+        mb="$2"
+        p="$3"
+        bg="$color1"
+        borderWidth={1}
+        borderColor="$borderColor"
+        style={{ borderRadius: 16 }}
+      >
+        <YStack gap="$2">
           <PeriodTabs period={period} onChangePeriod={setPeriod} />
           <DateNavigator
             label={dateLabelText}
@@ -304,7 +313,11 @@ export function OverviewSection() {
             canGoForward={canGoForward}
             onCalendarPress={() => setCalendarOpen(true)}
           />
+        </YStack>
+      </Card>
 
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <YStack p="$4" gap="$4" pb="$10">
           {/* KPI Row */}
           <XStack gap="$3">
             <StatCard

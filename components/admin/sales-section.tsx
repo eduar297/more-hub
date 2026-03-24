@@ -409,15 +409,6 @@ export function SalesSection() {
   // ── Render ────────────────────────────────────────────────────────────────
   const ListHeader = (
     <YStack gap="$4" px="$4" pb="$2">
-      <PeriodTabs period={period} onChangePeriod={setPeriod} />
-      <DateNavigator
-        label={periodLabel}
-        onPrev={navigateBack}
-        onNext={navigateForward}
-        canGoForward={canGoForward}
-        onCalendarPress={() => setCalendarOpen(true)}
-      />
-
       {/* KPI cards */}
       <XStack gap="$3">
         <StatCard
@@ -615,6 +606,28 @@ export function SalesSection() {
 
   return (
     <>
+      {/* Sticky period selector card */}
+      <Card
+        mx="$4"
+        mb="$2"
+        p="$3"
+        bg="$color1"
+        borderWidth={1}
+        borderColor="$borderColor"
+        style={{ borderRadius: 16 }}
+      >
+        <YStack gap="$2">
+          <PeriodTabs period={period} onChangePeriod={setPeriod} />
+          <DateNavigator
+            label={periodLabel}
+            onPrev={navigateBack}
+            onNext={navigateForward}
+            canGoForward={canGoForward}
+            onCalendarPress={() => setCalendarOpen(true)}
+          />
+        </YStack>
+      </Card>
+
       {showTickets ? (
         <FlatList
           data={tickets}
