@@ -17,7 +17,7 @@ import {
     TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Image, Keyboard, ScrollView, StyleSheet } from "react-native";
 import {
     Button,
@@ -54,6 +54,16 @@ function CartItemRow({
   editable: boolean;
 }) {
   const subtotal = item.quantity * item.unitPrice;
+  const [rawQty, setRawQty] = useState(String(item.quantity));
+  const [rawPrice, setRawPrice] = useState(String(item.unitPrice));
+
+  // Keep local raw strings in sync when parent value changes (e.g. +/- buttons)
+  useEffect(() => {
+    setRawQty(String(item.quantity));
+  }, [item.quantity]);
+  useEffect(() => {
+    setRawPrice(String(item.unitPrice));
+  }, [item.unitPrice]);
 
   return (
     <YStack
@@ -115,11 +125,12 @@ function CartItemRow({
               size="$3"
               width={60}
               textAlign="center"
-              value={String(item.quantity)}
+              value={rawQty}
               keyboardType="numeric"
               returnKeyType="done"
               onSubmitEditing={() => Keyboard.dismiss()}
               onChangeText={(t) => {
+                setRawQty(t);
                 const n = parseFloat(t);
                 if (!isNaN(n) && n > 0) onChangeQty(n);
               }}
@@ -155,11 +166,12 @@ function CartItemRow({
             <Input
               size="$3"
               flex={1}
-              value={String(item.unitPrice)}
+              value={rawPrice}
               keyboardType="decimal-pad"
               returnKeyType="done"
               onSubmitEditing={() => Keyboard.dismiss()}
               onChangeText={(t) => {
+                setRawPrice(t);
                 const n = parseFloat(t);
                 if (!isNaN(n) && n >= 0) onChangePrice(n);
               }}

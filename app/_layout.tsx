@@ -40,7 +40,6 @@ function AppStack() {
           name="(display)"
           options={{ title: "Panel Visualización" }}
         />
-        <Stack.Screen name="(test)" options={{ title: "Pruebas" }} />
       </Stack>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
     </ThemeProvider>
