@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from "expo-sqlite";
-import { seedUnits } from "./seed";
+import { seedDefaultAdmin, seedUnits } from "./seed";
 
 /**
  * Safety net: create all tables with IF NOT EXISTS.
@@ -97,11 +97,19 @@ async function ensureTables(db: SQLiteDatabase) {
       date TEXT NOT NULL,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
+      pinHash TEXT NOT NULL,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
   `);
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 5;
+  const DATABASE_VERSION = 6;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -233,6 +241,21 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     currentVersion = 5;
   }
 
+  if (currentVersion === 5) {
+    await db.execAsync(`
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
+        pinHash TEXT NOT NULL,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+    `);
+    currentVersion = 6;
+  }
+
   await seedUnits(db);
+  await seedDefaultAdmin(db);
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+  return;
 }

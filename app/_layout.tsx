@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/contexts/auth-context";
 import {
   DarkTheme,
   DefaultTheme,
@@ -39,7 +40,6 @@ function AppStack() {
           name="(display)"
           options={{ title: "Panel Visualización" }}
         />
-        <Stack.Screen name="(test)" options={{ title: "Panel Test" }} />
         <Stack.Screen
           name="modal"
           options={{
@@ -60,7 +60,9 @@ export default function RootLayout() {
     <TamaguiProvider config={config} defaultTheme="light">
       <Theme name={colorScheme === "dark" ? "dark" : "light"}>
         <SQLiteProvider databaseName="elmore.db" onInit={migrateDbIfNeeded}>
-          <AppStack />
+          <AuthProvider>
+            <AppStack />
+          </AuthProvider>
         </SQLiteProvider>
       </Theme>
     </TamaguiProvider>

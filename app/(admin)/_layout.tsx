@@ -9,6 +9,8 @@ import {
   PackageSearch,
   Receipt,
   ShoppingBag,
+  User,
+  Users,
 } from "@tamagui/lucide-icons";
 import { useTheme } from "tamagui";
 
@@ -75,6 +77,20 @@ export default function AdminLayout() {
         options={{
           title: "Gastos",
           tabBarIcon: ({ color }) => <Receipt size={26} color={color as any} />,
+        }}
+      />
+      <Tabs.Screen
+        name="workers"
+        options={{
+          title: "Vendedores",
+          tabBarIcon: ({ color }) => <Users size={26} color={color as any} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color }) => <User size={26} color={color as any} />,
         }}
       />
       <Tabs.Screen name="sales" options={{ href: null }} />

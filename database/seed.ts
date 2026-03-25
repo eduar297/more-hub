@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import type { SQLiteDatabase } from "expo-sqlite";
 
 export async function seedUnits(db: SQLiteDatabase) {
@@ -29,4 +30,21 @@ export async function seedUnits(db: SQLiteDatabase) {
     ('saco','sac',4,1),
     ('rollo','roll',4,1);
   `);
+}
+
+export async function seedDefaultAdmin(db: SQLiteDatabase) {
+  const count = await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) as count FROM users WHERE role = 'ADMIN'",
+  );
+  if ((count?.count ?? 0) > 0) return;
+
+  const pinHash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    "1234",
+  );
+  await db.runAsync(
+    `INSERT INTO users (name, role, pinHash) VALUES (?, 'ADMIN', ?)`,
+    "Administrador",
+    pinHash,
+  );
 }

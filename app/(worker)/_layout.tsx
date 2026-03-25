@@ -3,7 +3,7 @@ import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { LayoutList, ScanLine } from "@tamagui/lucide-icons";
+import { LayoutList, ScanLine, User } from "@tamagui/lucide-icons";
 import { useTheme } from "tamagui";
 
 export default function WorkerLayout() {
@@ -44,6 +44,13 @@ export default function WorkerLayout() {
           tabBarIcon: ({ color }) => (
             <LayoutList size={26} color={color as any} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color }) => <User size={26} color={color as any} />,
         }}
       />
     </Tabs>
