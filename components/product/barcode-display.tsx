@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
+import { View } from "react-native";
 import { G, Rect, Svg, Text as SvgText } from "react-native-svg";
+import { Text } from "tamagui";
 
 // ── EAN-13 encoding tables ──────────────────────────────────────────────────
 // Each digit is encoded as 7 modules (0=white, 1=black).
@@ -93,12 +95,27 @@ export function BarcodeDisplay({
   barHeight = 60,
   showText = true,
 }: BarcodeDisplayProps) {
-  const bits = useMemo(() => {
-    if (barcode.length !== 13 || !/^\d{13}$/.test(barcode)) return null;
-    return encode(barcode);
+  // Normalise UPC-A (12 digits) → EAN-13 by prepending a leading zero
+  const normalised = useMemo(() => {
+    if (/^\d{12}$/.test(barcode)) return "0" + barcode;
+    return barcode;
   }, [barcode]);
 
-  if (!bits) return null;
+  const bits = useMemo(() => {
+    if (normalised.length !== 13 || !/^\d{13}$/.test(normalised)) return null;
+    return encode(normalised);
+  }, [normalised]);
+
+  // Unsupported format — show a plain text fallback
+  if (!bits) {
+    return (
+      <View style={{ alignItems: "center", paddingVertical: 8 }}>
+        <Text fontSize="$3" color="$color10" letterSpacing={2}>
+          {barcode}
+        </Text>
+      </View>
+    );
+  }
 
   const TOTAL_MODULES = 113;
   const mw = width / TOTAL_MODULES; // module width in dp
@@ -157,7 +174,7 @@ export function BarcodeDisplay({
             fill="black"
             textAnchor="middle"
           >
-            {barcode[0]}
+            {normalised[0]}
           </SvgText>
 
           {/* Left 6 digits */}
@@ -168,7 +185,7 @@ export function BarcodeDisplay({
             fill="black"
             textAnchor="middle"
           >
-            {barcode.slice(1, 7)}
+            {normalised.slice(1, 7)}
           </SvgText>
 
           {/* Right 6 digits */}
@@ -179,7 +196,7 @@ export function BarcodeDisplay({
             fill="black"
             textAnchor="middle"
           >
-            {barcode.slice(7)}
+            {normalised.slice(7)}
           </SvgText>
         </G>
       )}

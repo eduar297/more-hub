@@ -160,6 +160,7 @@ export default function ProductsScreen() {
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showStockSheet, setShowStockSheet] = useState(false);
   const [createBarcode, setCreateBarcode] = useState<string>("");
+  const [scannedBarcode, setScannedBarcode] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -191,6 +192,7 @@ export default function ProductsScreen() {
         setShowDetailSheet(true);
       } else {
         setCreateBarcode(result.barcode);
+        setScannedBarcode(true);
         setShowCreateSheet(true);
       }
     },
@@ -258,6 +260,7 @@ export default function ProductsScreen() {
 
   const handleAddManual = () => {
     setCreateBarcode(generateEAN13());
+    setScannedBarcode(false);
     setShowCreateSheet(true);
   };
 
@@ -269,6 +272,7 @@ export default function ProductsScreen() {
       setSelectedProduct(created);
       setShowCreateSheet(false);
       setCreateBarcode("");
+      setScannedBarcode(false);
       setShowDetailSheet(true);
       await loadData();
     } catch (e) {
@@ -438,6 +442,7 @@ export default function ProductsScreen() {
             <ProductForm
               key={createBarcode}
               barcode={createBarcode}
+              scanned={scannedBarcode}
               units={allUnits}
               onSubmit={handleCreate}
               loading={creating}
