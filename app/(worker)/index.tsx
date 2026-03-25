@@ -4,9 +4,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Product } from "@/models/product";
 import type { PaymentMethod } from "@/models/ticket";
-import {
-    todayISO,
-} from "@/utils/format";
+import { todayISO } from "@/utils/format";
 import {
     AlertCircle,
     Banknote,

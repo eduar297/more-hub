@@ -30,15 +30,7 @@ import {
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView } from "react-native";
-import {
-    Card,
-    Separator,
-    Sheet,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
-} from "tamagui";
+import { Card, Separator, Sheet, Spinner, Text, XStack, YStack } from "tamagui";
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -169,7 +161,15 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, [ticketRepo, user, period, selectedDay, selectedMonth, selectedYear, dateRange]);
+  }, [
+    ticketRepo,
+    user,
+    period,
+    selectedDay,
+    selectedMonth,
+    selectedYear,
+    dateRange,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -184,21 +184,25 @@ export default function HistoryScreen() {
   // ── Period navigation ───────────────────────────────────────────────────
   const dateLabel = useMemo(() => {
     if (period === "day") return dayLabel(selectedDay);
-    if (period === "month" || period === "week") return monthLabel(selectedMonth);
+    if (period === "month" || period === "week")
+      return monthLabel(selectedMonth);
     if (period === "year") return selectedYear;
     return rangeLabel(dateRange.from, dateRange.to);
   }, [period, selectedDay, selectedMonth, selectedYear, dateRange]);
 
   const canGoForward = useMemo(() => {
     if (period === "day") return selectedDay < todayISO();
-    if (period === "month" || period === "week") return selectedMonth < currentYearMonth();
-    if (period === "year") return Number(selectedYear) < new Date().getFullYear();
+    if (period === "month" || period === "week")
+      return selectedMonth < currentYearMonth();
+    if (period === "year")
+      return Number(selectedYear) < new Date().getFullYear();
     return false;
   }, [period, selectedDay, selectedMonth, selectedYear]);
 
   const navigateBack = () => {
     if (period === "day") setSelectedDay((d) => shiftDay(d, -1));
-    else if (period === "month" || period === "week") setSelectedMonth((m) => shiftMonth(m, -1));
+    else if (period === "month" || period === "week")
+      setSelectedMonth((m) => shiftMonth(m, -1));
     else if (period === "year") setSelectedYear((y) => String(Number(y) - 1));
   };
 
@@ -337,10 +341,22 @@ export default function HistoryScreen() {
         selectedMonth={selectedMonth}
         selectedYear={selectedYear}
         range={dateRange}
-        onSelectDay={(d) => { setSelectedDay(d); setCalendarOpen(false); }}
-        onSelectMonth={(m) => { setSelectedMonth(m); setCalendarOpen(false); }}
-        onSelectYear={(y) => { setSelectedYear(y); setCalendarOpen(false); }}
-        onSelectRange={(r) => { setDateRange(r); setCalendarOpen(false); }}
+        onSelectDay={(d) => {
+          setSelectedDay(d);
+          setCalendarOpen(false);
+        }}
+        onSelectMonth={(m) => {
+          setSelectedMonth(m);
+          setCalendarOpen(false);
+        }}
+        onSelectYear={(y) => {
+          setSelectedYear(y);
+          setCalendarOpen(false);
+        }}
+        onSelectRange={(r) => {
+          setDateRange(r);
+          setCalendarOpen(false);
+        }}
       />
 
       {/* Ticket detail sheet */}
