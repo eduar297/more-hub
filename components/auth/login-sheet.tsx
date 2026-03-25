@@ -12,6 +12,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -48,6 +49,7 @@ export function LoginSheet({
   const [verifying, setVerifying] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinRef = useRef<TextInput>(null);
 
   const isDark = colorScheme === "dark";
   const c = {
@@ -89,6 +91,13 @@ export function LoginSheet({
     }
   }, [userRepo, role]);
 
+  // Focus PIN when a user is selected
+  useEffect(() => {
+    if (selectedUser) {
+      setTimeout(() => pinRef.current?.focus(), 100);
+    }
+  }, [selectedUser]);
+
   useEffect(() => {
     if (open) {
       setPin("");
@@ -110,7 +119,7 @@ export function LoginSheet({
         const pinH = await hashPin(currentPin);
         const ok = await userRepo.verifyPin(user.id, pinH);
         if (ok) {
-          setUser({ id: user.id, name: user.name, role: user.role });
+          setUser({ id: user.id, name: user.name, role: user.role, photoUri: user.photoUri });
           onSuccess();
         } else {
           setError("PIN incorrecto");
@@ -238,11 +247,18 @@ export function LoginSheet({
                                 { backgroundColor: c.accentLight },
                               ]}
                             >
-                              <Text
-                                style={[styles.avatarText, { color: c.accent }]}
-                              >
-                                {u.name.charAt(0).toUpperCase()}
-                              </Text>
+                              {u.photoUri ? (
+                                <Image
+                                  source={{ uri: u.photoUri }}
+                                  style={styles.avatarImg}
+                                />
+                              ) : (
+                                <Text
+                                  style={[styles.avatarText, { color: c.accent }]}
+                                >
+                                  {u.name.charAt(0).toUpperCase()}
+                                </Text>
+                              )}
                             </View>
                             <Text style={[styles.userName, { color: c.text }]}>
                               {u.name}
@@ -281,9 +297,16 @@ export function LoginSheet({
                           { backgroundColor: c.accentLight },
                         ]}
                       >
-                        <Text style={[styles.avatarText, { color: c.accent }]}>
-                          {selectedUser?.name.charAt(0).toUpperCase()}
-                        </Text>
+                        {selectedUser?.photoUri ? (
+                          <Image
+                            source={{ uri: selectedUser.photoUri }}
+                            style={styles.avatarImg}
+                          />
+                        ) : (
+                          <Text style={[styles.avatarText, { color: c.accent }]}>
+                            {selectedUser?.name.charAt(0).toUpperCase()}
+                          </Text>
+                        )}
                       </View>
                       <Text style={[styles.userName, { color: c.text }]}>
                         {selectedUser?.name}
@@ -301,6 +324,7 @@ export function LoginSheet({
                     <Text style={[styles.label, { color: c.muted }]}>PIN</Text>
                     <View>
                       <TextInput
+                        ref={pinRef}
                         style={[
                           styles.pinInput,
                           {
@@ -453,6 +477,11 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  avatarImg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   userName: {
     fontSize: 15,

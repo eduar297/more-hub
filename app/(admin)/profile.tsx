@@ -1,9 +1,11 @@
 import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useUserRepository } from "@/hooks/use-user-repository";
+import { PhotoPicker } from "@/components/ui/photo-picker";
 import { hashPin } from "@/utils/auth";
 import {
     AlertCircle,
+    Camera,
     CheckCircle,
     Lock,
     LogOut,
@@ -15,6 +17,7 @@ import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -26,11 +29,13 @@ import {
 export default function AdminProfileScreen() {
   const colorScheme = useColorScheme();
   const userRepo = useUserRepository();
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const router = useRouter();
   const isDark = colorScheme === "dark";
 
   const [name, setName] = useState(user?.name ?? "");
+  const [photoUri, setPhotoUri] = useState<string | null>(user?.photoUri ?? null);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -100,6 +105,7 @@ export default function AdminProfileScreen() {
       }
 
       await userRepo.update(user.id, updates);
+      setUser({ ...user, name: trimName, photoUri });
       setSuccess("Perfil actualizado correctamente");
       setCurrentPin("");
       setNewPin("");
@@ -110,6 +116,17 @@ export default function AdminProfileScreen() {
       setSaving(false);
     }
   }, [user, name, currentPin, newPin, confirmPin, userRepo]);
+
+  const handlePhotoChange = useCallback(
+    async (uri: string | null) => {
+      if (!user) return;
+      setPhotoUri(uri);
+      await userRepo.update(user.id, { photoUri: uri });
+      setUser({ ...user, photoUri: uri });
+      setShowPhotoPicker(false);
+    },
+    [user, userRepo, setUser],
+  );
 
   const handleLogout = useCallback(() => {
     Alert.alert(
@@ -137,11 +154,26 @@ export default function AdminProfileScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarSection}>
-          <View
-            style={[styles.avatarCircle, { backgroundColor: c.accentLight }]}
+          <TouchableOpacity
+            onPress={() => setShowPhotoPicker((v) => !v)}
+            activeOpacity={0.85}
           >
-            <UserCog size={36} color={c.accent as any} />
-          </View>
+            <View
+              style={[styles.avatarCircle, { backgroundColor: c.accentLight }]}
+            >
+              {photoUri ? (
+                <Image
+                  source={{ uri: photoUri }}
+                  style={styles.avatarCircle}
+                />
+              ) : (
+                <UserCog size={36} color={c.accent as any} />
+              )}
+              <View style={[styles.avatarEdit, { backgroundColor: c.accent }]}>
+                <Camera size={12} color="#fff" />
+              </View>
+            </View>
+          </TouchableOpacity>
           <Text style={[styles.userName, { color: c.text }]}>
             {user?.name ?? "—"}
           </Text>
@@ -151,6 +183,18 @@ export default function AdminProfileScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Photo picker (shown inline when tapped) */}
+        {showPhotoPicker && (
+          <View
+            style={[
+              styles.section,
+              { backgroundColor: c.card, borderColor: c.border },
+            ]}
+          >
+            <PhotoPicker uri={photoUri} onChange={handlePhotoChange} />
+          </View>
+        )}
 
         {/* Name section */}
         <View
@@ -363,6 +407,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
+    overflow: "hidden",
+  },
+  avatarEdit: {
+    position: "absolute",
+    bottom: 4,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
   },
   userName: {
     fontSize: 22,

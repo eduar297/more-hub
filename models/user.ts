@@ -5,6 +5,7 @@ export interface User {
   name: string;
   role: UserRole;
   pinHash: string;
+  photoUri: string | null;
   createdAt: string;
 }
 
@@ -17,4 +18,5 @@ export type CreateUserInput = {
 export type UpdateUserInput = Partial<{
   name: string;
   pinHash: string;
+  photoUri: string | null;
 }>;

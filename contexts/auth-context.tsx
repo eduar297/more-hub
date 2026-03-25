@@ -11,6 +11,7 @@ export interface AuthUser {
   id: number;
   name: string;
   role: UserRole;
+  photoUri?: string | null;
 }
 
 interface AuthContextValue {

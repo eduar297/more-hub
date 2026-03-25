@@ -106,13 +106,14 @@ async function ensureTables(db: SQLiteDatabase) {
       name TEXT NOT NULL,
       role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
       pinHash TEXT NOT NULL,
+      photoUri TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
   `);
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 8;
+  const DATABASE_VERSION = 9;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -267,6 +268,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   if (currentVersion === 7) {
     await db.execAsync(`ALTER TABLE tickets ADD COLUMN workerName TEXT`);
     currentVersion = 8;
+  }
+
+  if (currentVersion === 8) {
+    await db.execAsync(`ALTER TABLE users ADD COLUMN photoUri TEXT`);
+    currentVersion = 9;
   }
 
   await seedUnits(db);
