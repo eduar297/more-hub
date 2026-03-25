@@ -8,6 +8,7 @@ import type { User } from "@/models/user";
 import { hashPin } from "@/utils/auth";
 import {
   AlertCircle,
+  Camera,
   CheckCircle,
   Edit3,
   Lock,
@@ -424,10 +425,14 @@ function WorkersSection({ isDark, c }: { isDark: boolean; c: Colors }) {
 // ── Profile section ───────────────────────────────────────────────────────────
 
 function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const userRepo = useUserRepository();
 
   const [name, setName] = useState(user?.name ?? "");
+  const [photoUri, setPhotoUri] = useState<string | null>(
+    user?.photoUri ?? null,
+  );
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [curPin, setCurPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confPin, setConfPin] = useState("");
@@ -437,12 +442,24 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
 
   useEffect(() => {
     setName(user?.name ?? "");
+    setPhotoUri(user?.photoUri ?? null);
   }, [user]);
 
   const clearFeedback = useCallback(() => {
     setError("");
     setSuccess("");
   }, []);
+
+  const handlePhotoChange = useCallback(
+    async (uri: string | null) => {
+      if (!user) return;
+      setPhotoUri(uri);
+      await userRepo.update(user.id, { photoUri: uri });
+      setUser({ ...user, photoUri: uri });
+      setShowPhotoPicker(false);
+    },
+    [user, userRepo, setUser],
+  );
 
   const handleSave = useCallback(async () => {
     if (!user) return;
@@ -502,9 +519,28 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
     >
       {/* Avatar */}
       <View style={styles.profileAvatarRow}>
-        <View style={[styles.avatarLarge, { backgroundColor: c.blueLight }]}>
-          <UserCog size={34} color={c.blue as any} />
-        </View>
+        <TouchableOpacity
+          onPress={() => setShowPhotoPicker((v) => !v)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.avatarWrapper}>
+            <View
+              style={[styles.avatarLarge, { backgroundColor: c.blueLight }]}
+            >
+              {photoUri ? (
+                <Image
+                  source={{ uri: photoUri }}
+                  style={styles.avatarLargeImage}
+                />
+              ) : (
+                <UserCog size={34} color={c.blue as any} />
+              )}
+            </View>
+            <View style={[styles.avatarEditBadge, { backgroundColor: c.blue }]}>
+              <Camera size={12} color="#fff" />
+            </View>
+          </View>
+        </TouchableOpacity>
         <Text style={[styles.profileName, { color: c.text }]}>
           {user?.name ?? "—"}
         </Text>
@@ -514,6 +550,18 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
           </Text>
         </View>
       </View>
+
+      {/* Photo picker (inline) */}
+      {showPhotoPicker && (
+        <View
+          style={[
+            styles.profileCard,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
+          <PhotoPicker uri={photoUri} onChange={handlePhotoChange} />
+        </View>
+      )}
 
       {/* Name */}
       <View
@@ -788,7 +836,29 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarLargeImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+  },
+  avatarWrapper: {
+    width: 76,
+    height: 76,
     marginBottom: 4,
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   profileName: { fontSize: 20, fontWeight: "700" },
   roleBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },

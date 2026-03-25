@@ -6,8 +6,11 @@ import {
     type Period,
 } from "@/components/admin/period-selector";
 import { StatCard } from "@/components/admin/stat-card";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
+import { useUserRepository } from "@/hooks/use-user-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
+import type { User as UserModel } from "@/models/user";
 import {
     currentYearMonth,
     dayLabel,
@@ -22,19 +25,36 @@ import {
     todayISO,
 } from "@/utils/format";
 import {
-    ChevronDown,
+    ChevronRight,
     CreditCard,
     DollarSign,
     Receipt,
     ShoppingCart,
     TrendingUp,
     User,
+    Users,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { Dimensions, FlatList, Image, Pressable } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    Dimensions,
+    FlatList,
+    Image,
+    Pressable,
+    ScrollView,
+} from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
-import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
+import {
+    Button,
+    Card,
+    Separator,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
+} from "tamagui";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -42,120 +62,67 @@ const SCREEN_W = Dimensions.get("window").width;
 
 function TicketRow({
   ticket,
-  onToggle,
-  expanded,
-  items,
+  onPress,
 }: {
   ticket: Ticket;
-  onToggle: () => void;
-  expanded: boolean;
-  items: TicketItem[];
+  onPress: () => void;
 }) {
   return (
-    <YStack>
-      <Pressable onPress={onToggle}>
-        <XStack px="$4" py="$3" style={{ alignItems: "center" }} gap="$3">
-          <YStack
-            width={40}
-            height={40}
-            bg={ticket.workerPhotoUri ? undefined : "$blue3"}
-            style={{
-              borderRadius: 20,
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}
-          >
-            {ticket.workerPhotoUri ? (
-              <Image
-                source={{ uri: ticket.workerPhotoUri }}
-                style={{ width: 40, height: 40, borderRadius: 20 }}
-              />
-            ) : ticket.workerName ? (
-              <Text fontSize="$4" fontWeight="700" color="$blue10">
-                {ticket.workerName.charAt(0).toUpperCase()}
-              </Text>
-            ) : (
-              <Receipt size={18} color="$blue10" />
-            )}
-          </YStack>
-          <YStack flex={1}>
-            <Text fontSize="$3" fontWeight="600" color="$color">
-              Ticket #{ticket.id}
+    <Pressable onPress={onPress}>
+      <XStack px="$4" py="$3" style={{ alignItems: "center" }} gap="$3">
+        <YStack flex={1}>
+          <Text fontSize="$3" fontWeight="600" color="$color">
+            Ticket #{ticket.id}
+          </Text>
+          <XStack gap="$2" style={{ alignItems: "center" }}>
+            <Text fontSize="$2" color="$color10">
+              {fmtTime(ticket.createdAt)}
             </Text>
-            <XStack gap="$2" style={{ alignItems: "center" }}>
-              <Text fontSize="$2" color="$color10">
-                {fmtTime(ticket.createdAt)}
-              </Text>
-              <YStack
-                bg={ticket.paymentMethod === "CASH" ? "$green3" : "$purple3"}
-                px="$2"
-                py="$0.5"
-                style={{ borderRadius: 4 }}
-              >
-                <Text
-                  fontSize={10}
-                  fontWeight="600"
-                  color={
-                    ticket.paymentMethod === "CASH" ? "$green10" : "$purple10"
-                  }
-                >
-                  {ticket.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"}
-                </Text>
-              </YStack>
-              <Text fontSize="$2" color="$color10">
-                {ticket.itemCount}{" "}
-                {ticket.itemCount === 1 ? "producto" : "productos"}
-              </Text>
-            </XStack>
-            {ticket.workerName ? (
-              <XStack gap="$1" style={{ alignItems: "center" }} mt="$0.5">
-                <User size={11} color="$color8" />
-                <Text fontSize="$2" color="$color8">
-                  {ticket.workerName}
-                </Text>
-              </XStack>
-            ) : null}
-          </YStack>
-          <XStack style={{ alignItems: "center" }} gap="$2">
-            <Text fontSize="$4" fontWeight="bold" color="$green10">
-              ${fmtMoney(ticket.total)}
-            </Text>
-            <ChevronDown
-              size={14}
-              color="$color8"
-              style={{
-                transform: [{ rotate: expanded ? "180deg" : "0deg" }],
-              }}
-            />
-          </XStack>
-        </XStack>
-      </Pressable>
-
-      {expanded && items.length > 0 && (
-        <YStack bg="$color2" px="$4" py="$2" ml="$10" gap="$1">
-          {items.map((item) => (
-            <XStack
-              key={item.id}
-              style={{
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+            <YStack
+              bg={ticket.paymentMethod === "CASH" ? "$green3" : "$purple3"}
+              px="$2"
+              py="$0.5"
+              style={{ borderRadius: 4 }}
             >
-              <Text fontSize="$2" color="$color10" flex={1} numberOfLines={1}>
-                {item.productName}
+              <Text
+                fontSize={10}
+                fontWeight="600"
+                color={
+                  ticket.paymentMethod === "CASH" ? "$green10" : "$purple10"
+                }
+              >
+                {ticket.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"}
               </Text>
-              <Text fontSize="$2" color="$color10" mr="$2">
-                x{item.quantity}
-              </Text>
-              <Text fontSize="$2" fontWeight="600" color="$color">
-                ${fmtMoney(item.subtotal)}
+            </YStack>
+            <Text fontSize="$2" color="$color10">
+              {ticket.itemCount}{" "}
+              {ticket.itemCount === 1 ? "producto" : "productos"}
+            </Text>
+          </XStack>
+          {ticket.workerName ? (
+            <XStack gap="$1.5" style={{ alignItems: "center" }} mt="$0.5">
+              {ticket.workerPhotoUri ? (
+                <Image
+                  source={{ uri: ticket.workerPhotoUri }}
+                  style={{ width: 16, height: 16, borderRadius: 8 }}
+                />
+              ) : (
+                <User size={11} color="$color8" />
+              )}
+              <Text fontSize="$2" color="$color8">
+                {ticket.workerName}
               </Text>
             </XStack>
-          ))}
+          ) : null}
         </YStack>
-      )}
-    </YStack>
+        <XStack style={{ alignItems: "center" }} gap="$2">
+          <Text fontSize="$4" fontWeight="bold" color="$green10">
+            ${fmtMoney(ticket.total)}
+          </Text>
+          <ChevronRight size={14} color="$color8" />
+        </XStack>
+      </XStack>
+    </Pressable>
   );
 }
 
@@ -163,6 +130,9 @@ function TicketRow({
 
 export function SalesSection() {
   const ticketRepo = useTicketRepository();
+  const userRepo = useUserRepository();
+  const colorScheme = useColorScheme();
+  const themeName = colorScheme === "dark" ? "dark" : "light";
 
   const [period, setPeriod] = useState<Period>("month");
   const [selectedMonth, setSelectedMonth] = useState(currentYearMonth);
@@ -176,6 +146,14 @@ export function SalesSection() {
   });
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Worker filter
+  const [workers, setWorkers] = useState<UserModel[]>([]);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
+
+  useEffect(() => {
+    userRepo.findByRole("WORKER").then(setWorkers);
+  }, [userRepo]);
 
   // Data states
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -212,37 +190,33 @@ export function SalesSection() {
     { method: string; total: number; count: number }[]
   >([]);
 
-  // Ticket expansion
-  const [expandedTicket, setExpandedTicket] = useState<number | null>(null);
-  const [ticketItems, setTicketItems] = useState<Record<number, TicketItem[]>>(
-    {},
+  // Ticket detail sheet
+  const [sheetTicket, setSheetTicket] = useState<Ticket | null>(null);
+  const [sheetItems, setSheetItems] = useState<TicketItem[]>([]);
+  const [sheetLoading, setSheetLoading] = useState(false);
+
+  const openTicketSheet = useCallback(
+    async (ticket: Ticket) => {
+      setSheetTicket(ticket);
+      setSheetLoading(true);
+      const items = await ticketRepo.findItemsByTicketId(ticket.id);
+      setSheetItems(items);
+      setSheetLoading(false);
+    },
+    [ticketRepo],
   );
 
-  const toggleTicket = useCallback(
-    async (ticketId: number) => {
-      if (expandedTicket === ticketId) {
-        setExpandedTicket(null);
-        return;
-      }
-      setExpandedTicket(ticketId);
-      if (!ticketItems[ticketId]) {
-        const items = await ticketRepo.findItemsByTicketId(ticketId);
-        setTicketItems((prev) => ({ ...prev, [ticketId]: items }));
-      }
-    },
-    [expandedTicket, ticketItems, ticketRepo],
-  );
+  const wId = selectedWorkerId;
 
   // ── Load data ─────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
-    setExpandedTicket(null);
     try {
       if (period === "day") {
         const [summary, hourly, dayTickets] = await Promise.all([
-          ticketRepo.daySummary(selectedDay),
-          ticketRepo.hourlySales(selectedDay),
-          ticketRepo.findByDateRange(selectedDay, selectedDay),
+          ticketRepo.daySummary(selectedDay, wId),
+          ticketRepo.hourlySales(selectedDay, wId),
+          ticketRepo.findByDateRange(selectedDay, selectedDay, wId),
         ]);
         setDaySummary(summary);
         setHourlySales(hourly);
@@ -250,11 +224,11 @@ export function SalesSection() {
       } else if (period === "week") {
         const [weekly, monthSummary, monthDailySales, top, payment] =
           await Promise.all([
-            ticketRepo.weeklySales(selectedMonth),
-            ticketRepo.monthlySummary(selectedMonth),
-            ticketRepo.dailySales(selectedMonth),
-            ticketRepo.topProducts(selectedMonth, 5),
-            ticketRepo.paymentMethodBreakdown(selectedMonth),
+            ticketRepo.weeklySales(selectedMonth, wId),
+            ticketRepo.monthlySummary(selectedMonth, wId),
+            ticketRepo.dailySales(selectedMonth, wId),
+            ticketRepo.topProducts(selectedMonth, 5, wId),
+            ticketRepo.paymentMethodBreakdown(selectedMonth, wId),
           ]);
         setWeeklySales(weekly);
         setMonthlySummary(monthSummary);
@@ -264,13 +238,14 @@ export function SalesSection() {
       } else if (period === "month") {
         const [daily, monthSummary, top, payment, monthTickets] =
           await Promise.all([
-            ticketRepo.dailySales(selectedMonth),
-            ticketRepo.monthlySummary(selectedMonth),
-            ticketRepo.topProducts(selectedMonth, 10),
-            ticketRepo.paymentMethodBreakdown(selectedMonth),
+            ticketRepo.dailySales(selectedMonth, wId),
+            ticketRepo.monthlySummary(selectedMonth, wId),
+            ticketRepo.topProducts(selectedMonth, 10, wId),
+            ticketRepo.paymentMethodBreakdown(selectedMonth, wId),
             ticketRepo.findByDateRange(
               `${selectedMonth}-01`,
               `${selectedMonth}-${String(daysInMonth(selectedMonth)).padStart(2, "0")}`,
+              wId,
             ),
           ]);
         setDailySales(daily);
@@ -280,8 +255,8 @@ export function SalesSection() {
         setTickets(monthTickets);
       } else if (period === "year") {
         const [yearly, top] = await Promise.all([
-          ticketRepo.monthlySalesForYear(selectedYear),
-          ticketRepo.topProducts(undefined, 10),
+          ticketRepo.monthlySalesForYear(selectedYear, wId),
+          ticketRepo.topProducts(undefined, 10, wId),
         ]);
         setYearlySales(yearly);
         setTopProducts(top);
@@ -294,6 +269,7 @@ export function SalesSection() {
         const rangeTickets = await ticketRepo.findByDateRange(
           dateRange.from,
           dateRange.to,
+          wId,
         );
         setTickets(rangeTickets);
         setMonthlySummary({
@@ -304,7 +280,15 @@ export function SalesSection() {
     } finally {
       setLoading(false);
     }
-  }, [period, selectedDay, selectedMonth, selectedYear, dateRange, ticketRepo]);
+  }, [
+    period,
+    selectedDay,
+    selectedMonth,
+    selectedYear,
+    dateRange,
+    ticketRepo,
+    wId,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -627,7 +611,7 @@ export function SalesSection() {
 
   return (
     <>
-      {/* Sticky period selector card */}
+      {/* Sticky period selector + worker filter */}
       <Card
         mx="$4"
         mb="$2"
@@ -646,6 +630,71 @@ export function SalesSection() {
             canGoForward={canGoForward}
             onCalendarPress={() => setCalendarOpen(true)}
           />
+          {/* Worker filter chips */}
+          {workers.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+            >
+              <Pressable onPress={() => setSelectedWorkerId(null)}>
+                <XStack
+                  bg={selectedWorkerId === null ? "$blue10" : "$color3"}
+                  px="$3"
+                  py="$1.5"
+                  style={{ borderRadius: 20, alignItems: "center" }}
+                  gap="$1.5"
+                >
+                  <Users
+                    size={14}
+                    color={selectedWorkerId === null ? "#fff" : "$color10"}
+                  />
+                  <Text
+                    fontSize="$2"
+                    fontWeight="600"
+                    color={selectedWorkerId === null ? "#fff" : "$color10"}
+                  >
+                    Todos
+                  </Text>
+                </XStack>
+              </Pressable>
+              {workers.map((w) => (
+                <Pressable
+                  key={w.id}
+                  onPress={() =>
+                    setSelectedWorkerId(selectedWorkerId === w.id ? null : w.id)
+                  }
+                >
+                  <XStack
+                    bg={selectedWorkerId === w.id ? "$blue10" : "$color3"}
+                    px="$3"
+                    py="$1.5"
+                    style={{ borderRadius: 20, alignItems: "center" }}
+                    gap="$1.5"
+                  >
+                    {w.photoUri ? (
+                      <Image
+                        source={{ uri: w.photoUri }}
+                        style={{ width: 18, height: 18, borderRadius: 9 }}
+                      />
+                    ) : (
+                      <User
+                        size={14}
+                        color={selectedWorkerId === w.id ? "#fff" : "$color10"}
+                      />
+                    )}
+                    <Text
+                      fontSize="$2"
+                      fontWeight="600"
+                      color={selectedWorkerId === w.id ? "#fff" : "$color10"}
+                    >
+                      {w.name}
+                    </Text>
+                  </XStack>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
         </YStack>
       </Card>
 
@@ -653,7 +702,6 @@ export function SalesSection() {
         <FlatList
           data={tickets}
           keyExtractor={(item) => String(item.id)}
-          extraData={[expandedTicket, ticketItems]}
           ListHeaderComponent={ListHeader}
           contentContainerStyle={{ paddingBottom: 40 }}
           ItemSeparatorComponent={() => <Separator />}
@@ -667,12 +715,7 @@ export function SalesSection() {
               style={{ borderRadius: 12 }}
               overflow="hidden"
             >
-              <TicketRow
-                ticket={item}
-                expanded={expandedTicket === item.id}
-                onToggle={() => toggleTicket(item.id)}
-                items={ticketItems[item.id] ?? []}
-              />
+              <TicketRow ticket={item} onPress={() => openTicketSheet(item)} />
             </Card>
           )}
         />
@@ -705,6 +748,199 @@ export function SalesSection() {
           setPeriod("range");
         }}
       />
+
+      {/* Ticket detail Sheet */}
+      <Sheet
+        open={!!sheetTicket}
+        onOpenChange={(open: boolean) => {
+          if (!open) setSheetTicket(null);
+        }}
+        snapPoints={[75]}
+        dismissOnSnapToBottom
+        modal
+      >
+        <Sheet.Overlay
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="rgba(0,0,0,0.5)"
+        />
+        <Sheet.Frame theme={themeName as any} bg="$background">
+          <Sheet.Handle />
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            {sheetTicket && (
+              <YStack gap="$4">
+                {/* Title */}
+                <XStack
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text fontSize="$6" fontWeight="bold" color="$color">
+                    Ticket #{sheetTicket.id}
+                  </Text>
+                  <Button
+                    size="$3"
+                    circular
+                    chromeless
+                    icon={<X size={18} />}
+                    onPress={() => setSheetTicket(null)}
+                  />
+                </XStack>
+
+                {/* Info */}
+                <XStack
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text fontSize="$3" color="$color10">
+                    {fmtTime(sheetTicket.createdAt)}
+                  </Text>
+                  <XStack style={{ alignItems: "center" }} gap="$2">
+                    <YStack
+                      bg={
+                        sheetTicket.paymentMethod === "CASH"
+                          ? "$green3"
+                          : "$purple3"
+                      }
+                      px="$2"
+                      py="$1"
+                      style={{ borderRadius: 6 }}
+                    >
+                      <Text
+                        fontSize="$2"
+                        fontWeight="600"
+                        color={
+                          sheetTicket.paymentMethod === "CASH"
+                            ? "$green10"
+                            : "$purple10"
+                        }
+                      >
+                        {sheetTicket.paymentMethod === "CASH"
+                          ? "Efectivo"
+                          : "Tarjeta"}
+                      </Text>
+                    </YStack>
+                    {sheetTicket.workerName ? (
+                      <XStack gap="$1.5" style={{ alignItems: "center" }}>
+                        {sheetTicket.workerPhotoUri ? (
+                          <Image
+                            source={{ uri: sheetTicket.workerPhotoUri }}
+                            style={{ width: 18, height: 18, borderRadius: 9 }}
+                          />
+                        ) : (
+                          <User size={14} color="$color8" />
+                        )}
+                        <Text fontSize="$3" color="$color8">
+                          {sheetTicket.workerName}
+                        </Text>
+                      </XStack>
+                    ) : null}
+                  </XStack>
+                </XStack>
+
+                {/* Items */}
+                {sheetLoading ? (
+                  <YStack
+                    py="$4"
+                    style={{ alignItems: "center", justifyContent: "center" }}
+                  >
+                    <Spinner size="small" color="$blue10" />
+                  </YStack>
+                ) : (
+                  <Card
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    style={{ borderRadius: 14 }}
+                    overflow="hidden"
+                    bg="$background"
+                  >
+                    {sheetItems.map((item, idx) => (
+                      <YStack key={item.id}>
+                        {idx > 0 && <Separator />}
+                        <XStack
+                          px="$3"
+                          py="$2.5"
+                          gap="$2.5"
+                          style={{ alignItems: "center" }}
+                        >
+                          {item.photoUri ? (
+                            <Image
+                              source={{ uri: item.photoUri }}
+                              style={{
+                                width: 38,
+                                height: 38,
+                                borderRadius: 6,
+                              }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <YStack
+                              width={38}
+                              height={38}
+                              bg="$color3"
+                              style={{
+                                borderRadius: 6,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Receipt size={18} color="$color8" />
+                            </YStack>
+                          )}
+                          <YStack flex={1} gap="$0.5">
+                            <Text
+                              fontSize="$2"
+                              fontWeight="bold"
+                              color="$color"
+                              numberOfLines={1}
+                            >
+                              {item.productName}
+                            </Text>
+                            {item.barcode ? (
+                              <Text
+                                fontSize="$1"
+                                color="$color9"
+                                numberOfLines={1}
+                              >
+                                {item.barcode}
+                              </Text>
+                            ) : null}
+                            <Text fontSize="$1" color="$color10">
+                              {item.quantity} x ${fmtMoney(item.unitPrice)}
+                            </Text>
+                          </YStack>
+                          <Text fontSize="$3" fontWeight="600" color="$green10">
+                            ${fmtMoney(item.subtotal)}
+                          </Text>
+                        </XStack>
+                      </YStack>
+                    ))}
+                  </Card>
+                )}
+
+                {/* Total */}
+                <XStack
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  py="$2"
+                >
+                  <Text fontSize="$5" fontWeight="bold" color="$color">
+                    Total
+                  </Text>
+                  <Text fontSize="$7" fontWeight="bold" color="$green10">
+                    ${fmtMoney(sheetTicket.total)}
+                  </Text>
+                </XStack>
+              </YStack>
+            )}
+          </ScrollView>
+        </Sheet.Frame>
+      </Sheet>
     </>
   );
 }
