@@ -520,11 +520,8 @@ export async function seedSimulation(
   onProgress?: (msg: string) => void,
 ) {
   const now = new Date();
-  const startDate = new Date(
-    now.getFullYear() - 1,
-    now.getMonth(),
-    now.getDate() + 1,
-  );
+  // Start Jan 1 of the previous year → full 12 months of last year + current year to date
+  const startDate = new Date(now.getFullYear() - 1, 0, 1);
 
   onProgress?.("Creando trabajadores...");
 
