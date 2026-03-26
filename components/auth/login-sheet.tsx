@@ -4,25 +4,28 @@ import { useUserRepository } from "@/hooks/use-user-repository";
 import type { User, UserRole } from "@/models/user";
 import { hashPin } from "@/utils/auth";
 import {
-    AlertCircle,
-    Lock,
-    User as UserIcon,
-    Users,
+  AlertCircle,
+  ChevronDown,
+  Lock,
+  User as UserIcon,
+  Users,
 } from "@tamagui/lucide-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Vibration,
+  View,
 } from "react-native";
 
 interface LoginSheetProps {
@@ -48,8 +51,9 @@ export function LoginSheet({
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showUserPicker, setShowUserPicker] = useState(false);
   const pinRef = useRef<TextInput>(null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const isDark = colorScheme === "dark";
   const c = {
@@ -105,10 +109,39 @@ export function LoginSheet({
       setSelectedUser(null);
       loadUsers();
     }
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
   }, [open, loadUsers]);
+
+  const triggerShake = useCallback(() => {
+    Vibration.vibrate(300);
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, {
+        toValue: -10,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 10,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: -8,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 8,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [shakeAnim]);
 
   const tryAutoLogin = useCallback(
     async (currentPin: string, user: User) => {
@@ -127,26 +160,28 @@ export function LoginSheet({
           });
           onSuccess();
         } else {
+          triggerShake();
+          setPin("");
           setError("PIN incorrecto");
         }
       } catch {
+        triggerShake();
+        setPin("");
         setError("Error al verificar. Intenta de nuevo.");
       } finally {
         setVerifying(false);
       }
     },
-    [userRepo, setUser, onSuccess],
+    [userRepo, setUser, onSuccess, triggerShake],
   );
 
   const handlePinChange = useCallback(
     (value: string) => {
+      if (value.length > 4) return;
       setPin(value);
       setError("");
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (value.length >= 4 && selectedUser) {
-        debounceRef.current = setTimeout(() => {
-          tryAutoLogin(value, selectedUser);
-        }, 500);
+      if (value.length === 4 && selectedUser) {
+        tryAutoLogin(value, selectedUser);
       }
     },
     [selectedUser, tryAutoLogin],
@@ -228,33 +263,30 @@ export function LoginSheet({
                     <Text style={[styles.label, { color: c.muted }]}>
                       Usuario
                     </Text>
-                    <View style={[styles.userList, { borderColor: c.border }]}>
-                      {users.map((u) => {
-                        const selected = selectedUser?.id === u.id;
-                        return (
-                          <TouchableOpacity
-                            key={u.id}
-                            style={[
-                              styles.userRow,
-                              {
-                                backgroundColor: selected
-                                  ? c.userRowSelected
-                                  : c.userRow,
-                                borderBottomColor: c.userRowBorder,
-                              },
-                            ]}
-                            onPress={() => setSelectedUser(u)}
-                            activeOpacity={0.7}
-                          >
+                    {/* Select trigger + floating dropdown */}
+                    <View style={styles.selectWrapper}>
+                      <TouchableOpacity
+                        style={[
+                          styles.selectTrigger,
+                          {
+                            backgroundColor: c.input,
+                            borderColor: selectedUser ? c.accent : c.border,
+                          },
+                        ]}
+                        onPress={() => setShowUserPicker((v) => !v)}
+                        activeOpacity={0.7}
+                      >
+                        {selectedUser ? (
+                          <View style={styles.selectTriggerContent}>
                             <View
                               style={[
                                 styles.avatar,
                                 { backgroundColor: c.accentLight },
                               ]}
                             >
-                              {u.photoUri ? (
+                              {selectedUser.photoUri ? (
                                 <Image
-                                  source={{ uri: u.photoUri }}
+                                  source={{ uri: selectedUser.photoUri }}
                                   style={styles.avatarImg}
                                 />
                               ) : (
@@ -264,24 +296,106 @@ export function LoginSheet({
                                     { color: c.accent },
                                   ]}
                                 >
-                                  {u.name.charAt(0).toUpperCase()}
+                                  {selectedUser.name.charAt(0).toUpperCase()}
                                 </Text>
                               )}
                             </View>
-                            <Text style={[styles.userName, { color: c.text }]}>
-                              {u.name}
+                            <Text
+                              style={[styles.userName, { color: c.text }]}
+                              numberOfLines={1}
+                            >
+                              {selectedUser.name}
                             </Text>
-                            {selected && (
-                              <View
+                          </View>
+                        ) : (
+                          <Text
+                            style={[
+                              styles.selectPlaceholder,
+                              { color: c.muted },
+                            ]}
+                          >
+                            Seleccionar usuario…
+                          </Text>
+                        )}
+                        <ChevronDown
+                          size={16}
+                          color={c.muted as any}
+                          style={{
+                            transform: [
+                              { rotate: showUserPicker ? "180deg" : "0deg" },
+                            ],
+                          }}
+                        />
+                      </TouchableOpacity>
+
+                      {/* Floating dropdown */}
+                      {showUserPicker && (
+                        <View
+                          style={[
+                            styles.dropdown,
+                            { backgroundColor: c.bg, borderColor: c.border },
+                          ]}
+                        >
+                          {users.map((u) => {
+                            const selected = selectedUser?.id === u.id;
+                            return (
+                              <TouchableOpacity
+                                key={u.id}
                                 style={[
-                                  styles.dot,
-                                  { backgroundColor: c.accent },
+                                  styles.dropdownItem,
+                                  {
+                                    backgroundColor: selected
+                                      ? c.userRowSelected
+                                      : c.userRow,
+                                    borderBottomColor: c.userRowBorder,
+                                  },
                                 ]}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
+                                onPress={() => {
+                                  setSelectedUser(u);
+                                  setShowUserPicker(false);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <View
+                                  style={[
+                                    styles.avatar,
+                                    { backgroundColor: c.accentLight },
+                                  ]}
+                                >
+                                  {u.photoUri ? (
+                                    <Image
+                                      source={{ uri: u.photoUri }}
+                                      style={styles.avatarImg}
+                                    />
+                                  ) : (
+                                    <Text
+                                      style={[
+                                        styles.avatarText,
+                                        { color: c.accent },
+                                      ]}
+                                    >
+                                      {u.name.charAt(0).toUpperCase()}
+                                    </Text>
+                                  )}
+                                </View>
+                                <Text
+                                  style={[styles.userName, { color: c.text }]}
+                                >
+                                  {u.name}
+                                </Text>
+                                {selected && (
+                                  <View
+                                    style={[
+                                      styles.dot,
+                                      { backgroundColor: c.accent },
+                                    ]}
+                                  />
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
                     </View>
                   </View>
                 ) : (
@@ -332,7 +446,9 @@ export function LoginSheet({
                 {users.length > 0 && (
                   <View style={styles.section}>
                     <Text style={[styles.label, { color: c.muted }]}>PIN</Text>
-                    <View>
+                    <Animated.View
+                      style={{ transform: [{ translateX: shakeAnim }] }}
+                    >
                       <TextInput
                         ref={pinRef}
                         style={[
@@ -349,7 +465,7 @@ export function LoginSheet({
                         onChangeText={handlePinChange}
                         secureTextEntry
                         keyboardType="numeric"
-                        maxLength={8}
+                        maxLength={4}
                         returnKeyType="done"
                         editable={!verifying}
                         autoFocus={users.length === 1}
@@ -359,7 +475,7 @@ export function LoginSheet({
                           <ActivityIndicator color={c.accent} size="small" />
                         </View>
                       )}
-                    </View>
+                    </Animated.View>
                   </View>
                 )}
 
@@ -408,6 +524,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 24,
     gap: 16,
+    overflow: "visible",
   },
   headerRow: {
     alignItems: "center",
@@ -459,6 +576,54 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
+  },
+  selectWrapper: {
+    position: "relative",
+    zIndex: 10,
+  },
+  selectTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  selectTriggerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  selectPlaceholder: {
+    fontSize: 15,
+    flex: 1,
+  },
+  dropdown: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginTop: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   userRow: {
     flexDirection: "row",
