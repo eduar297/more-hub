@@ -52,8 +52,12 @@ export function LoginSheet({
   const [verifying, setVerifying] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [lockoutSecsLeft, setLockoutSecsLeft] = useState(0);
   const pinRef = useRef<TextInput>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isDark = colorScheme === "dark";
   const c = {
@@ -102,11 +106,36 @@ export function LoginSheet({
     }
   }, [selectedUser]);
 
+  // Lockout countdown ticker
+  useEffect(() => {
+    if (lockoutUntil === null) return;
+    const tick = () => {
+      const secs = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      if (secs <= 0) {
+        setLockoutUntil(null);
+        setLockoutSecsLeft(0);
+        setFailedAttempts(0);
+        if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
+      } else {
+        setLockoutSecsLeft(secs);
+      }
+    };
+    tick();
+    lockoutTimerRef.current = setInterval(tick, 1000);
+    return () => {
+      if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
+    };
+  }, [lockoutUntil]);
+
   useEffect(() => {
     if (open) {
       setPin("");
       setError("");
       setSelectedUser(null);
+      setFailedAttempts(0);
+      setLockoutUntil(null);
+      setLockoutSecsLeft(0);
+      if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
       loadUsers();
     }
   }, [open, loadUsers]);
@@ -143,6 +172,9 @@ export function LoginSheet({
     ]).start();
   }, [shakeAnim]);
 
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_SECONDS = 30;
+
   const tryAutoLogin = useCallback(
     async (currentPin: string, user: User) => {
       if (currentPin.length < 4) return;
@@ -152,6 +184,7 @@ export function LoginSheet({
         const pinH = await hashPin(currentPin);
         const ok = await userRepo.verifyPin(user.id, pinH);
         if (ok) {
+          setFailedAttempts(0);
           setUser({
             id: user.id,
             name: user.name,
@@ -162,7 +195,20 @@ export function LoginSheet({
         } else {
           triggerShake();
           setPin("");
-          setError("PIN incorrecto");
+          setFailedAttempts((prev) => {
+            const next = prev + 1;
+            if (next >= MAX_ATTEMPTS) {
+              setLockoutUntil(Date.now() + LOCKOUT_SECONDS * 1000);
+              setError(
+                `Demasiados intentos. Espera ${LOCKOUT_SECONDS} segundos.`,
+              );
+            } else {
+              setError(
+                `PIN incorrecto. Intentos restantes: ${MAX_ATTEMPTS - next}`,
+              );
+            }
+            return next;
+          });
         }
       } catch {
         triggerShake();
@@ -174,6 +220,10 @@ export function LoginSheet({
     },
     [userRepo, setUser, onSuccess, triggerShake],
   );
+
+  const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
+  const pinDisabled =
+    verifying || isLocked || (role === "WORKER" && !selectedUser);
 
   const handlePinChange = useCallback(
     (value: string) => {
@@ -454,25 +504,54 @@ export function LoginSheet({
                         style={[
                           styles.pinInput,
                           {
-                            backgroundColor: c.input,
-                            color: c.text,
-                            borderColor: error ? c.error : c.border,
+                            backgroundColor: pinDisabled
+                              ? isDark
+                                ? "#1a1a1c"
+                                : "#e5e7eb"
+                              : c.input,
+                            color: pinDisabled ? c.muted : c.text,
+                            borderColor: isLocked
+                              ? c.error
+                              : error
+                                ? c.error
+                                : c.border,
+                            opacity: pinDisabled ? 0.6 : 1,
+                            letterSpacing: pin.length > 0 ? 6 : 0,
                           },
                         ]}
-                        placeholder="••••"
+                        placeholder={
+                          role === "WORKER" && !selectedUser
+                            ? "Selecciona un usuario primero"
+                            : isLocked
+                              ? `Bloqueado ${lockoutSecsLeft}s`
+                              : "••••"
+                        }
                         placeholderTextColor={c.muted}
                         value={pin}
                         onChangeText={handlePinChange}
-                        secureTextEntry
+                        secureTextEntry={!isLocked && selectedUser !== null}
                         keyboardType="numeric"
                         maxLength={4}
                         returnKeyType="done"
-                        editable={!verifying}
+                        editable={!pinDisabled}
                         autoFocus={users.length === 1}
                       />
                       {verifying && (
                         <View style={styles.pinSpinner}>
                           <ActivityIndicator color={c.accent} size="small" />
+                        </View>
+                      )}
+                      {isLocked && (
+                        <View style={styles.pinSpinner}>
+                          <Text
+                            style={{
+                              color: c.error,
+                              fontSize: 13,
+                              fontWeight: "600",
+                            }}
+                          >
+                            {lockoutSecsLeft}s
+                          </Text>
                         </View>
                       )}
                     </Animated.View>
@@ -674,7 +753,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 18,
-    letterSpacing: 6,
     textAlign: "center",
   },
   pinSpinner: {
