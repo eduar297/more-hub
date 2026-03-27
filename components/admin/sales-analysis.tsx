@@ -13,7 +13,6 @@ import {
     ArrowUpDown,
     ChevronDown,
     Package,
-    Tag,
     TrendingDown,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
@@ -176,43 +175,33 @@ function ProductThumb({
   );
 }
 
-// ── KPI card ─────────────────────────────────────────────────────────────────
+// ── KPI card (compact – matches pricing-analysis / purchase-suggestions) ─────
 
 function KpiCard({
   label,
   value,
-  sub,
   color,
 }: {
   label: string;
   value: string;
-  sub?: string;
   color?: string;
 }) {
   return (
     <Card
       flex={1}
-      p="$3"
+      minWidth={100}
+      p="$2"
+      bg="$color1"
       borderWidth={1}
       borderColor="$borderColor"
-      bg="$color2"
+      style={{ borderRadius: 10 }}
     >
-      <Text fontSize="$1" color="$color10" numberOfLines={1}>
+      <Text fontSize="$1" color="$color10">
         {label}
       </Text>
-      <Text
-        fontSize="$5"
-        fontWeight="800"
-        color={(color ?? "$color") as any}
-        mt="$1"
-      >
+      <Text fontSize="$3" fontWeight="bold" color={(color ?? "$color") as any}>
         {value}
       </Text>
-      {sub ? (
-        <Text fontSize="$1" color="$color10" mt="$0.5">
-          {sub}
-        </Text>
-      ) : null}
     </Card>
   );
 }
@@ -588,67 +577,77 @@ function StagnantSection({ items }: { items: StagnantProduct[] }) {
   }
 
   return (
-    <YStack>
-      <YStack px="$4" pt="$3" pb="$2" gap="$2">
+    <YStack flex={1}>
+      {/* Filter pills */}
+      <XStack px="$4" pb="$2" gap="$2" flexWrap="wrap">
+        {(["all", "no_sales", "heavy_drop", "slowing"] as const).map((f) => {
+          const active = filter === f;
+          return (
+            <Button
+              key={f}
+              size="$2"
+              chromeless={!active}
+              theme={active ? "blue" : undefined}
+              onPress={() => setFilter(f)}
+            >
+              <Text fontSize="$2">
+                {f === "all"
+                  ? `Todos (${items.length})`
+                  : f === "no_sales"
+                    ? `🔴 Sin ventas`
+                    : f === "heavy_drop"
+                      ? `🟠 Caída fuerte`
+                      : `🟡 Desacelerando`}
+              </Text>
+            </Button>
+          );
+        })}
+      </XStack>
+
+      {/* Search */}
+      <YStack px="$4" pb="$2">
         <SearchInput
           value={search}
           onChangeText={setSearch}
           placeholder="Buscar producto…"
         />
-        {/* Filter pills */}
-        <XStack pb="$1" gap="$2" flexWrap="wrap">
-          {(["all", "no_sales", "heavy_drop", "slowing"] as const).map((f) => {
-            const active = filter === f;
-            return (
-              <Button
-                key={f}
-                size="$2"
-                chromeless={!active}
-                theme={active ? "blue" : undefined}
-                onPress={() => setFilter(f)}
-              >
-                <Text fontSize="$2">
-                  {f === "all"
-                    ? `Todos (${items.length})`
-                    : f === "no_sales"
-                      ? `🔴 Sin ventas`
-                      : f === "heavy_drop"
-                        ? `🟠 Caída fuerte`
-                        : `🟡 Desacelerando`}
-                </Text>
-              </Button>
-            );
-          })}
-        </XStack>
-        {/* Sort pills */}
-        <XStack pb="$1" gap="$1.5" flexWrap="wrap">
-          {SORT_OPTS.map((opt) => (
-            <Button
-              key={opt.key}
-              size="$2"
-              chromeless
-              onPress={() => handleSort(opt.key)}
-              icon={
-                sortKey === opt.key ? (
-                  <ArrowUpDown size={12} color="$blue10" />
-                ) : undefined
-              }
-            >
-              <Text
-                fontSize="$1"
-                color={sortKey === opt.key ? "$blue10" : "$color10"}
-              >
-                {opt.label}
-              </Text>
-            </Button>
-          ))}
-        </XStack>
       </YStack>
-      <Accordion type="multiple">
-        {filtered.map((item) => (
-          <StagnantRow key={item.product.id} item={item} />
+
+      {/* Sort pills */}
+      <XStack px="$4" pb="$2" gap="$1.5" flexWrap="wrap">
+        {SORT_OPTS.map((opt) => (
+          <Button
+            key={opt.key}
+            size="$2"
+            chromeless
+            onPress={() => handleSort(opt.key)}
+            icon={
+              sortKey === opt.key ? (
+                <ArrowUpDown size={12} color="$blue10" />
+              ) : undefined
+            }
+          >
+            <Text
+              fontSize="$1"
+              color={sortKey === opt.key ? "$blue10" : "$color10"}
+            >
+              {opt.label}
+            </Text>
+          </Button>
         ))}
-      </Accordion>
+      </XStack>
+
+      {/* Product list */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <Accordion type="single" collapsible overflow="hidden">
+          {filtered.map((item) => (
+            <StagnantRow key={item.product.id} item={item} />
+          ))}
+        </Accordion>
+      </ScrollView>
     </YStack>
   );
 }
@@ -714,67 +713,77 @@ function DiscountSection({ items }: { items: DiscountOpportunity[] }) {
   }
 
   return (
-    <YStack>
-      <YStack px="$4" pt="$3" pb="$2" gap="$2">
+    <YStack flex={1}>
+      {/* Filter pills */}
+      <XStack px="$4" pb="$2" gap="$2" flexWrap="wrap">
+        {(["all", "possible", "tight", "none"] as const).map((f) => {
+          const active = filter === f;
+          return (
+            <Button
+              key={f}
+              size="$2"
+              chromeless={!active}
+              theme={active ? "blue" : undefined}
+              onPress={() => setFilter(f)}
+            >
+              <Text fontSize="$2">
+                {f === "all"
+                  ? `Todos (${items.length})`
+                  : f === "possible"
+                    ? `✅ Posible`
+                    : f === "tight"
+                      ? `⚠️ Justo`
+                      : `🚫 Sin margen`}
+              </Text>
+            </Button>
+          );
+        })}
+      </XStack>
+
+      {/* Search */}
+      <YStack px="$4" pb="$2">
         <SearchInput
           value={search}
           onChangeText={setSearch}
           placeholder="Buscar producto…"
         />
-        {/* Filter pills */}
-        <XStack pb="$1" gap="$2" flexWrap="wrap">
-          {(["all", "possible", "tight", "none"] as const).map((f) => {
-            const active = filter === f;
-            return (
-              <Button
-                key={f}
-                size="$2"
-                chromeless={!active}
-                theme={active ? "blue" : undefined}
-                onPress={() => setFilter(f)}
-              >
-                <Text fontSize="$2">
-                  {f === "all"
-                    ? `Todos (${items.length})`
-                    : f === "possible"
-                      ? `✅ Posible`
-                      : f === "tight"
-                        ? `⚠️ Justo`
-                        : `🚫 Sin margen`}
-                </Text>
-              </Button>
-            );
-          })}
-        </XStack>
-        {/* Sort pills */}
-        <XStack pb="$1" gap="$1.5" flexWrap="wrap">
-          {SORT_OPTS.map((opt) => (
-            <Button
-              key={opt.key}
-              size="$2"
-              chromeless
-              onPress={() => handleSort(opt.key)}
-              icon={
-                sortKey === opt.key ? (
-                  <ArrowUpDown size={12} color="$blue10" />
-                ) : undefined
-              }
-            >
-              <Text
-                fontSize="$1"
-                color={sortKey === opt.key ? "$blue10" : "$color10"}
-              >
-                {opt.label}
-              </Text>
-            </Button>
-          ))}
-        </XStack>
       </YStack>
-      <Accordion type="multiple">
-        {filtered.map((item) => (
-          <DiscountRow key={item.product.id} item={item} />
+
+      {/* Sort pills */}
+      <XStack px="$4" pb="$2" gap="$1.5" flexWrap="wrap">
+        {SORT_OPTS.map((opt) => (
+          <Button
+            key={opt.key}
+            size="$2"
+            chromeless
+            onPress={() => handleSort(opt.key)}
+            icon={
+              sortKey === opt.key ? (
+                <ArrowUpDown size={12} color="$blue10" />
+              ) : undefined
+            }
+          >
+            <Text
+              fontSize="$1"
+              color={sortKey === opt.key ? "$blue10" : "$color10"}
+            >
+              {opt.label}
+            </Text>
+          </Button>
         ))}
-      </Accordion>
+      </XStack>
+
+      {/* Product list */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <Accordion type="single" collapsible overflow="hidden">
+          {filtered.map((item) => (
+            <DiscountRow key={item.product.id} item={item} />
+          ))}
+        </Accordion>
+      </ScrollView>
     </YStack>
   );
 }
@@ -834,45 +843,54 @@ function ComboSection({ items }: { items: ComboSuggestion[] }) {
   }
 
   return (
-    <YStack>
-      <YStack px="$4" pt="$3" pb="$2" gap="$2">
+    <YStack flex={1}>
+      {/* Search */}
+      <YStack px="$4" pb="$2">
         <SearchInput
           value={search}
           onChangeText={setSearch}
           placeholder="Buscar producto…"
         />
-        {/* Sort pills */}
-        <XStack pb="$1" gap="$1.5" flexWrap="wrap">
-          {SORT_OPTS.map((opt) => (
-            <Button
-              key={opt.key}
-              size="$2"
-              chromeless
-              onPress={() => handleSort(opt.key)}
-              icon={
-                sortKey === opt.key ? (
-                  <ArrowUpDown size={12} color="$blue10" />
-                ) : undefined
-              }
-            >
-              <Text
-                fontSize="$1"
-                color={sortKey === opt.key ? "$blue10" : "$color10"}
-              >
-                {opt.label}
-              </Text>
-            </Button>
-          ))}
-        </XStack>
       </YStack>
-      <Accordion type="multiple">
-        {filtered.map((item) => (
-          <ComboRow
-            key={`${item.anchorProduct.id}-${item.partnerProduct.id}`}
-            item={item}
-          />
+
+      {/* Sort pills */}
+      <XStack px="$4" pb="$2" gap="$1.5" flexWrap="wrap">
+        {SORT_OPTS.map((opt) => (
+          <Button
+            key={opt.key}
+            size="$2"
+            chromeless
+            onPress={() => handleSort(opt.key)}
+            icon={
+              sortKey === opt.key ? (
+                <ArrowUpDown size={12} color="$blue10" />
+              ) : undefined
+            }
+          >
+            <Text
+              fontSize="$1"
+              color={sortKey === opt.key ? "$blue10" : "$color10"}
+            >
+              {opt.label}
+            </Text>
+          </Button>
         ))}
-      </Accordion>
+      </XStack>
+
+      {/* Product list */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <Accordion type="single" collapsible overflow="hidden">
+          {filtered.map((item) => (
+            <ComboRow
+              key={`${item.anchorProduct.id}-${item.partnerProduct.id}`}
+              item={item}
+            />
+          ))}
+        </Accordion>
+      </ScrollView>
     </YStack>
   );
 }
@@ -957,72 +975,51 @@ export function SalesAnalysisSection() {
   if (!report) return null;
 
   return (
-    <ScrollView>
+    <YStack flex={1} bg="$background">
       {/* KPI summary */}
-      <YStack px="$4" pt="$3" pb="$2" gap="$3">
-        <XStack gap="$2">
-          <KpiCard
-            label="Capital bloqueado"
-            value={`$${fmtMoney(report.totalCapitalLocked)}`}
-            sub={`${report.stagnant.length} productos`}
-            color="#ef4444"
-          />
-          <KpiCard
-            label="Sin movimiento"
-            value={String(report.noSalesCount)}
-            sub="nunca vendidos"
-            color="#f97316"
-          />
-        </XStack>
-        <XStack gap="$2">
-          <KpiCard
-            label="Potencial mensual"
-            value={`$${fmtMoney(report.totalPotentialRevenue)}`}
-            sub="si reactivan"
-            color="#22c55e"
-          />
-          <KpiCard
-            label="Combos detectados"
-            value={String(report.combosCount)}
-            sub={`${report.monthsAnalysed} meses analizados`}
-          />
-        </XStack>
-
-        {/* Refresh */}
-        <Button size="$3" onPress={load} icon={TrendingDown} bg="$color3">
-          Actualizar análisis
-        </Button>
-      </YStack>
+      <XStack px="$4" pt="$2" pb="$2" gap="$2" flexWrap="wrap">
+        <KpiCard
+          label="Capital bloqueado"
+          value={`$${fmtMoney(report.totalCapitalLocked)}`}
+          color="#ef4444"
+        />
+        <KpiCard
+          label="Sin movimiento"
+          value={String(report.noSalesCount)}
+          color="#f97316"
+        />
+        <KpiCard
+          label="Potencial/mes"
+          value={`$${fmtMoney(report.totalPotentialRevenue)}`}
+          color="#22c55e"
+        />
+        <KpiCard label="Combos" value={String(report.combosCount)} />
+      </XStack>
 
       {/* Inner tab pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <XStack px="$4" gap="$2" pb="$2">
-          {INNER_TABS.map((t) => (
+      <XStack px="$4" pb="$2" gap="$2">
+        {INNER_TABS.map((t) => {
+          const active = tab === t.key;
+          return (
             <Button
               key={t.key}
-              size="$3"
+              size="$2"
+              chromeless={!active}
+              theme={active ? "blue" : undefined}
               onPress={() => setTab(t.key)}
-              bg={tab === t.key ? "$blue10" : "$color3"}
-              style={{ borderRadius: 20 }}
-              px="$4"
-              icon={
-                t.key === "stagnant"
-                  ? Package
-                  : t.key === "discounts"
-                    ? Tag
-                    : undefined
-              }
             >
-              {t.emoji} {t.label}
+              <Text fontSize="$2">
+                {t.emoji} {t.label}
+              </Text>
             </Button>
-          ))}
-        </XStack>
-      </ScrollView>
+          );
+        })}
+      </XStack>
 
       {/* Section content */}
       {tab === "stagnant" && <StagnantSection items={report.stagnant} />}
       {tab === "discounts" && <DiscountSection items={report.discounts} />}
       {tab === "combos" && <ComboSection items={report.combos} />}
-    </ScrollView>
+    </YStack>
   );
 }

@@ -489,7 +489,7 @@ export function PurchaseSuggestionsSection() {
               <Text fontSize="$1" color="$color10">
                 Requieren compra
               </Text>
-              <Text fontSize="$5" fontWeight="bold" color="$orange10">
+              <Text fontSize="$3" fontWeight="bold" color="$orange10">
                 {needPurchase}
               </Text>
             </Card>
@@ -505,7 +505,7 @@ export function PurchaseSuggestionsSection() {
               <Text fontSize="$1" color="$color10">
                 Críticos
               </Text>
-              <Text fontSize="$5" fontWeight="bold" color="$red10">
+              <Text fontSize="$3" fontWeight="bold" color="$red10">
                 {report.criticalCount}
               </Text>
             </Card>
@@ -521,12 +521,10 @@ export function PurchaseSuggestionsSection() {
               <Text fontSize="$1" color="$color10">
                 En alza
               </Text>
-              <Text fontSize="$5" fontWeight="bold" color="$green10">
+              <Text fontSize="$3" fontWeight="bold" color="$green10">
                 {report.risingCount}
               </Text>
             </Card>
-          </XStack>
-          <XStack px="$4" pb="$2" gap="$2" flexWrap="wrap">
             <Card
               flex={1}
               p="$2"
@@ -539,7 +537,7 @@ export function PurchaseSuggestionsSection() {
               <Text fontSize="$1" color="$color10">
                 Costo estimado
               </Text>
-              <Text fontSize="$4" fontWeight="bold" color="$blue10">
+              <Text fontSize="$3" fontWeight="bold" color="$blue10">
                 {`$${fmtMoney(report.totalEstimatedCost)}`}
               </Text>
             </Card>
@@ -555,7 +553,7 @@ export function PurchaseSuggestionsSection() {
               <Text fontSize="$1" color="$color10">
                 ROI promedio
               </Text>
-              <Text fontSize="$4" fontWeight="bold" color="$purple10">
+              <Text fontSize="$3" fontWeight="bold" color="$purple10">
                 {`${(report.avgRoi * 100).toFixed(1)}%`}
               </Text>
             </Card>
@@ -571,7 +569,7 @@ export function PurchaseSuggestionsSection() {
               <Text fontSize="$1" color="$color10">
                 Días analizados
               </Text>
-              <Text fontSize="$4" fontWeight="bold" color="$color">
+              <Text fontSize="$3" fontWeight="bold" color="$color">
                 {report.analysedDays}
               </Text>
             </Card>
