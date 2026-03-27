@@ -529,50 +529,28 @@ type StagnantSort = "capital" | "days" | "drop" | "name";
 type DiscountSort = "viability" | "discount" | "potential" | "name";
 type ComboSort = "affinity" | "discount" | "name";
 
-// ── Filter pills ─────────────────────────────────────────────────────────────
-
-function FilterPill({
-  label,
-  active,
-  color,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  color?: string;
-  onPress: () => void;
-}) {
-  const activeBg = color ?? "#3b82f6";
-  return (
-    <Button
-      size="$2"
-      onPress={onPress}
-      style={{
-        backgroundColor: active ? activeBg : undefined,
-        borderRadius: 20,
-      }}
-      bg={active ? undefined : "$color3"}
-      px="$3"
-    >
-      {label}
-    </Button>
-  );
-}
-
 // ── Section: Stagnant ─────────────────────────────────────────────────────────
 
 function StagnantSection({ items }: { items: StagnantProduct[] }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StagnantStatus | "all">("all");
-  const [sort, setSort] = useState<StagnantSort>("capital");
-  const [showSort, setShowSort] = useState(false);
+  const [sortKey, setSortKey] = useState<StagnantSort>("capital");
+  const [sortAsc, setSortAsc] = useState(false);
 
   const SORT_OPTS: { key: StagnantSort; label: string }[] = [
-    { key: "capital", label: "Capital bloqueado" },
+    { key: "capital", label: "Capital" },
     { key: "days", label: "Días sin venta" },
-    { key: "drop", label: "Caída velocidad" },
+    { key: "drop", label: "Caída" },
     { key: "name", label: "Nombre" },
   ];
+
+  function handleSort(key: StagnantSort) {
+    if (key === sortKey) setSortAsc((v) => !v);
+    else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     let r = items;
@@ -581,17 +559,19 @@ function StagnantSection({ items }: { items: StagnantProduct[] }) {
       const q = search.toLowerCase();
       r = r.filter((i) => i.product.name.toLowerCase().includes(q));
     }
+    const dir = sortAsc ? 1 : -1;
     return [...r].sort((a, b) => {
-      if (sort === "capital") return b.capitalLocked - a.capitalLocked;
-      if (sort === "days") {
+      if (sortKey === "capital")
+        return dir * (a.capitalLocked - b.capitalLocked);
+      if (sortKey === "days") {
         const da = a.daysSinceLastSale ?? 99999;
         const db2 = b.daysSinceLastSale ?? 99999;
-        return db2 - da;
+        return dir * (da - db2);
       }
-      if (sort === "drop") return b.velocityDrop - a.velocityDrop;
-      return a.product.name.localeCompare(b.product.name);
+      if (sortKey === "drop") return dir * (a.velocityDrop - b.velocityDrop);
+      return dir * a.product.name.localeCompare(b.product.name);
     });
-  }, [items, filter, search, sort]);
+  }, [items, filter, search, sortKey, sortAsc]);
 
   if (items.length === 0) {
     return (
@@ -615,61 +595,54 @@ function StagnantSection({ items }: { items: StagnantProduct[] }) {
           onChangeText={setSearch}
           placeholder="Buscar producto…"
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <XStack gap="$2" pb="$1">
-            {(["all", "no_sales", "heavy_drop", "slowing"] as const).map(
-              (f) => (
-                <FilterPill
-                  key={f}
-                  label={
-                    f === "all"
-                      ? `Todos (${items.length})`
-                      : f === "no_sales"
-                        ? `🔴 Sin ventas`
-                        : f === "heavy_drop"
-                          ? `🟠 Caída fuerte`
-                          : `🟡 Desacelerando`
-                  }
-                  active={filter === f}
-                  color={
-                    f === "no_sales"
-                      ? "#ef4444"
+        {/* Filter pills */}
+        <XStack pb="$1" gap="$2" flexWrap="wrap">
+          {(["all", "no_sales", "heavy_drop", "slowing"] as const).map((f) => {
+            const active = filter === f;
+            return (
+              <Button
+                key={f}
+                size="$2"
+                chromeless={!active}
+                theme={active ? "blue" : undefined}
+                onPress={() => setFilter(f)}
+              >
+                <Text fontSize="$2">
+                  {f === "all"
+                    ? `Todos (${items.length})`
+                    : f === "no_sales"
+                      ? `🔴 Sin ventas`
                       : f === "heavy_drop"
-                        ? "#f97316"
-                        : f === "slowing"
-                          ? "#eab308"
-                          : undefined
-                  }
-                  onPress={() => setFilter(f)}
-                />
-              ),
-            )}
-          </XStack>
-        </ScrollView>
-        <Button
-          size="$2"
-          icon={ArrowUpDown}
-          onPress={() => setShowSort((v) => !v)}
-          bg="$color3"
-          style={{ alignSelf: "flex-start" }}
-        >
-          {SORT_OPTS.find((o) => o.key === sort)?.label ?? "Ordenar"}
-        </Button>
-        {showSort && (
-          <XStack flexWrap="wrap" gap="$2">
-            {SORT_OPTS.map((o) => (
-              <FilterPill
-                key={o.key}
-                label={o.label}
-                active={sort === o.key}
-                onPress={() => {
-                  setSort(o.key);
-                  setShowSort(false);
-                }}
-              />
-            ))}
-          </XStack>
-        )}
+                        ? `🟠 Caída fuerte`
+                        : `🟡 Desacelerando`}
+                </Text>
+              </Button>
+            );
+          })}
+        </XStack>
+        {/* Sort pills */}
+        <XStack pb="$1" gap="$1.5" flexWrap="wrap">
+          {SORT_OPTS.map((opt) => (
+            <Button
+              key={opt.key}
+              size="$2"
+              chromeless
+              onPress={() => handleSort(opt.key)}
+              icon={
+                sortKey === opt.key ? (
+                  <ArrowUpDown size={12} color="$blue10" />
+                ) : undefined
+              }
+            >
+              <Text
+                fontSize="$1"
+                color={sortKey === opt.key ? "$blue10" : "$color10"}
+              >
+                {opt.label}
+              </Text>
+            </Button>
+          ))}
+        </XStack>
       </YStack>
       <Accordion type="multiple">
         {filtered.map((item) => (
@@ -687,15 +660,23 @@ function DiscountSection({ items }: { items: DiscountOpportunity[] }) {
   const [filter, setFilter] = useState<"all" | "possible" | "tight" | "none">(
     "all",
   );
-  const [sort, setSort] = useState<DiscountSort>("viability");
-  const [showSort, setShowSort] = useState(false);
+  const [sortKey, setSortKey] = useState<DiscountSort>("viability");
+  const [sortAsc, setSortAsc] = useState(false);
 
   const SORT_OPTS: { key: DiscountSort; label: string }[] = [
     { key: "viability", label: "Viabilidad" },
     { key: "discount", label: "Descuento %" },
-    { key: "potential", label: "Potencial mensual" },
+    { key: "potential", label: "Potencial" },
     { key: "name", label: "Nombre" },
   ];
+
+  function handleSort(key: DiscountSort) {
+    if (key === sortKey) setSortAsc((v) => !v);
+    else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     let r = items;
@@ -704,17 +685,18 @@ function DiscountSection({ items }: { items: DiscountOpportunity[] }) {
       const q = search.toLowerCase();
       r = r.filter((i) => i.product.name.toLowerCase().includes(q));
     }
+    const dir = sortAsc ? 1 : -1;
     return [...r].sort((a, b) => {
-      if (sort === "viability") {
+      if (sortKey === "viability") {
         const rank = { possible: 0, tight: 1, none: 2 };
-        return rank[a.viability] - rank[b.viability];
+        return dir * (rank[a.viability] - rank[b.viability]);
       }
-      if (sort === "discount") return b.discountPct - a.discountPct;
-      if (sort === "potential")
-        return b.potentialMonthlyRevenue - a.potentialMonthlyRevenue;
-      return a.product.name.localeCompare(b.product.name);
+      if (sortKey === "discount") return dir * (a.discountPct - b.discountPct);
+      if (sortKey === "potential")
+        return dir * (a.potentialMonthlyRevenue - b.potentialMonthlyRevenue);
+      return dir * a.product.name.localeCompare(b.product.name);
     });
-  }, [items, filter, search, sort]);
+  }, [items, filter, search, sortKey, sortAsc]);
 
   if (items.length === 0) {
     return (
@@ -739,59 +721,54 @@ function DiscountSection({ items }: { items: DiscountOpportunity[] }) {
           onChangeText={setSearch}
           placeholder="Buscar producto…"
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <XStack gap="$2" pb="$1">
-            {(["all", "possible", "tight", "none"] as const).map((f) => (
-              <FilterPill
+        {/* Filter pills */}
+        <XStack pb="$1" gap="$2" flexWrap="wrap">
+          {(["all", "possible", "tight", "none"] as const).map((f) => {
+            const active = filter === f;
+            return (
+              <Button
                 key={f}
-                label={
-                  f === "all"
+                size="$2"
+                chromeless={!active}
+                theme={active ? "blue" : undefined}
+                onPress={() => setFilter(f)}
+              >
+                <Text fontSize="$2">
+                  {f === "all"
                     ? `Todos (${items.length})`
                     : f === "possible"
                       ? `✅ Posible`
                       : f === "tight"
                         ? `⚠️ Justo`
-                        : `🚫 Sin margen`
-                }
-                active={filter === f}
-                color={
-                  f === "possible"
-                    ? "#22c55e"
-                    : f === "tight"
-                      ? "#f59e0b"
-                      : f === "none"
-                        ? "#6b7280"
-                        : undefined
-                }
-                onPress={() => setFilter(f)}
-              />
-            ))}
-          </XStack>
-        </ScrollView>
-        <Button
-          size="$2"
-          icon={ArrowUpDown}
-          onPress={() => setShowSort((v) => !v)}
-          bg="$color3"
-          style={{ alignSelf: "flex-start" }}
-        >
-          {SORT_OPTS.find((o) => o.key === sort)?.label ?? "Ordenar"}
-        </Button>
-        {showSort && (
-          <XStack flexWrap="wrap" gap="$2">
-            {SORT_OPTS.map((o) => (
-              <FilterPill
-                key={o.key}
-                label={o.label}
-                active={sort === o.key}
-                onPress={() => {
-                  setSort(o.key);
-                  setShowSort(false);
-                }}
-              />
-            ))}
-          </XStack>
-        )}
+                        : `🚫 Sin margen`}
+                </Text>
+              </Button>
+            );
+          })}
+        </XStack>
+        {/* Sort pills */}
+        <XStack pb="$1" gap="$1.5" flexWrap="wrap">
+          {SORT_OPTS.map((opt) => (
+            <Button
+              key={opt.key}
+              size="$2"
+              chromeless
+              onPress={() => handleSort(opt.key)}
+              icon={
+                sortKey === opt.key ? (
+                  <ArrowUpDown size={12} color="$blue10" />
+                ) : undefined
+              }
+            >
+              <Text
+                fontSize="$1"
+                color={sortKey === opt.key ? "$blue10" : "$color10"}
+              >
+                {opt.label}
+              </Text>
+            </Button>
+          ))}
+        </XStack>
       </YStack>
       <Accordion type="multiple">
         {filtered.map((item) => (
@@ -806,14 +783,22 @@ function DiscountSection({ items }: { items: DiscountOpportunity[] }) {
 
 function ComboSection({ items }: { items: ComboSuggestion[] }) {
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<ComboSort>("affinity");
-  const [showSort, setShowSort] = useState(false);
+  const [sortKey, setSortKey] = useState<ComboSort>("affinity");
+  const [sortAsc, setSortAsc] = useState(false);
 
   const SORT_OPTS: { key: ComboSort; label: string }[] = [
     { key: "affinity", label: "Afinidad" },
     { key: "discount", label: "Descuento combo" },
     { key: "name", label: "Nombre" },
   ];
+
+  function handleSort(key: ComboSort) {
+    if (key === sortKey) setSortAsc((v) => !v);
+    else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     let r = items;
@@ -825,12 +810,13 @@ function ComboSection({ items }: { items: ComboSuggestion[] }) {
           i.partnerProduct.name.toLowerCase().includes(q),
       );
     }
+    const dir = sortAsc ? 1 : -1;
     return [...r].sort((a, b) => {
-      if (sort === "affinity") return b.affinityPct - a.affinityPct;
-      if (sort === "discount") return b.comboPct - a.comboPct;
-      return a.anchorProduct.name.localeCompare(b.anchorProduct.name);
+      if (sortKey === "affinity") return dir * (a.affinityPct - b.affinityPct);
+      if (sortKey === "discount") return dir * (a.comboPct - b.comboPct);
+      return dir * a.anchorProduct.name.localeCompare(b.anchorProduct.name);
     });
-  }, [items, search, sort]);
+  }, [items, search, sortKey, sortAsc]);
 
   if (items.length === 0) {
     return (
@@ -855,30 +841,29 @@ function ComboSection({ items }: { items: ComboSuggestion[] }) {
           onChangeText={setSearch}
           placeholder="Buscar producto…"
         />
-        <Button
-          size="$2"
-          icon={ArrowUpDown}
-          onPress={() => setShowSort((v) => !v)}
-          bg="$color3"
-          style={{ alignSelf: "flex-start" }}
-        >
-          {SORT_OPTS.find((o) => o.key === sort)?.label ?? "Ordenar"}
-        </Button>
-        {showSort && (
-          <XStack flexWrap="wrap" gap="$2">
-            {SORT_OPTS.map((o) => (
-              <FilterPill
-                key={o.key}
-                label={o.label}
-                active={sort === o.key}
-                onPress={() => {
-                  setSort(o.key);
-                  setShowSort(false);
-                }}
-              />
-            ))}
-          </XStack>
-        )}
+        {/* Sort pills */}
+        <XStack pb="$1" gap="$1.5" flexWrap="wrap">
+          {SORT_OPTS.map((opt) => (
+            <Button
+              key={opt.key}
+              size="$2"
+              chromeless
+              onPress={() => handleSort(opt.key)}
+              icon={
+                sortKey === opt.key ? (
+                  <ArrowUpDown size={12} color="$blue10" />
+                ) : undefined
+              }
+            >
+              <Text
+                fontSize="$1"
+                color={sortKey === opt.key ? "$blue10" : "$color10"}
+              >
+                {opt.label}
+              </Text>
+            </Button>
+          ))}
+        </XStack>
       </YStack>
       <Accordion type="multiple">
         {filtered.map((item) => (
