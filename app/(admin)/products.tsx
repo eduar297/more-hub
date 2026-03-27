@@ -1,5 +1,6 @@
 import { PricingAnalysisSection } from "@/components/admin/pricing-analysis";
 import { PurchaseSuggestionsSection } from "@/components/admin/purchase-suggestions";
+import { SalesAnalysisSection } from "@/components/admin/sales-analysis";
 import { ProductDetail } from "@/components/product/product-detail";
 import { ProductForm } from "@/components/product/product-form";
 import type { TabDef } from "@/components/ui/screen-tabs";
@@ -18,6 +19,7 @@ import {
   Plus,
   ScanLine,
   ShoppingCart,
+  TrendingDown,
   TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
@@ -182,12 +184,13 @@ function SectionHeader({
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type Section = "catalog" | "pricing" | "purchases";
+type Section = "catalog" | "pricing" | "purchases" | "sales";
 
 const SECTIONS: TabDef<Section>[] = [
   { key: "catalog", label: "Catálogo", Icon: Package },
   { key: "pricing", label: "Precios", Icon: TrendingUp },
   { key: "purchases", label: "Compras", Icon: ShoppingCart },
+  { key: "sales", label: "Ventas", Icon: TrendingDown },
 ];
 
 // ── Main screen ──────────────────────────────────────────────────────────────
@@ -543,6 +546,9 @@ export default function ProductsScreen() {
 
       {/* ── Purchases tab ───────────────────────────────────────────── */}
       {section === "purchases" && <PurchaseSuggestionsSection />}
+
+      {/* ── Sales analysis tab ──────────────────────────────────────── */}
+      {section === "sales" && <SalesAnalysisSection />}
 
       {/* Create product sheet */}
       <Sheet
