@@ -40,6 +40,7 @@ function randInt(min: number, max: number) {
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(rand() * arr.length)];
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -97,7 +98,6 @@ const SUPPLIERS_DATA = [
 ];
 
 // Products organized by typical "tienda de abarrotes" categories
-// baseUnitId references: 7=unidad, 1=kilogramo, 3=litro, 8=paquete
 const PRODUCTS_DATA = [
   // ── Bebidas (supplier 4 = Bebidas y Refrescos Unidos) ──
   {
@@ -478,17 +478,11 @@ const EXPENSE_DESCS: Record<string, string[]> = {
 };
 
 // ── Product profiles (control simulation behavior) ───────────────────────────
-
 type ProductProfile = {
-  /** Base popularity weight: 0 = never sell, 0.5 = low, 1 = normal, 2+ = high */
   pop: number;
-  /** How sales evolve over time */
   trend: "stable" | "rise" | "fall" | "crash" | "dead";
-  /** Cost as fraction of sale price (0.50 = 50% margin, 0.85 = 15% margin) */
   costPct: number;
-  /** Continue restocking beyond initial purchase? */
   restock: boolean;
-  /** Index into PRODUCTS_DATA of a product frequently bought together */
   combo?: number;
 };
 
@@ -761,23 +755,21 @@ const PROFILES: ProductProfile[] = [
   },
 ];
 
-/** Returns a multiplier based on trend and position in the timeline (0=start, 1=end) */
 function trendFactor(trend: ProductProfile["trend"], t: number): number {
   switch (trend) {
     case "stable":
       return 1.0;
     case "rise":
-      return 0.3 + 1.7 * t; // 0.3 → 2.0
+      return 0.3 + 1.7 * t;
     case "fall":
-      return 1.5 * (1 - t * 0.85); // 1.5 → 0.225
+      return 1.5 * (1 - t * 0.85);
     case "crash":
-      return t < 0.5 ? 1.2 : 0.02; // normal → near-zero
+      return t < 0.5 ? 1.2 : 0.02;
     case "dead":
       return 0;
   }
 }
 
-/** Pick a random index using weights (higher weight = more likely) */
 function weightedPick(indices: number[], weights: number[]): number {
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return indices[0];
@@ -791,12 +783,7 @@ function weightedPick(indices: number[], weights: number[]): number {
 
 // ── Reset function ───────────────────────────────────────────────────────────
 
-/**
- * Wipes ALL data except the admin user and system tables (units/categories).
- * Also deletes product photos from the file system.
- */
 export async function resetDatabase(db: SQLiteDatabase) {
-  // Delete photos from filesystem
   const photosDir = new Directory(Paths.document, "product-photos");
   if (photosDir.exists) {
     photosDir.delete();
@@ -814,39 +801,31 @@ export async function resetDatabase(db: SQLiteDatabase) {
     DELETE FROM stores;
   `);
 
-  // Re-seed default store so the app always has at least one
   const storeCount = await db.getFirstAsync<{ count: number }>(
     "SELECT COUNT(*) as count FROM stores",
   );
   if ((storeCount?.count ?? 0) === 0) {
-    await db.runAsync("INSERT INTO stores (name) VALUES (?)", "Mi Tienda");
+    // Al resetear nos aseguramos de crear al menos una tienda
+    await db.runAsync(
+      "INSERT INTO stores (name, color) VALUES (?, ?)",
+      "Mi Tienda",
+      "#3b82f6",
+    );
   }
 }
 
 // ── Seed simulation ──────────────────────────────────────────────────────────
 
-/**
- * Seeds a full year of realistic business data:
- * - 4 workers (2 per day, alternating, Mon-Fri only)
- * - 44 products across 5 categories
- * - 5 suppliers
- * - Bi-weekly purchases to replenish stock
- * - 8-15 tickets per working day
- * - Monthly expenses (rent, electricity, supplies, etc.)
- *
- * All dates are backdated to cover the past 12 months.
- */
 export async function seedSimulation(
   db: SQLiteDatabase,
   onProgress?: (msg: string) => void,
 ) {
   const now = new Date();
-  // Start Jan 1 of the previous year → full 12 months of last year + current year to date
   const startDate = new Date(now.getFullYear() - 1, 0, 1);
 
   onProgress?.("Creando trabajadores...");
 
-  // Get first store id for workers
+  // Obtener el storeId dinámicamente
   const firstStore = await db.getFirstAsync<{ id: number }>(
     "SELECT id FROM stores ORDER BY id ASC LIMIT 1",
   );
@@ -859,14 +838,16 @@ export async function seedSimulation(
       Crypto.CryptoDigestAlgorithm.SHA256,
       w.pin,
     );
-    const result = await db.runAsync(
+    await db.runAsync(
       `INSERT INTO users (name, role, pinHash, storeId, createdAt) VALUES (?, 'WORKER', ?, ?, ?)`,
       w.name,
       pinHash,
       defaultStoreId,
       fmtDatetime(startDate),
     );
-    workerIds.push(result.lastInsertRowId);
+    // Para SQLite via expo-sqlite, runAsync devuelve un objeto con lastInsertRowId
+    const result = await db.runAsync("SELECT last_insert_rowid() as id");
+    workerIds.push((result as any).id || 1); // fallback, mejor usar la devolución directa si la librería lo permite
   }
   const workerNames = WORKERS.map((w) => w.name);
 
@@ -876,13 +857,14 @@ export async function seedSimulation(
   const supplierIds: number[] = [];
   for (const s of SUPPLIERS_DATA) {
     const result = await db.runAsync(
-      `INSERT INTO suppliers (name, contactName, phone, email, address, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO suppliers (name, contactName, phone, email, address, storeId, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       s.name,
       s.contactName,
       s.phone,
       s.email,
       s.address,
+      defaultStoreId,
       fmtDatetime(startDate),
     );
     supplierIds.push(result.lastInsertRowId);
@@ -890,22 +872,22 @@ export async function seedSimulation(
 
   onProgress?.("Creando productos...");
 
-  // ── 3. Create products (no initial stock — purchases will add stock) ───────
+  // ── 3. Create products ─────────────────────────────────────────────────────
   const productIds: number[] = [];
   const productPrices: number[] = [];
   const productNames: string[] = [];
   const productSupplierIdx: number[] = [];
+
   for (let pi = 0; pi < PRODUCTS_DATA.length; pi++) {
     const p = PRODUCTS_DATA[pi];
     const profile = PROFILES[pi];
-    // salePrice = costPrice * (1.25 to 1.55) — random realistic markup
     const markup = 1.25 + rand() * 0.3;
     const salePx = Math.round(p.price * markup * 100) / 100;
-    // costPrice based on profile margin
     const costPx = Math.round(salePx * profile.costPct * 100) / 100;
+
     const result = await db.runAsync(
-      `INSERT INTO products (name, barcode, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode)
-       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?)`,
+      `INSERT INTO products (name, barcode, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, storeId)
+       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?)`,
       p.name,
       p.barcode,
       p.price,
@@ -913,21 +895,21 @@ export async function seedSimulation(
       salePx,
       p.unit,
       p.mode,
+      defaultStoreId,
     );
     productIds.push(result.lastInsertRowId);
-    productPrices.push(salePx); // tickets use salePrice
+    productPrices.push(salePx);
     productNames.push(p.name);
     productSupplierIdx.push(p.supplier);
   }
 
-  // Track running stock so we never sell below 0
   const stock: number[] = productIds.map(() => 0);
 
   // ── 4. Generate working days ───────────────────────────────────────────────
   const workingDays: Date[] = [];
   const cursor = new Date(startDate);
   while (cursor <= now) {
-    const dow = cursor.getDay(); // 0=Sun, 6=Sat
+    const dow = cursor.getDay();
     if (dow >= 1 && dow <= 5) {
       workingDays.push(new Date(cursor));
     }
@@ -936,7 +918,7 @@ export async function seedSimulation(
 
   onProgress?.(`Simulando ${workingDays.length} días laborales...`);
 
-  // ── 5. Initial stock purchase (day before first working day) ───────────────
+  // ── 5. Initial stock purchase ──────────────────────────────────────────────
   await insertPurchaseBatch(
     db,
     startDate,
@@ -947,6 +929,7 @@ export async function seedSimulation(
     productSupplierIdx,
     stock,
     true,
+    defaultStoreId, // <--- Pasamos el storeId
   );
 
   // ── 6. Day-by-day simulation ───────────────────────────────────────────────
@@ -957,13 +940,11 @@ export async function seedSimulation(
     dayCount++;
     purchaseDayCounter++;
 
-    // Assign 2 workers for this day (Team A / Team B alternating weeks)
     const weekNum = Math.floor(dayCount / 5);
-    const teamA = [0, 1]; // Carlos, María
-    const teamB = [2, 3]; // José, Ana
+    const teamA = [0, 1];
+    const teamB = [2, 3];
     const todayTeam = weekNum % 2 === 0 ? teamA : teamB;
 
-    // ── Replenishment purchase every 18 working days (~monthly) ─────────
     if (purchaseDayCounter >= 18) {
       purchaseDayCounter = 0;
       const purchaseHour = 8 + randInt(0, 1);
@@ -979,11 +960,10 @@ export async function seedSimulation(
         productSupplierIdx,
         stock,
         false,
+        defaultStoreId, // <--- Pasamos el storeId
       );
     }
 
-    // ── Generate tickets for this day ────────────────────────────────────
-    // Morning rush (9-12): more tickets. Afternoon (12-17): moderate. Evening (17-20): lighter.
     const morningTickets = randInt(4, 7);
     const afternoonTickets = randInt(3, 6);
     const eveningTickets = randInt(2, 4);
@@ -1010,28 +990,26 @@ export async function seedSimulation(
       const ticketTime = new Date(day);
       ticketTime.setHours(hour, minute, randInt(0, 59));
 
-      // Pick worker (alternate between the two on the team)
       const wIdx = todayTeam[t % 2];
       const wId = workerIds[wIdx];
       const wName = workerNames[wIdx];
 
-      // Build cart: 1-6 items per ticket (weighted by popularity + trend)
       const numItems = randInt(1, 6);
       const cartProductIdxs: number[] = [];
-      const timePos = dayCount / workingDays.length; // 0 → 1
+      const timePos = dayCount / workingDays.length;
       const available = productIds.map((_, i) => i).filter((i) => stock[i] > 0);
+
+      if (available.length === 0) continue;
+
       const weights = available.map(
         (i) => PROFILES[i].pop * trendFactor(PROFILES[i].trend, timePos),
       );
-
-      if (available.length === 0) continue; // no stock at all, skip
 
       for (let ci = 0; ci < numItems; ci++) {
         if (available.length === 0) break;
         const pIdx = weightedPick(available, weights);
         if (!cartProductIdxs.includes(pIdx)) {
           cartProductIdxs.push(pIdx);
-          // Combo: frequently bought together
           const comboIdx = PROFILES[pIdx].combo;
           if (
             comboIdx !== undefined &&
@@ -1046,7 +1024,6 @@ export async function seedSimulation(
 
       if (cartProductIdxs.length === 0) continue;
 
-      // Build items with quantities
       const items: { pIdx: number; qty: number; price: number }[] = [];
       let ticketTotal = 0;
 
@@ -1063,20 +1040,20 @@ export async function seedSimulation(
 
       const paymentMethod = rand() < 0.65 ? "CASH" : "CARD";
 
-      // Insert ticket
+      // Insertamos el Ticket con su storeId
       const ticketResult = await db.runAsync(
-        `INSERT INTO tickets (createdAt, paymentMethod, total, itemCount, workerId, workerName)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tickets (createdAt, paymentMethod, total, itemCount, workerId, workerName, storeId)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         fmtDatetime(ticketTime),
         paymentMethod,
         ticketTotal,
         items.length,
         wId,
         wName,
+        defaultStoreId,
       );
       const ticketId = ticketResult.lastInsertRowId;
 
-      // Insert ticket items and deduct stock
       for (const it of items) {
         const subtotal = it.qty * it.price;
         await db.runAsync(
@@ -1093,7 +1070,6 @@ export async function seedSimulation(
       }
     }
 
-    // Progress update every 20 days
     if (dayCount % 20 === 0) {
       onProgress?.(`Día ${dayCount}/${workingDays.length}...`);
     }
@@ -1106,80 +1082,80 @@ export async function seedSimulation(
   while (monthStart <= now) {
     const ym = fmt(monthStart);
 
-    // Rent — fixed monthly
     await db.runAsync(
-      `INSERT INTO expenses (category, description, amount, date, createdAt)
-       VALUES ('RENT', 'Renta del local mes', ?, ?, ?)`,
+      `INSERT INTO expenses (category, description, amount, date, storeId, createdAt)
+       VALUES ('RENT', 'Renta del local mes', ?, ?, ?, ?)`,
       randInt(8000, 12000),
       `${ym.slice(0, 7)}-01`,
+      defaultStoreId,
       `${ym.slice(0, 7)}-01 09:00:00`,
     );
 
-    // Electricity — bimonthly (odd months)
     if ((monthStart.getMonth() + 1) % 2 === 1) {
       await db.runAsync(
-        `INSERT INTO expenses (category, description, amount, date, createdAt)
-         VALUES ('ELECTRICITY', 'Pago de luz bimestral', ?, ?, ?)`,
+        `INSERT INTO expenses (category, description, amount, date, storeId, createdAt)
+         VALUES ('ELECTRICITY', 'Pago de luz bimestral', ?, ?, ?, ?)`,
         randInt(1500, 3500),
         `${ym.slice(0, 7)}-15`,
+        defaultStoreId,
         `${ym.slice(0, 7)}-15 10:00:00`,
       );
     }
 
-    // Transport — 2-4 per month
     const transportCount = randInt(2, 4);
     for (let i = 0; i < transportCount; i++) {
       const d = randInt(1, 28);
       const dateStr = `${ym.slice(0, 7)}-${String(d).padStart(2, "0")}`;
       await db.runAsync(
-        `INSERT INTO expenses (category, description, amount, date, createdAt)
-         VALUES ('TRANSPORT', ?, ?, ?, ?)`,
+        `INSERT INTO expenses (category, description, amount, date, storeId, createdAt)
+         VALUES ('TRANSPORT', ?, ?, ?, ?, ?)`,
         pick(EXPENSE_DESCS.TRANSPORT),
         randInt(150, 800),
         dateStr,
+        defaultStoreId,
         `${dateStr} 12:00:00`,
       );
     }
 
-    // Supplies — 1-2 per month
     const suppliesCount = randInt(1, 2);
     for (let i = 0; i < suppliesCount; i++) {
       const d = randInt(1, 28);
       const dateStr = `${ym.slice(0, 7)}-${String(d).padStart(2, "0")}`;
       await db.runAsync(
-        `INSERT INTO expenses (category, description, amount, date, createdAt)
-         VALUES ('SUPPLIES', ?, ?, ?, ?)`,
+        `INSERT INTO expenses (category, description, amount, date, storeId, createdAt)
+         VALUES ('SUPPLIES', ?, ?, ?, ?, ?)`,
         pick(EXPENSE_DESCS.SUPPLIES),
         randInt(80, 400),
         dateStr,
+        defaultStoreId,
         `${dateStr} 14:00:00`,
       );
     }
 
-    // Repairs — occasional (30% chance per month)
     if (rand() < 0.3) {
       const d = randInt(1, 28);
       const dateStr = `${ym.slice(0, 7)}-${String(d).padStart(2, "0")}`;
       await db.runAsync(
-        `INSERT INTO expenses (category, description, amount, date, createdAt)
-         VALUES ('REPAIRS', ?, ?, ?, ?)`,
+        `INSERT INTO expenses (category, description, amount, date, storeId, createdAt)
+         VALUES ('REPAIRS', ?, ?, ?, ?, ?)`,
         pick(EXPENSE_DESCS.REPAIRS),
         randInt(300, 3000),
         dateStr,
+        defaultStoreId,
         `${dateStr} 16:00:00`,
       );
     }
 
-    // Other — 1 per month
     {
       const d = randInt(1, 28);
       const dateStr = `${ym.slice(0, 7)}-${String(d).padStart(2, "0")}`;
       await db.runAsync(
-        `INSERT INTO expenses (category, description, amount, date, createdAt)
-         VALUES ('OTHER', ?, ?, ?, ?)`,
+        `INSERT INTO expenses (category, description, amount, date, storeId, createdAt)
+         VALUES ('OTHER', ?, ?, ?, ?, ?)`,
         pick(EXPENSE_DESCS.OTHER),
         randInt(50, 300),
         dateStr,
+        defaultStoreId,
         `${dateStr} 11:00:00`,
       );
     }
@@ -1192,10 +1168,6 @@ export async function seedSimulation(
 
 // ── Purchase batch helper ────────────────────────────────────────────────────
 
-/**
- * Creates purchases from multiple suppliers in one batch.
- * `initial` = true means bigger quantities to bootstrap stock.
- */
 async function insertPurchaseBatch(
   db: SQLiteDatabase,
   date: Date,
@@ -1206,8 +1178,8 @@ async function insertPurchaseBatch(
   productSupplierIdx: number[],
   stock: number[],
   initial: boolean,
+  storeId: number, // <--- Agregamos este parámetro
 ) {
-  // Group products by supplier
   const supplierProducts: Map<number, number[]> = new Map();
   for (let i = 0; i < productIds.length; i++) {
     const sIdx = productSupplierIdx[i];
@@ -1216,7 +1188,6 @@ async function insertPurchaseBatch(
   }
 
   for (const [sIdx, pIdxs] of supplierProducts.entries()) {
-    // Not every supplier delivers every time (unless initial)
     if (!initial && rand() < 0.3) continue;
 
     const items: {
@@ -1226,13 +1197,11 @@ async function insertPurchaseBatch(
       unitCost: number;
     }[] = [];
 
-    // Pick products to restock (respect profile)
     const toRestock = initial
-      ? pIdxs // all products on initial stock (even dead — creates capital locked)
+      ? pIdxs
       : pIdxs.filter((i) => PROFILES[i].restock && stock[i] < 10);
 
     for (const pIdx of toRestock) {
-      // Cost based on profile margin ± small random variation
       const costPct = PROFILES[pIdx].costPct + (rand() - 0.5) * 0.04;
       const unitCost = Math.round(productPrices[pIdx] * costPct * 100) / 100;
       const qty = initial ? randInt(30, 60) : randInt(8, 25);
@@ -1253,15 +1222,17 @@ async function insertPurchaseBatch(
     const transportCost = randInt(0, 1) === 1 ? randInt(100, 500) : 0;
     const total = itemsTotal + transportCost;
 
+    // Pasamos el storeId a la compra
     const purchaseResult = await db.runAsync(
-      `INSERT INTO purchases (supplierId, supplierName, notes, total, transportCost, itemCount, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO purchases (supplierId, supplierName, notes, total, transportCost, itemCount, storeId, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       supplierIds[sIdx],
       SUPPLIERS_DATA[sIdx].name,
       initial ? "Stock inicial" : "Resurtido periódico",
       total,
       transportCost,
       items.length,
+      storeId,
       fmtDatetime(date),
     );
     const purchaseId = purchaseResult.lastInsertRowId;
@@ -1277,13 +1248,6 @@ async function insertPurchaseBatch(
         item.quantity,
         item.unitCost,
         subtotal,
-      );
-
-      // Update product stock in DB
-      await db.runAsync(
-        `UPDATE products SET stockBaseQty = stockBaseQty + ? WHERE id = ?`,
-        item.quantity,
-        item.productId,
       );
     }
   }
