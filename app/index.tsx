@@ -3,25 +3,25 @@ import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { UserRole } from "@/models/user";
 import {
-    ChevronRight,
-    LayoutDashboard,
-    Monitor,
-    Package,
-    Receipt,
-    ScanLine,
-    ShieldCheck,
-    TrendingUp,
+  ChevronRight,
+  LayoutDashboard,
+  Monitor,
+  Package,
+  Receipt,
+  ScanLine,
+  ShieldCheck,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    Dimensions,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -146,6 +146,13 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const { logout } = useAuth();
   const isDark = colorScheme === "dark";
+
+  // Clear user every time this screen gets focus (back from admin/worker)
+  useFocusEffect(
+    useCallback(() => {
+      logout();
+    }, [logout]),
+  );
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [loginRole, setLoginRole] = useState<UserRole | null>(null);

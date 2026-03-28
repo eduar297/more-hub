@@ -1,7 +1,9 @@
+import { useAuth } from "@/contexts/auth-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import { useStore } from "@/contexts/store-context";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Store as StoreIcon } from "@tamagui/lucide-icons";
-import React, { useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
     Animated,
     Dimensions,
@@ -15,14 +17,40 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const BUBBLE_SIZE = 44;
 const EDGE_MARGIN = 8;
+const FADE_DELAY = 4000;
+const IDLE_OPACITY = 0.3;
 
 export function StoreBubble() {
+  // All hooks BEFORE any conditional return (Rules of Hooks)
   const { showStoreBubble } = usePreferences();
   const { currentStore } = useStore();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
 
+  const opacity = useRef(new Animated.Value(1)).current;
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pan = useRef(new Animated.ValueXY({ x: EDGE_MARGIN, y: 120 })).current;
   const lastPos = useRef({ x: EDGE_MARGIN, y: 120 });
+  const resetRef = useRef<() => void>(() => {});
+
+  const resetFadeTimer = useCallback(() => {
+    if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+    fadeTimer.current = setTimeout(() => {
+      Animated.timing(opacity, {
+        toValue: IDLE_OPACITY,
+        duration: 900,
+        useNativeDriver: false,
+      }).start();
+    }, FADE_DELAY);
+  }, [opacity]);
+
+  resetRef.current = resetFadeTimer;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -30,6 +58,7 @@ export function StoreBubble() {
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
+        resetRef.current();
         pan.setOffset({ x: lastPos.current.x, y: lastPos.current.y });
         pan.setValue({ x: 0, y: 0 });
       },
@@ -61,9 +90,24 @@ export function StoreBubble() {
     }),
   ).current;
 
-  if (!showStoreBubble || !currentStore) return null;
+  useEffect(() => {
+    if (!user || !showStoreBubble || !currentStore) {
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+      opacity.setValue(1);
+      return;
+    }
+    resetFadeTimer();
+    return () => {
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    };
+  }, [user, showStoreBubble, currentStore, resetFadeTimer, opacity]);
+
+  // Bubble only lives inside admin & worker (user is null on role-select page)
+  if (!user || !showStoreBubble || !currentStore) return null;
 
   const storeColor = currentStore.color ?? "#3b82f6";
+  const isDark = colorScheme === "dark";
+  const borderColor = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.15)";
 
   return (
     <Animated.View
@@ -72,6 +116,9 @@ export function StoreBubble() {
         styles.bubble,
         {
           backgroundColor: storeColor,
+          borderColor,
+          shadowColor: storeColor,
+          opacity,
           transform: pan.getTranslateTransform(),
         },
       ]}
@@ -101,11 +148,11 @@ const styles = StyleSheet.create({
     borderRadius: BUBBLE_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 8,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
     zIndex: 9999,
   },
   bubbleLogo: {
@@ -115,17 +162,23 @@ const styles = StyleSheet.create({
   },
   nameTag: {
     position: "absolute",
-    top: BUBBLE_SIZE + 2,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    top: BUBBLE_SIZE + 4,
+    backgroundColor: "rgba(0,0,0,0.75)",
     paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 6,
-    maxWidth: 100,
+    paddingVertical: 3,
+    borderRadius: 7,
+    maxWidth: 140,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   nameText: {
     color: "#fff",
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "600",
     textAlign: "center",
+    letterSpacing: 0.2,
   },
 });
