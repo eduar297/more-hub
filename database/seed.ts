@@ -52,7 +52,7 @@ export async function seedDefaultAdmin(db: SQLiteDatabase) {
     "1234",
   );
   await db.runAsync(
-    `INSERT INTO users (name, role, pinHash, storeId) VALUES (?, 'ADMIN', ?, 1)`,
+    `INSERT INTO users (name, role, pinHash, storeId) VALUES (?, 'ADMIN', ?, NULL)`,
     "Administrador",
     pinHash,
   );

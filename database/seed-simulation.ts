@@ -811,7 +811,16 @@ export async function resetDatabase(db: SQLiteDatabase) {
     DELETE FROM products;
     DELETE FROM suppliers;
     DELETE FROM users WHERE role != 'ADMIN';
+    DELETE FROM stores;
   `);
+
+  // Re-seed default store so the app always has at least one
+  const storeCount = await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) as count FROM stores",
+  );
+  if ((storeCount?.count ?? 0) === 0) {
+    await db.runAsync("INSERT INTO stores (name) VALUES (?)", "Mi Tienda");
+  }
 }
 
 // ── Seed simulation ──────────────────────────────────────────────────────────
@@ -837,6 +846,12 @@ export async function seedSimulation(
 
   onProgress?.("Creando trabajadores...");
 
+  // Get first store id for workers
+  const firstStore = await db.getFirstAsync<{ id: number }>(
+    "SELECT id FROM stores ORDER BY id ASC LIMIT 1",
+  );
+  const defaultStoreId = firstStore?.id ?? 1;
+
   // ── 1. Create workers ──────────────────────────────────────────────────────
   const workerIds: number[] = [];
   for (const w of WORKERS) {
@@ -845,9 +860,10 @@ export async function seedSimulation(
       w.pin,
     );
     const result = await db.runAsync(
-      `INSERT INTO users (name, role, pinHash, createdAt) VALUES (?, 'WORKER', ?, ?)`,
+      `INSERT INTO users (name, role, pinHash, storeId, createdAt) VALUES (?, 'WORKER', ?, ?, ?)`,
       w.name,
       pinHash,
+      defaultStoreId,
       fmtDatetime(startDate),
     );
     workerIds.push(result.lastInsertRowId);

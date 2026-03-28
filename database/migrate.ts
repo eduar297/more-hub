@@ -124,14 +124,14 @@ async function ensureTables(db: SQLiteDatabase) {
       role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
       pinHash TEXT NOT NULL,
       photoUri TEXT,
-      storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+      storeId INTEGER REFERENCES stores(id),
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
   `);
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 11;
+  const DATABASE_VERSION = 12;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -340,6 +340,27 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     `);
 
     currentVersion = 11;
+  }
+
+  if (currentVersion === 11) {
+    // Make storeId nullable for users (admin is global, no store)
+    await db.execAsync(`
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
+        pinHash TEXT NOT NULL,
+        photoUri TEXT,
+        storeId INTEGER REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+      INSERT INTO users_new (id, name, role, pinHash, photoUri, storeId, createdAt)
+        SELECT id, name, role, pinHash, photoUri, storeId, createdAt FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+      UPDATE users SET storeId = NULL WHERE role = 'ADMIN';
+    `);
+    currentVersion = 12;
   }
 
   await seedUnits(db);

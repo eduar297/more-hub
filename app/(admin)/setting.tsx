@@ -103,22 +103,22 @@ function WorkersSection({ isDark, c }: { isDark: boolean; c: Colors }) {
     }, [load]),
   );
 
-  useEffect(() => {
-    if (sheetOpen) {
-      setName(editing?.name ?? "");
-      setPin("");
-      setPinConfirm("");
-      setPhotoUri(editing?.photoUri ?? null);
-      setFormError("");
-    }
-  }, [sheetOpen, editing]);
-
   const openCreate = useCallback(() => {
     setEditing(null);
+    setName("");
+    setPin("");
+    setPinConfirm("");
+    setPhotoUri(null);
+    setFormError("");
     setSheetOpen(true);
   }, []);
   const openEdit = useCallback((w: User) => {
     setEditing(w);
+    setName(w.name);
+    setPin("");
+    setPinConfirm("");
+    setPhotoUri(w.photoUri ?? null);
+    setFormError("");
     setSheetOpen(true);
   }, []);
 
@@ -292,7 +292,7 @@ function WorkersSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         modal
-        snapPoints={[72]}
+        snapPoints={[85]}
         dismissOnSnapToBottom
       >
         <Sheet.Overlay
@@ -302,7 +302,10 @@ function WorkersSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
-          <Sheet.ScrollView keyboardShouldPersistTaps="handled">
+          <Sheet.ScrollView
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
             <YStack gap="$3" p="$4">
               <TText fontSize="$6" fontWeight="bold" color="$color">
                 {editing ? "Editar vendedor" : "Nuevo vendedor"}
@@ -946,6 +949,7 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [logoUri, setLogoUri] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -957,22 +961,23 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
     }, [refreshStores]),
   );
 
-  useEffect(() => {
-    if (sheetOpen) {
-      setName(editing?.name ?? "");
-      setAddress(editing?.address ?? "");
-      setPhone(editing?.phone ?? "");
-      setFormError("");
-    }
-  }, [sheetOpen, editing]);
-
   const openCreate = useCallback(() => {
     setEditing(null);
+    setName("");
+    setAddress("");
+    setPhone("");
+    setLogoUri(null);
+    setFormError("");
     setSheetOpen(true);
   }, []);
 
   const openEdit = useCallback((s: StoreModel) => {
     setEditing(s);
+    setName(s.name);
+    setAddress(s.address ?? "");
+    setPhone(s.phone ?? "");
+    setLogoUri(s.logoUri ?? null);
+    setFormError("");
     setSheetOpen(true);
   }, []);
 
@@ -989,7 +994,7 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         name: trimName,
         address: address.trim() || null,
         phone: phone.trim() || null,
-        logoUri: null,
+        logoUri,
       };
       if (editing) {
         await storeRepo.update(editing.id, data);
@@ -1003,7 +1008,7 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
     } finally {
       setSaving(false);
     }
-  }, [name, address, phone, editing, storeRepo, refreshStores]);
+  }, [name, address, phone, logoUri, editing, storeRepo, refreshStores]);
 
   const handleDelete = useCallback(
     (s: StoreModel) => {
@@ -1085,10 +1090,17 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
                         },
                       ]}
                     >
-                      <Store
-                        size={18}
-                        color={(isActive ? c.blue : c.muted) as any}
-                      />
+                      {s.logoUri ? (
+                        <Image
+                          source={{ uri: s.logoUri }}
+                          style={{ width: 38, height: 38, borderRadius: 19 }}
+                        />
+                      ) : (
+                        <Store
+                          size={18}
+                          color={(isActive ? c.blue : c.muted) as any}
+                        />
+                      )}
                     </View>
                     <View style={styles.workerInfo}>
                       <View
@@ -1151,7 +1163,7 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         modal
-        snapPoints={[65]}
+        snapPoints={[85]}
         dismissOnSnapToBottom
       >
         <Sheet.Overlay
@@ -1161,11 +1173,17 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
-          <Sheet.ScrollView keyboardShouldPersistTaps="handled">
+          <Sheet.ScrollView
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
             <YStack gap="$3" p="$4">
               <TText fontSize="$6" fontWeight="bold" color="$color">
                 {editing ? "Editar tienda" : "Nueva tienda"}
               </TText>
+
+              {/* Photo picker */}
+              <PhotoPicker uri={logoUri} onChange={setLogoUri} />
 
               <YStack gap="$1">
                 <TText

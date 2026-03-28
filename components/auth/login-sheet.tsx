@@ -7,7 +7,7 @@ import { UserRepository } from "@/repositories/user.repository";
 import { hashPin } from "@/utils/auth";
 import {
   AlertCircle,
-  ChevronDown,
+  ChevronLeft,
   Lock,
   Store as StoreIcon,
   User as UserIcon,
@@ -24,6 +24,7 @@ import React, {
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -37,6 +38,31 @@ import {
   Vibration,
   View,
 } from "react-native";
+
+/* ── Carousel constants ── */
+const STORE_PALETTE = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#f59e0b",
+  "#10b981",
+  "#ef4444",
+  "#6366f1",
+  "#14b8a6",
+  "#f97316",
+  "#a855f7",
+];
+const STORE_CARD_W = 130;
+const STORE_CARD_H = 160;
+const STORE_CARD_GAP = 12;
+const SNAP_INTERVAL = STORE_CARD_W + STORE_CARD_GAP;
+const SCREEN_W = Dimensions.get("window").width;
+const CARD_W = Math.min(380, SCREEN_W - 48);
+const CAROUSEL_PAD_H = (CARD_W - STORE_CARD_W) / 2 - STORE_CARD_GAP / 2;
+
+/* ── Shared constants ── */
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 30;
 
 interface LoginSheetProps {
   open: boolean;
@@ -56,26 +82,32 @@ export function LoginSheet({
   const { stores, setCurrentStore } = useStore();
   const { setUser } = useAuth();
 
+  /* ── Common state ── */
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [showStorePicker, setShowStorePicker] = useState(false);
-  const userRepo = useMemo(
-    () => new UserRepository(db, selectedStore?.id),
-    [db, selectedStore?.id],
-  );
-
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [showUserPicker, setShowUserPicker] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [lockoutSecsLeft, setLockoutSecsLeft] = useState(0);
   const pinRef = useRef<TextInput>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /* ── Admin-specific ── */
+  const [adminStep, setAdminStep] = useState(0); // 0=store carousel, 1=pin
+  const [adminUser, setAdminUser] = useState<User | null>(null);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+  const adminScrollX = useRef(new Animated.Value(0)).current;
+  const adminStepSlide = useRef(new Animated.Value(0)).current;
+
+  /* ── Worker-specific ── */
+  const [workerStep, setWorkerStep] = useState(0); // 0=store, 1=worker, 2=pin
+  const [workers, setWorkers] = useState<User[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState<User | null>(null);
+  const [loadingWorkers, setLoadingWorkers] = useState(false);
+  const stepSlide = useRef(new Animated.Value(0)).current;
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   const isDark = colorScheme === "dark";
   const c = {
@@ -89,8 +121,8 @@ export function LoginSheet({
     accentLight: role === "ADMIN" ? "#dbeafe" : "#dcfce7",
     error: "#ef4444",
     errorBg: isDark ? "#2d1515" : "#fef2f2",
-    userRow: isDark ? "#2c2c2e" : "#f9fafb",
-    userRowSelected:
+    cardBg: isDark ? "#2c2c2e" : "#f9fafb",
+    cardBgSelected:
       role === "ADMIN"
         ? isDark
           ? "#1e3a5f"
@@ -98,87 +130,57 @@ export function LoginSheet({
         : isDark
           ? "#14532d"
           : "#dcfce7",
-    userRowBorder: isDark ? "#38383a" : "#e5e7eb",
   };
 
-  const roleLabel = role === "ADMIN" ? "Administrador" : "Vendedor";
   const multiStore = stores.length > 1;
 
-  const loadUsers = useCallback(async () => {
-    if (!selectedStore) {
-      setUsers([]);
-      setLoadingUsers(false);
-      return;
-    }
-    setLoadingUsers(true);
+  /* ── Admin: global repo (no storeId) ── */
+  const adminRepo = useMemo(() => new UserRepository(db), [db]);
+
+  const loadAdmin = useCallback(async () => {
+    setLoadingAdmin(true);
     try {
-      const list = await userRepo.findByRole(role);
-      setUsers(list);
-      if (list.length === 1) setSelectedUser(list[0]);
+      const admins = await adminRepo.findByRole("ADMIN");
+      setAdminUser(admins.length > 0 ? admins[0] : null);
     } catch {
-      // ignore
+      /* ignore */
     } finally {
-      setLoadingUsers(false);
+      setLoadingAdmin(false);
     }
-  }, [userRepo, role, selectedStore]);
+  }, [adminRepo]);
 
-  // Focus PIN when a user is selected
-  useEffect(() => {
-    if (selectedUser) {
-      setTimeout(() => pinRef.current?.focus(), 100);
+  /* ── Worker: repo scoped to selected store ── */
+  const workerRepo = useMemo(
+    () => new UserRepository(db, selectedStore?.id),
+    [db, selectedStore?.id],
+  );
+
+  const loadWorkers = useCallback(async () => {
+    if (!selectedStore) return;
+    setLoadingWorkers(true);
+    try {
+      const list = await workerRepo.findByRole("WORKER");
+      setWorkers(list);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingWorkers(false);
     }
-  }, [selectedUser]);
+  }, [workerRepo, selectedStore]);
 
-  // Lockout countdown ticker
-  useEffect(() => {
-    if (lockoutUntil === null) return;
-    const tick = () => {
-      const secs = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      if (secs <= 0) {
-        setLockoutUntil(null);
-        setLockoutSecsLeft(0);
-        setFailedAttempts(0);
-        if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
-      } else {
-        setLockoutSecsLeft(secs);
-      }
-    };
-    tick();
-    lockoutTimerRef.current = setInterval(tick, 1000);
-    return () => {
-      if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
-    };
-  }, [lockoutUntil]);
-
-  useEffect(() => {
-    if (open) {
-      setPin("");
-      setError("");
-      setSelectedUser(null);
-      setShowStorePicker(false);
-      setFailedAttempts(0);
-      setLockoutUntil(null);
-      setLockoutSecsLeft(0);
-      if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
-      // Auto-select if only one store
-      if (stores.length === 1) {
-        setSelectedStore(stores[0]);
-      } else {
-        setSelectedStore(null);
-        setUsers([]);
-      }
-    }
-  }, [open, stores]);
-
-  // Load users when selected store changes
-  useEffect(() => {
-    if (open && selectedStore) {
-      setSelectedUser(null);
-      setPin("");
-      setError("");
-      loadUsers();
-    }
-  }, [open, selectedStore, loadUsers]);
+  /* ── Animations ── */
+  const animateStep = useCallback(
+    (direction: "forward" | "back") => {
+      stepSlide.setValue(direction === "forward" ? 40 : -40);
+      Animated.spring(stepSlide, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }).start();
+    },
+    [stepSlide],
+  );
 
   const triggerShake = useCallback(() => {
     Vibration.vibrate(300);
@@ -212,17 +214,89 @@ export function LoginSheet({
     ]).start();
   }, [shakeAnim]);
 
-  const MAX_ATTEMPTS = 5;
-  const LOCKOUT_SECONDS = 30;
+  /* ── Lockout timer ── */
+  useEffect(() => {
+    if (lockoutUntil === null) return;
+    const tick = () => {
+      const secs = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      if (secs <= 0) {
+        setLockoutUntil(null);
+        setLockoutSecsLeft(0);
+        setFailedAttempts(0);
+        if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
+      } else {
+        setLockoutSecsLeft(secs);
+      }
+    };
+    tick();
+    lockoutTimerRef.current = setInterval(tick, 1000);
+    return () => {
+      if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
+    };
+  }, [lockoutUntil]);
 
-  const tryAutoLogin = useCallback(
+  /* ── Reset on open ── */
+  useEffect(() => {
+    if (!open) return;
+    setPin("");
+    setError("");
+    setSelectedStore(null);
+    setFailedAttempts(0);
+    setLockoutUntil(null);
+    setLockoutSecsLeft(0);
+    setWorkerStep(0);
+    setWorkers([]);
+    setSelectedWorker(null);
+    setAdminUser(null);
+    setAdminStep(0);
+    scrollX.setValue(0);
+    adminScrollX.setValue(0);
+    if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current);
+
+    if (role === "ADMIN") {
+      loadAdmin();
+      if (stores.length === 1) {
+        setSelectedStore(stores[0]);
+        setAdminStep(1);
+      }
+    } else {
+      if (stores.length === 1) {
+        setSelectedStore(stores[0]);
+        setWorkerStep(1);
+      }
+    }
+  }, [open, stores, role, loadAdmin, scrollX, adminScrollX]);
+
+  /* ── Load workers when store selected ── */
+  useEffect(() => {
+    if (open && role === "WORKER" && selectedStore) loadWorkers();
+  }, [open, role, selectedStore, loadWorkers]);
+
+  /* ── Focus PIN when ready ── */
+  useEffect(() => {
+    if (role === "ADMIN" && adminStep === 1 && adminUser) {
+      setTimeout(() => pinRef.current?.focus(), 200);
+    }
+  }, [role, adminStep, adminUser]);
+
+  useEffect(() => {
+    if (role === "WORKER" && workerStep === 2) {
+      setTimeout(() => pinRef.current?.focus(), 200);
+    }
+  }, [role, workerStep]);
+
+  /* ── PIN handling ── */
+  const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
+
+  const tryLogin = useCallback(
     async (currentPin: string, user: User) => {
       if (currentPin.length < 4) return;
       setVerifying(true);
       setError("");
       try {
         const pinH = await hashPin(currentPin);
-        const ok = await userRepo.verifyPin(user.id, pinH);
+        const repo = role === "ADMIN" ? adminRepo : workerRepo;
+        const ok = await repo.verifyPin(user.id, pinH);
         if (ok) {
           setFailedAttempts(0);
           if (selectedStore) setCurrentStore(selectedStore);
@@ -260,7 +334,9 @@ export function LoginSheet({
       }
     },
     [
-      userRepo,
+      role,
+      adminRepo,
+      workerRepo,
       setUser,
       setCurrentStore,
       selectedStore,
@@ -269,27 +345,648 @@ export function LoginSheet({
     ],
   );
 
-  const isLocked = lockoutUntil !== null && Date.now() < lockoutUntil;
-  const pinDisabled =
-    verifying ||
-    isLocked ||
-    !selectedStore ||
-    (role === "WORKER" && !selectedUser);
-
   const handlePinChange = useCallback(
     (value: string) => {
       if (value.length > 4) return;
       setPin(value);
       setError("");
-      if (value.length === 4 && selectedUser) {
-        tryAutoLogin(value, selectedUser);
+      if (value.length === 4) {
+        const user = role === "ADMIN" ? adminUser : selectedWorker;
+        if (user) tryLogin(value, user);
       }
     },
-    [selectedUser, tryAutoLogin],
+    [role, adminUser, selectedWorker, tryLogin],
   );
+
+  /* ── Admin-flow handlers ── */
+  const handleAdminStoreSelect = useCallback(
+    (store: Store) => {
+      setSelectedStore(store);
+      setPin("");
+      setError("");
+      adminStepSlide.setValue(40);
+      Animated.spring(adminStepSlide, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }).start();
+      setAdminStep(1);
+    },
+    [adminStepSlide],
+  );
+
+  const handleAdminBack = useCallback(() => {
+    if (stores.length <= 1) return;
+    setAdminStep(0);
+    setSelectedStore(null);
+    setPin("");
+    setError("");
+    adminStepSlide.setValue(-40);
+    Animated.spring(adminStepSlide, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 80,
+      friction: 12,
+    }).start();
+  }, [stores.length, adminStepSlide]);
+
+  /* ── Worker-flow handlers ── */
+  const handleStoreSelect = useCallback(
+    (store: Store) => {
+      setSelectedStore(store);
+      setWorkerStep(1);
+      setPin("");
+      setError("");
+      setSelectedWorker(null);
+      animateStep("forward");
+    },
+    [animateStep],
+  );
+
+  const handleWorkerSelect = useCallback(
+    (worker: User) => {
+      setSelectedWorker(worker);
+      setWorkerStep(2);
+      setPin("");
+      setError("");
+      animateStep("forward");
+    },
+    [animateStep],
+  );
+
+  const handleBack = useCallback(() => {
+    if (workerStep === 2) {
+      setWorkerStep(1);
+      setSelectedWorker(null);
+      setPin("");
+      setError("");
+      animateStep("back");
+    } else if (workerStep === 1 && multiStore) {
+      setWorkerStep(0);
+      setSelectedStore(null);
+      setWorkers([]);
+      animateStep("back");
+    }
+  }, [workerStep, multiStore, animateStep]);
 
   if (!open) return null;
 
+  /* ════════════════════════════════════════════
+     ADMIN FLOW — Step 0: Store Carousel
+     ════════════════════════════════════════════ */
+  const renderAdminStep0 = () => (
+    <View
+      style={[
+        styles.card,
+        styles.cardWide,
+        { backgroundColor: c.bg, borderColor: c.border },
+      ]}
+    >
+      <View style={styles.headerRow}>
+        <View style={[styles.iconCircle, { backgroundColor: c.accentLight }]}>
+          <Lock size={22} color={c.accent as any} />
+        </View>
+        <Text style={[styles.title, { color: c.text }]}>Administrador</Text>
+        <Text style={[styles.subtitle, { color: c.muted }]}>
+          Selecciona la tienda activa
+        </Text>
+      </View>
+
+      <View style={styles.carouselContainer}>
+        <Animated.FlatList
+          data={stores}
+          keyExtractor={(item: Store) => String(item.id)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={SNAP_INTERVAL}
+          decelerationRate="fast"
+          contentContainerStyle={{
+            paddingHorizontal: Math.max(CAROUSEL_PAD_H, 16),
+            paddingVertical: 8,
+          }}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: adminScrollX } } }],
+            { useNativeDriver: true },
+          )}
+          scrollEventThrottle={16}
+          renderItem={({ item, index }: { item: Store; index: number }) => {
+            const inputRange = [
+              (index - 1) * SNAP_INTERVAL,
+              index * SNAP_INTERVAL,
+              (index + 1) * SNAP_INTERVAL,
+            ];
+            const scale = adminScrollX.interpolate({
+              inputRange,
+              outputRange: [0.88, 1, 0.88],
+              extrapolate: "clamp",
+            });
+            const itemOpacity = adminScrollX.interpolate({
+              inputRange,
+              outputRange: [0.5, 1, 0.5],
+              extrapolate: "clamp",
+            });
+            const paletteColor = STORE_PALETTE[index % STORE_PALETTE.length];
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => handleAdminStoreSelect(item)}
+                style={{ marginHorizontal: STORE_CARD_GAP / 2 }}
+              >
+                <Animated.View
+                  style={[
+                    styles.storeCard,
+                    {
+                      backgroundColor: paletteColor,
+                      transform: [{ scale }],
+                      opacity: itemOpacity,
+                    },
+                  ]}
+                >
+                  <View style={styles.storeCardIcon}>
+                    {item.logoUri ? (
+                      <Image
+                        source={{ uri: item.logoUri }}
+                        style={{ width: 48, height: 48, borderRadius: 24 }}
+                      />
+                    ) : (
+                      <StoreIcon size={32} color="white" />
+                    )}
+                  </View>
+                  <Text style={styles.storeCardName} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  {item.address && (
+                    <Text style={styles.storeCardAddr} numberOfLines={1}>
+                      {item.address}
+                    </Text>
+                  )}
+                </Animated.View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.btnCancel, { borderColor: c.border }]}
+        onPress={onClose}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.btnCancelText, { color: c.muted }]}>Cancelar</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  /* ════════════════════════════════════════════
+     ADMIN FLOW — Step 1: PIN
+     ════════════════════════════════════════════ */
+  const renderAdminStep1 = () => {
+    const pinDisabled = verifying || isLocked || !adminUser;
+    return (
+      <Animated.View
+        style={[
+          styles.card,
+          { backgroundColor: c.bg, borderColor: c.border },
+          { transform: [{ translateX: adminStepSlide }] },
+        ]}
+      >
+        <View style={styles.headerRow}>
+          {stores.length > 1 && (
+            <TouchableOpacity
+              onPress={handleAdminBack}
+              style={styles.backBtn}
+              activeOpacity={0.7}
+            >
+              <ChevronLeft size={20} color={c.muted as any} />
+              <Text style={{ color: c.muted, fontSize: 14 }}>
+                {selectedStore?.name ?? "Atrás"}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <View style={[styles.iconCircle, { backgroundColor: c.accentLight }]}>
+            {selectedStore?.logoUri ? (
+              <Image
+                source={{ uri: selectedStore.logoUri }}
+                style={{ width: 52, height: 52, borderRadius: 26 }}
+              />
+            ) : (
+              <Lock size={22} color={c.accent as any} />
+            )}
+          </View>
+          <Text style={[styles.title, { color: c.text }]}>
+            {selectedStore?.name ?? "Administrador"}
+          </Text>
+          <Text style={[styles.subtitle, { color: c.muted }]}>
+            Ingresa tu PIN para continuar
+          </Text>
+        </View>
+
+        {/* Admin loading / missing */}
+        {loadingAdmin ? (
+          <View style={styles.loaderRow}>
+            <ActivityIndicator color={c.accent} />
+          </View>
+        ) : !adminUser ? (
+          <View
+            style={[
+              styles.emptyBox,
+              { backgroundColor: c.errorBg, borderColor: c.error },
+            ]}
+          >
+            <AlertCircle size={20} color={c.error as any} />
+            <Text style={[styles.emptyText, { color: c.error }]}>
+              No hay administrador configurado
+            </Text>
+          </View>
+        ) : null}
+
+        {/* PIN */}
+        {adminUser && (
+          <View style={styles.section}>
+            <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+              <TextInput
+                ref={pinRef}
+                style={[
+                  styles.pinInput,
+                  {
+                    backgroundColor: pinDisabled
+                      ? isDark
+                        ? "#1a1a1c"
+                        : "#e5e7eb"
+                      : c.input,
+                    color: pinDisabled ? c.muted : c.text,
+                    borderColor: isLocked || error ? c.error : c.border,
+                    opacity: pinDisabled ? 0.6 : 1,
+                    letterSpacing: pin.length > 0 ? 6 : 0,
+                  },
+                ]}
+                placeholder={
+                  isLocked ? `Bloqueado ${lockoutSecsLeft}s` : "••••"
+                }
+                placeholderTextColor={c.muted}
+                value={pin}
+                onChangeText={handlePinChange}
+                secureTextEntry={!isLocked}
+                keyboardType="numeric"
+                maxLength={4}
+                returnKeyType="done"
+                editable={!pinDisabled}
+              />
+              {verifying && (
+                <View style={styles.pinSpinner}>
+                  <ActivityIndicator color={c.accent} size="small" />
+                </View>
+              )}
+            </Animated.View>
+          </View>
+        )}
+
+        {/* Error */}
+        {!!error && (
+          <View style={[styles.errorRow, { backgroundColor: c.errorBg }]}>
+            <AlertCircle size={16} color={c.error as any} />
+            <Text style={[styles.errorText, { color: c.error }]}>{error}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.btnCancel, { borderColor: c.border }]}
+          onPress={onClose}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.btnCancelText, { color: c.muted }]}>
+            Cancelar
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderAdmin = () => {
+    if (adminStep === 0) return renderAdminStep0();
+    return renderAdminStep1();
+  };
+
+  /* ════════════════════════════════════════════
+     WORKER FLOW — Step 0: Store Carousel
+     ════════════════════════════════════════════ */
+  const renderWorkerStep0 = () => (
+    <View
+      style={[
+        styles.card,
+        styles.cardWide,
+        { backgroundColor: c.bg, borderColor: c.border },
+      ]}
+    >
+      <View style={styles.headerRow}>
+        <View style={[styles.iconCircle, { backgroundColor: c.accentLight }]}>
+          <StoreIcon size={22} color={c.accent as any} />
+        </View>
+        <Text style={[styles.title, { color: c.text }]}>¿Dónde trabajas?</Text>
+        <Text style={[styles.subtitle, { color: c.muted }]}>
+          Selecciona tu tienda
+        </Text>
+      </View>
+
+      <View style={styles.carouselContainer}>
+        <Animated.FlatList
+          data={stores}
+          keyExtractor={(item: Store) => String(item.id)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={SNAP_INTERVAL}
+          decelerationRate="fast"
+          contentContainerStyle={{
+            paddingHorizontal: Math.max(CAROUSEL_PAD_H, 16),
+            paddingVertical: 8,
+          }}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: true },
+          )}
+          scrollEventThrottle={16}
+          renderItem={({ item, index }: { item: Store; index: number }) => {
+            const inputRange = [
+              (index - 1) * SNAP_INTERVAL,
+              index * SNAP_INTERVAL,
+              (index + 1) * SNAP_INTERVAL,
+            ];
+            const scale = scrollX.interpolate({
+              inputRange,
+              outputRange: [0.88, 1, 0.88],
+              extrapolate: "clamp",
+            });
+            const itemOpacity = scrollX.interpolate({
+              inputRange,
+              outputRange: [0.5, 1, 0.5],
+              extrapolate: "clamp",
+            });
+            const paletteColor = STORE_PALETTE[index % STORE_PALETTE.length];
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => handleStoreSelect(item)}
+                style={{ marginHorizontal: STORE_CARD_GAP / 2 }}
+              >
+                <Animated.View
+                  style={[
+                    styles.storeCard,
+                    {
+                      backgroundColor: paletteColor,
+                      transform: [{ scale }],
+                      opacity: itemOpacity,
+                    },
+                  ]}
+                >
+                  <View style={styles.storeCardIcon}>
+                    {item.logoUri ? (
+                      <Image
+                        source={{ uri: item.logoUri }}
+                        style={{ width: 48, height: 48, borderRadius: 24 }}
+                      />
+                    ) : (
+                      <StoreIcon size={32} color="white" />
+                    )}
+                  </View>
+                  <Text style={styles.storeCardName} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  {item.address && (
+                    <Text style={styles.storeCardAddr} numberOfLines={1}>
+                      {item.address}
+                    </Text>
+                  )}
+                </Animated.View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.btnCancel, { borderColor: c.border }]}
+        onPress={onClose}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.btnCancelText, { color: c.muted }]}>Cancelar</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  /* ════════════════════════════════════════════
+     WORKER FLOW — Step 1: Worker Selection
+     ════════════════════════════════════════════ */
+  const renderWorkerStep1 = () => (
+    <Animated.View
+      style={[
+        styles.card,
+        { backgroundColor: c.bg, borderColor: c.border },
+        { transform: [{ translateX: stepSlide }] },
+      ]}
+    >
+      <View style={styles.headerRow}>
+        {multiStore && (
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={20} color={c.muted as any} />
+            <Text style={{ color: c.muted, fontSize: 14 }}>
+              {selectedStore?.name ?? "Atrás"}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <View style={[styles.iconCircle, { backgroundColor: c.accentLight }]}>
+          <UserIcon size={22} color={c.accent as any} />
+        </View>
+        <Text style={[styles.title, { color: c.text }]}>¿Quién eres?</Text>
+        <Text style={[styles.subtitle, { color: c.muted }]}>
+          Selecciona tu perfil
+        </Text>
+      </View>
+
+      {loadingWorkers ? (
+        <View style={styles.loaderRow}>
+          <ActivityIndicator color={c.accent} />
+        </View>
+      ) : workers.length === 0 ? (
+        <View
+          style={[
+            styles.emptyBox,
+            { backgroundColor: c.errorBg, borderColor: c.error },
+          ]}
+        >
+          <Users size={20} color={c.error as any} />
+          <Text style={[styles.emptyText, { color: c.error }]}>
+            No hay vendedores en esta tienda
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.workerGrid}>
+          {workers.map((w) => {
+            const initial = w.name.charAt(0).toUpperCase();
+            return (
+              <TouchableOpacity
+                key={w.id}
+                style={[
+                  styles.workerCard,
+                  { backgroundColor: c.cardBg, borderColor: c.border },
+                ]}
+                onPress={() => handleWorkerSelect(w)}
+                activeOpacity={0.75}
+              >
+                <View
+                  style={[
+                    styles.workerAvatar,
+                    { backgroundColor: c.accentLight },
+                  ]}
+                >
+                  {w.photoUri ? (
+                    <Image
+                      source={{ uri: w.photoUri }}
+                      style={styles.workerAvatarImg}
+                    />
+                  ) : (
+                    <Text
+                      style={[styles.workerAvatarText, { color: c.accent }]}
+                    >
+                      {initial}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[styles.workerCardName, { color: c.text }]}
+                  numberOfLines={1}
+                >
+                  {w.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={[styles.btnCancel, { borderColor: c.border }]}
+        onPress={onClose}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.btnCancelText, { color: c.muted }]}>Cancelar</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+
+  /* ════════════════════════════════════════════
+     WORKER FLOW — Step 2: PIN Input
+     ════════════════════════════════════════════ */
+  const renderWorkerStep2 = () => {
+    const pinDisabled = verifying || isLocked || !selectedWorker;
+    return (
+      <Animated.View
+        style={[
+          styles.card,
+          { backgroundColor: c.bg, borderColor: c.border },
+          { transform: [{ translateX: stepSlide }] },
+        ]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={20} color={c.muted as any} />
+            <Text style={{ color: c.muted, fontSize: 14 }}>Cambiar</Text>
+          </TouchableOpacity>
+          <View style={[styles.bigAvatar, { backgroundColor: c.accentLight }]}>
+            {selectedWorker?.photoUri ? (
+              <Image
+                source={{ uri: selectedWorker.photoUri }}
+                style={styles.bigAvatarImg}
+              />
+            ) : (
+              <Text style={[styles.bigAvatarText, { color: c.accent }]}>
+                {selectedWorker?.name.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <Text style={[styles.title, { color: c.text }]}>
+            {selectedWorker?.name}
+          </Text>
+          <Text style={[styles.subtitle, { color: c.muted }]}>
+            Ingresa tu PIN
+          </Text>
+        </View>
+
+        {/* PIN */}
+        <View style={styles.section}>
+          <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+            <TextInput
+              ref={pinRef}
+              style={[
+                styles.pinInput,
+                {
+                  backgroundColor: pinDisabled
+                    ? isDark
+                      ? "#1a1a1c"
+                      : "#e5e7eb"
+                    : c.input,
+                  color: pinDisabled ? c.muted : c.text,
+                  borderColor: isLocked || error ? c.error : c.border,
+                  opacity: pinDisabled ? 0.6 : 1,
+                  letterSpacing: pin.length > 0 ? 6 : 0,
+                },
+              ]}
+              placeholder={isLocked ? `Bloqueado ${lockoutSecsLeft}s` : "••••"}
+              placeholderTextColor={c.muted}
+              value={pin}
+              onChangeText={handlePinChange}
+              secureTextEntry={!isLocked}
+              keyboardType="numeric"
+              maxLength={4}
+              returnKeyType="done"
+              editable={!pinDisabled}
+            />
+            {verifying && (
+              <View style={styles.pinSpinner}>
+                <ActivityIndicator color={c.accent} size="small" />
+              </View>
+            )}
+          </Animated.View>
+        </View>
+
+        {/* Error */}
+        {!!error && (
+          <View style={[styles.errorRow, { backgroundColor: c.errorBg }]}>
+            <AlertCircle size={16} color={c.error as any} />
+            <Text style={[styles.errorText, { color: c.error }]}>{error}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.btnCancel, { borderColor: c.border }]}
+          onPress={onClose}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.btnCancelText, { color: c.muted }]}>
+            Cancelar
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderWorker = () => {
+    if (workerStep === 0) return renderWorkerStep0();
+    if (workerStep === 1) return renderWorkerStep1();
+    return renderWorkerStep2();
+  };
+
+  /* ═══════════════════════════════
+     RENDER
+     ═══════════════════════════════ */
   return (
     <Modal
       visible={open}
@@ -312,469 +1009,7 @@ export function LoginSheet({
         >
           <Pressable style={{ width: "100%", maxWidth: 380 }} onPress={onClose}>
             <Pressable onPress={(e) => e.stopPropagation()}>
-              <View
-                style={[
-                  styles.card,
-                  { backgroundColor: c.bg, borderColor: c.border },
-                ]}
-              >
-                {/* Header */}
-                <View style={styles.headerRow}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      { backgroundColor: c.accentLight },
-                    ]}
-                  >
-                    {role === "ADMIN" ? (
-                      <Lock size={22} color={c.accent as any} />
-                    ) : (
-                      <UserIcon size={22} color={c.accent as any} />
-                    )}
-                  </View>
-                  <Text style={[styles.title, { color: c.text }]}>
-                    {roleLabel}
-                  </Text>
-                  <Text style={[styles.subtitle, { color: c.muted }]}>
-                    Ingresa tus credenciales para continuar
-                  </Text>
-                </View>
-
-                {/* ── Store selector ── */}
-                {multiStore && (
-                  <View style={styles.section}>
-                    <Text style={[styles.label, { color: c.muted }]}>
-                      Tienda
-                    </Text>
-                    <View style={styles.selectWrapper}>
-                      <TouchableOpacity
-                        style={[
-                          styles.selectTrigger,
-                          {
-                            backgroundColor: c.input,
-                            borderColor: selectedStore ? c.accent : c.border,
-                          },
-                        ]}
-                        onPress={() => setShowStorePicker((v) => !v)}
-                        activeOpacity={0.7}
-                      >
-                        {selectedStore ? (
-                          <View style={styles.selectTriggerContent}>
-                            <View
-                              style={[
-                                styles.avatar,
-                                { backgroundColor: c.accentLight },
-                              ]}
-                            >
-                              <StoreIcon size={16} color={c.accent as any} />
-                            </View>
-                            <Text
-                              style={[styles.userName, { color: c.text }]}
-                              numberOfLines={1}
-                            >
-                              {selectedStore.name}
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text
-                            style={[
-                              styles.selectPlaceholder,
-                              { color: c.muted },
-                            ]}
-                          >
-                            Seleccionar tienda…
-                          </Text>
-                        )}
-                        <ChevronDown
-                          size={16}
-                          color={c.muted as any}
-                          style={{
-                            transform: [
-                              { rotate: showStorePicker ? "180deg" : "0deg" },
-                            ],
-                          }}
-                        />
-                      </TouchableOpacity>
-
-                      {showStorePicker && (
-                        <View
-                          style={[
-                            styles.dropdown,
-                            { backgroundColor: c.bg, borderColor: c.border },
-                          ]}
-                        >
-                          {stores.map((s) => {
-                            const active = selectedStore?.id === s.id;
-                            return (
-                              <TouchableOpacity
-                                key={s.id}
-                                style={[
-                                  styles.dropdownItem,
-                                  {
-                                    backgroundColor: active
-                                      ? c.userRowSelected
-                                      : c.userRow,
-                                    borderBottomColor: c.userRowBorder,
-                                  },
-                                ]}
-                                onPress={() => {
-                                  setSelectedStore(s);
-                                  setShowStorePicker(false);
-                                }}
-                                activeOpacity={0.7}
-                              >
-                                <View
-                                  style={[
-                                    styles.avatar,
-                                    { backgroundColor: c.accentLight },
-                                  ]}
-                                >
-                                  <StoreIcon
-                                    size={16}
-                                    color={c.accent as any}
-                                  />
-                                </View>
-                                <View style={{ flex: 1, gap: 1 }}>
-                                  <Text
-                                    style={[styles.userName, { color: c.text }]}
-                                  >
-                                    {s.name}
-                                  </Text>
-                                  {s.address && (
-                                    <Text
-                                      style={{
-                                        fontSize: 11,
-                                        color: c.muted,
-                                      }}
-                                    >
-                                      {s.address}
-                                    </Text>
-                                  )}
-                                </View>
-                                {active && (
-                                  <View
-                                    style={[
-                                      styles.dot,
-                                      { backgroundColor: c.accent },
-                                    ]}
-                                  />
-                                )}
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                )}
-
-                {/* User picker (hidden if only 1 user and auto-selected) */}
-                {!selectedStore ? (
-                  multiStore ? (
-                    <View style={styles.section}>
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          color: c.muted,
-                          textAlign: "center",
-                          paddingVertical: 8,
-                        }}
-                      >
-                        Selecciona una tienda para continuar
-                      </Text>
-                    </View>
-                  ) : null
-                ) : loadingUsers ? (
-                  <View style={styles.loaderRow}>
-                    <ActivityIndicator color={c.accent} />
-                  </View>
-                ) : users.length === 0 ? (
-                  <View
-                    style={[
-                      styles.emptyBox,
-                      { backgroundColor: c.errorBg, borderColor: c.error },
-                    ]}
-                  >
-                    <Users size={20} color={c.error as any} />
-                    <Text style={[styles.emptyText, { color: c.error }]}>
-                      {role === "ADMIN"
-                        ? "No hay administradores"
-                        : "No hay vendedores"}
-                    </Text>
-                  </View>
-                ) : users.length > 1 ? (
-                  <View style={styles.section}>
-                    <Text style={[styles.label, { color: c.muted }]}>
-                      Usuario
-                    </Text>
-                    {/* Select trigger + floating dropdown */}
-                    <View style={styles.selectWrapper}>
-                      <TouchableOpacity
-                        style={[
-                          styles.selectTrigger,
-                          {
-                            backgroundColor: c.input,
-                            borderColor: selectedUser ? c.accent : c.border,
-                          },
-                        ]}
-                        onPress={() => setShowUserPicker((v) => !v)}
-                        activeOpacity={0.7}
-                      >
-                        {selectedUser ? (
-                          <View style={styles.selectTriggerContent}>
-                            <View
-                              style={[
-                                styles.avatar,
-                                { backgroundColor: c.accentLight },
-                              ]}
-                            >
-                              {selectedUser.photoUri ? (
-                                <Image
-                                  source={{ uri: selectedUser.photoUri }}
-                                  style={styles.avatarImg}
-                                />
-                              ) : (
-                                <Text
-                                  style={[
-                                    styles.avatarText,
-                                    { color: c.accent },
-                                  ]}
-                                >
-                                  {selectedUser.name.charAt(0).toUpperCase()}
-                                </Text>
-                              )}
-                            </View>
-                            <Text
-                              style={[styles.userName, { color: c.text }]}
-                              numberOfLines={1}
-                            >
-                              {selectedUser.name}
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text
-                            style={[
-                              styles.selectPlaceholder,
-                              { color: c.muted },
-                            ]}
-                          >
-                            Seleccionar usuario…
-                          </Text>
-                        )}
-                        <ChevronDown
-                          size={16}
-                          color={c.muted as any}
-                          style={{
-                            transform: [
-                              { rotate: showUserPicker ? "180deg" : "0deg" },
-                            ],
-                          }}
-                        />
-                      </TouchableOpacity>
-
-                      {/* Floating dropdown */}
-                      {showUserPicker && (
-                        <View
-                          style={[
-                            styles.dropdown,
-                            { backgroundColor: c.bg, borderColor: c.border },
-                          ]}
-                        >
-                          {users.map((u) => {
-                            const selected = selectedUser?.id === u.id;
-                            return (
-                              <TouchableOpacity
-                                key={u.id}
-                                style={[
-                                  styles.dropdownItem,
-                                  {
-                                    backgroundColor: selected
-                                      ? c.userRowSelected
-                                      : c.userRow,
-                                    borderBottomColor: c.userRowBorder,
-                                  },
-                                ]}
-                                onPress={() => {
-                                  setSelectedUser(u);
-                                  setShowUserPicker(false);
-                                }}
-                                activeOpacity={0.7}
-                              >
-                                <View
-                                  style={[
-                                    styles.avatar,
-                                    { backgroundColor: c.accentLight },
-                                  ]}
-                                >
-                                  {u.photoUri ? (
-                                    <Image
-                                      source={{ uri: u.photoUri }}
-                                      style={styles.avatarImg}
-                                    />
-                                  ) : (
-                                    <Text
-                                      style={[
-                                        styles.avatarText,
-                                        { color: c.accent },
-                                      ]}
-                                    >
-                                      {u.name.charAt(0).toUpperCase()}
-                                    </Text>
-                                  )}
-                                </View>
-                                <Text
-                                  style={[styles.userName, { color: c.text }]}
-                                >
-                                  {u.name}
-                                </Text>
-                                {selected && (
-                                  <View
-                                    style={[
-                                      styles.dot,
-                                      { backgroundColor: c.accent },
-                                    ]}
-                                  />
-                                )}
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ) : (
-                  // Single user — show name badge
-                  <View style={styles.section}>
-                    <Text style={[styles.label, { color: c.muted }]}>
-                      Usuario
-                    </Text>
-                    <View
-                      style={[
-                        styles.singleUser,
-                        {
-                          backgroundColor: c.userRowSelected,
-                          borderColor: c.border,
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.avatar,
-                          { backgroundColor: c.accentLight },
-                        ]}
-                      >
-                        {selectedUser?.photoUri ? (
-                          <Image
-                            source={{ uri: selectedUser.photoUri }}
-                            style={styles.avatarImg}
-                          />
-                        ) : (
-                          <Text
-                            style={[styles.avatarText, { color: c.accent }]}
-                          >
-                            {selectedUser?.name.charAt(0).toUpperCase()}
-                          </Text>
-                        )}
-                      </View>
-                      <Text style={[styles.userName, { color: c.text }]}>
-                        {selectedUser?.name}
-                      </Text>
-                      <View
-                        style={[styles.dot, { backgroundColor: c.accent }]}
-                      />
-                    </View>
-                  </View>
-                )}
-
-                {/* PIN input */}
-                {users.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={[styles.label, { color: c.muted }]}>PIN</Text>
-                    <Animated.View
-                      style={{ transform: [{ translateX: shakeAnim }] }}
-                    >
-                      <TextInput
-                        ref={pinRef}
-                        style={[
-                          styles.pinInput,
-                          {
-                            backgroundColor: pinDisabled
-                              ? isDark
-                                ? "#1a1a1c"
-                                : "#e5e7eb"
-                              : c.input,
-                            color: pinDisabled ? c.muted : c.text,
-                            borderColor: isLocked
-                              ? c.error
-                              : error
-                                ? c.error
-                                : c.border,
-                            opacity: pinDisabled ? 0.6 : 1,
-                            letterSpacing: pin.length > 0 ? 6 : 0,
-                          },
-                        ]}
-                        placeholder={
-                          role === "WORKER" && !selectedUser
-                            ? "Selecciona un usuario primero"
-                            : isLocked
-                              ? `Bloqueado ${lockoutSecsLeft}s`
-                              : "••••"
-                        }
-                        placeholderTextColor={c.muted}
-                        value={pin}
-                        onChangeText={handlePinChange}
-                        secureTextEntry={!isLocked && selectedUser !== null}
-                        keyboardType="numeric"
-                        maxLength={4}
-                        returnKeyType="done"
-                        editable={!pinDisabled}
-                        autoFocus={users.length === 1}
-                      />
-                      {verifying && (
-                        <View style={styles.pinSpinner}>
-                          <ActivityIndicator color={c.accent} size="small" />
-                        </View>
-                      )}
-                      {isLocked && (
-                        <View style={styles.pinSpinner}>
-                          <Text
-                            style={{
-                              color: c.error,
-                              fontSize: 13,
-                              fontWeight: "600",
-                            }}
-                          >
-                            {lockoutSecsLeft}s
-                          </Text>
-                        </View>
-                      )}
-                    </Animated.View>
-                  </View>
-                )}
-
-                {/* Error message */}
-                {!!error && (
-                  <View
-                    style={[styles.errorRow, { backgroundColor: c.errorBg }]}
-                  >
-                    <AlertCircle size={16} color={c.error as any} />
-                    <Text style={[styles.errorText, { color: c.error }]}>
-                      {error}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Cancel button */}
-                <TouchableOpacity
-                  style={[styles.btnCancel, { borderColor: c.border }]}
-                  onPress={onClose}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.btnCancelText, { color: c.muted }]}>
-                    Cancelar
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              {role === "ADMIN" ? renderAdmin() : renderWorker()}
             </Pressable>
           </Pressable>
         </ScrollView>
@@ -783,6 +1018,9 @@ export function LoginSheet({
   );
 }
 
+/* ═══════════════════════════════
+   STYLES
+   ═══════════════════════════════ */
 const styles = StyleSheet.create({
   overlay: {
     flexGrow: 1,
@@ -798,6 +1036,9 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
     overflow: "visible",
+  },
+  cardWide: {
+    overflow: "hidden",
   },
   headerRow: {
     alignItems: "center",
@@ -820,6 +1061,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
+  section: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   loaderRow: {
     alignItems: "center",
     paddingVertical: 16,
@@ -836,111 +1086,114 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
   },
-  section: {
+
+  /* Store carousel */
+  carouselContainer: {
+    marginHorizontal: -24,
+    paddingVertical: 4,
+  },
+  storeCard: {
+    width: STORE_CARD_W,
+    height: STORE_CARD_H,
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: "flex-end",
     gap: 6,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  userList: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  selectWrapper: {
-    position: "relative",
-    zIndex: 10,
-  },
-  selectTrigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-  },
-  selectTriggerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-  },
-  selectPlaceholder: {
-    fontSize: 15,
-    flex: 1,
-  },
-  dropdown: {
-    position: "absolute",
-    top: "100%",
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-    marginTop: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  userRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  singleUser: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    gap: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  storeCardIcon: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    fontSize: 14,
+  storeCardName: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  storeCardAddr: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+  },
+
+  /* Worker grid (step 1) */
+  workerGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+  },
+  workerCard: {
+    width: 100,
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  workerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  workerAvatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  workerAvatarText: {
+    fontSize: 20,
     fontWeight: "700",
   },
-  avatarImg: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  workerCardName: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
   },
-  userName: {
-    fontSize: 15,
-    fontWeight: "500",
-    flex: 1,
+
+  /* Big avatar (worker PIN step) */
+  bigAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  bigAvatarImg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
+  bigAvatarText: {
+    fontSize: 28,
+    fontWeight: "700",
+  },
+
+  /* Back button */
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 2,
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+
+  /* PIN input */
   pinInput: {
     borderRadius: 12,
     borderWidth: 1,
@@ -956,6 +1209,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
   },
+
+  /* Error */
   errorRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -967,6 +1222,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
   },
+
+  /* Cancel */
   btnCancel: {
     borderWidth: 1,
     borderRadius: 12,

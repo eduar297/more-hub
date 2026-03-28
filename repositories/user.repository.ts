@@ -21,6 +21,12 @@ export class UserRepository extends BaseRepository<
   }
 
   findByRole(role: UserRole): Promise<User[]> {
+    // Admin is global (no storeId) — never filter by store
+    if (role === "ADMIN") {
+      return this.db.getAllAsync<User>(
+        "SELECT * FROM users WHERE role = 'ADMIN' ORDER BY name ASC",
+      );
+    }
     if (this.storeId !== undefined) {
       return this.db.getAllAsync<User>(
         "SELECT * FROM users WHERE role = ? AND storeId = ? ORDER BY name ASC",
@@ -34,12 +40,14 @@ export class UserRepository extends BaseRepository<
   }
 
   async create(input: CreateUserInput): Promise<User> {
+    // Admin is global (storeId = NULL), workers get a store
+    const storeId = input.role === "ADMIN" ? null : (this.storeId ?? 1);
     const result = await this.db.runAsync(
       "INSERT INTO users (name, role, pinHash, storeId) VALUES (?, ?, ?, ?)",
       input.name,
       input.role,
       input.pinHash,
-      this.storeId ?? 1,
+      storeId,
     );
     const created = await this.findById(result.lastInsertRowId);
     if (!created) throw new Error("Usuario creado pero no encontrado");
