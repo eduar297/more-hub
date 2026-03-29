@@ -2,18 +2,43 @@ import { useAuth } from "@/contexts/auth-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import { useStore } from "@/contexts/store-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Store as StoreIcon } from "@tamagui/lucide-icons";
-import React, { useCallback, useEffect, useRef } from "react";
+import { Store, Store as StoreIcon } from "@tamagui/lucide-icons";
+import * as Haptics from "expo-haptics";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    Image,
-    PanResponder,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Dimensions,
+  Image,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, Sheet, Text as TText, YStack } from "tamagui";
+
+function useColors(isDark: boolean) {
+  return {
+    bg: isDark ? "#151718" : "#f8fafc",
+    card: isDark ? "#1c1c1e" : "#ffffff",
+    text: isDark ? "#f2f2f7" : "#18181b",
+    muted: isDark ? "#8e8e93" : "#6b7280",
+    border: isDark ? "#38383a" : "#e5e7eb",
+    input: isDark ? "#2c2c2e" : "#f3f4f6",
+    blue: "#3b82f6",
+    blueLight: isDark ? "#1e3a5f" : "#dbeafe",
+    green: "#22c55e",
+    greenLight: isDark ? "#14532d" : "#dcfce7",
+    danger: "#ef4444",
+    dangerBg: isDark ? "#2d1515" : "#fef2f2",
+    successBg: isDark ? "#14290f" : "#f0fdf4",
+    rowBg: isDark ? "#1c1c1e" : "#ffffff",
+    divider: isDark ? "#2c2c2e" : "#f1f5f9",
+    editBg: isDark ? "#2c2c2e" : "#f1f5f9",
+  };
+}
 
 const BUBBLE_SIZE = 44;
 const EDGE_MARGIN = 8;
@@ -21,12 +46,15 @@ const FADE_DELAY = 4000;
 const IDLE_OPACITY = 0.3;
 
 export function StoreBubble() {
-  // All hooks BEFORE any conditional return (Rules of Hooks)
   const { showStoreBubble } = usePreferences();
-  const { currentStore } = useStore();
+  const { currentStore, stores, setCurrentStore } = useStore();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
+  const themeName = colorScheme === "dark" ? "dark" : "light";
+  const c = useColors(colorScheme === "dark");
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const opacity = useRef(new Animated.Value(1)).current;
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,7 +130,6 @@ export function StoreBubble() {
     };
   }, [user, showStoreBubble, currentStore, resetFadeTimer, opacity]);
 
-  // Bubble only lives inside admin & worker (user is null on role-select page)
   if (!user || !showStoreBubble || !currentStore) return null;
 
   const storeColor = currentStore.color ?? "#3b82f6";
@@ -110,33 +137,152 @@ export function StoreBubble() {
   const borderColor = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.15)";
 
   return (
-    <Animated.View
-      {...panResponder.panHandlers}
-      style={[
-        styles.bubble,
-        {
-          backgroundColor: storeColor,
-          borderColor,
-          shadowColor: storeColor,
-          opacity,
-          transform: pan.getTranslateTransform(),
-        },
-      ]}
-    >
-      {currentStore.logoUri ? (
-        <Image
-          source={{ uri: currentStore.logoUri }}
-          style={styles.bubbleLogo}
+    <>
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.bubble,
+          {
+            backgroundColor: storeColor,
+            borderColor,
+            shadowColor: storeColor,
+            opacity,
+            transform: pan.getTranslateTransform(),
+          },
+        ]}
+      >
+        <Pressable
+          style={styles.pressableArea}
+          onPress={resetFadeTimer}
+          onLongPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setIsMenuOpen(true);
+          }}
+          delayLongPress={400}
+        >
+          {currentStore.logoUri ? (
+            <Image
+              source={{ uri: currentStore.logoUri }}
+              style={styles.bubbleLogo}
+            />
+          ) : (
+            <StoreIcon size={18} color="white" />
+          )}
+          <View style={styles.nameTag}>
+            <Text style={styles.nameText} numberOfLines={1}>
+              {currentStore.name}
+            </Text>
+          </View>
+        </Pressable>
+      </Animated.View>
+
+      <Sheet
+        open={isMenuOpen}
+        onOpenChange={setIsMenuOpen}
+        modal
+        snapPoints={[40]}
+        dismissOnSnapToBottom
+      >
+        <Sheet.Overlay
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+          backgroundColor="rgba(0,0,0,0.5)"
         />
-      ) : (
-        <StoreIcon size={18} color="white" />
-      )}
-      <View style={styles.nameTag}>
-        <Text style={styles.nameText} numberOfLines={1}>
-          {currentStore.name}
-        </Text>
-      </View>
-    </Animated.View>
+        <Sheet.Frame p="$4" theme={themeName as any}>
+          <Sheet.Handle />
+          <ScrollView>
+            <YStack gap="$3" pt="$2">
+              <TText fontSize="$5" fontWeight="bold" color="$color">
+                Cambiar tienda
+              </TText>
+
+              {stores.map((s, idx) => {
+                const isActive = currentStore?.id === s.id;
+                return (
+                  <View key={s.id}>
+                    {idx > 0 && (
+                      <View
+                        style={[styles.divider, { backgroundColor: c.divider }]}
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={styles.workerRow}
+                      onPress={() => {
+                        setCurrentStore(s);
+                        setIsMenuOpen(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.avatar,
+                          {
+                            backgroundColor: s.color
+                              ? `${s.color}22`
+                              : isActive
+                                ? c.blueLight
+                                : c.editBg,
+                            overflow: "hidden",
+                            borderWidth: isActive ? 2 : 0,
+                            borderColor: s.color ?? c.blue,
+                          },
+                        ]}
+                      >
+                        {s.logoUri ? (
+                          <Image
+                            source={{ uri: s.logoUri }}
+                            style={{ width: 38, height: 38, borderRadius: 19 }}
+                          />
+                        ) : (
+                          <Store
+                            size={18}
+                            color={
+                              (s.color ?? (isActive ? c.blue : c.muted)) as any
+                            }
+                          />
+                        )}
+                      </View>
+                      <View style={styles.workerInfo}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: s.color ?? c.blue,
+                            }}
+                          />
+                          <Text style={[styles.workerName, { color: c.text }]}>
+                            {s.name}
+                          </Text>
+                          {isActive && (
+                            <Text
+                              style={{
+                                fontSize: 10,
+                                color: s.color ?? c.blue,
+                                fontWeight: "700",
+                              }}
+                            >
+                              ACTIVA
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </YStack>
+          </ScrollView>
+        </Sheet.Frame>
+      </Sheet>
+    </>
   );
 }
 
@@ -146,14 +292,19 @@ const styles = StyleSheet.create({
     width: BUBBLE_SIZE,
     height: BUBBLE_SIZE,
     borderRadius: BUBBLE_SIZE / 2,
-    alignItems: "center",
-    justifyContent: "center",
     borderWidth: 1.5,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 10,
     zIndex: 9999,
+  },
+  pressableArea: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   bubbleLogo: {
     width: BUBBLE_SIZE - 6,
@@ -181,4 +332,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 0.2,
   },
+  workerMeta: { fontSize: 12 },
+  workerInfo: { flex: 1, gap: 2 },
+  workerName: { fontSize: 15, fontWeight: "600" },
+  workerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 4,
+    gap: 12,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 62 },
 });
