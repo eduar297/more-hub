@@ -84,7 +84,7 @@ export function useBarcodeScanner({
     activeInstanceId = instanceId.current;
     try {
       await CameraViewClass.launchScanner({
-        barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"],
+        barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "qr"],
         isGuidanceEnabled: true,
         isHighlightingEnabled: true,
         isPinchToZoomEnabled: true,
