@@ -34,7 +34,7 @@ const SLIDES = [
     color: "#3b82f6",
     bg: "#dbeafe",
     darkBg: "#1e3a5f",
-    title: "El More Hub",
+    title: "More Hub",
     desc: "Tu punto de venta todo en uno. Gestiona inventario, registra ventas y controla tus finanzas desde un solo lugar.",
   },
   {

@@ -30,7 +30,7 @@ function AppStack() {
       >
         <Stack.Screen
           name="index"
-          options={{ headerShown: false, title: "El More Hub" }}
+          options={{ headerShown: false, title: "More Hub" }}
         />
         <Stack.Screen
           name="(admin)"
