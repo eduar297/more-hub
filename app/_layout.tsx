@@ -1,11 +1,12 @@
 import { StoreBubble } from "@/components/ui/store-bubble";
 import { AuthProvider } from "@/contexts/auth-context";
+import { LanProvider } from "@/contexts/lan-context";
 import { PreferencesProvider } from "@/contexts/preferences-context";
 import { StoreProvider } from "@/contexts/store-context";
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider,
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
@@ -59,8 +60,10 @@ export default function RootLayout() {
           <StoreProvider>
             <PreferencesProvider>
               <AuthProvider>
-                <AppStack />
-                <StoreBubble />
+                <LanProvider>
+                  <AppStack />
+                  <StoreBubble />
+                </LanProvider>
               </AuthProvider>
             </PreferencesProvider>
           </StoreProvider>

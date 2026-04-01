@@ -133,11 +133,19 @@ async function ensureTables(db: SQLiteDatabase) {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS paired_devices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      deviceId TEXT NOT NULL UNIQUE,
+      deviceName TEXT,
+      lastConnected TEXT,
+      storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id)
+    );
   `);
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 13;
+  const DATABASE_VERSION = 14;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -378,6 +386,19 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       );
     `);
     currentVersion = 13;
+  }
+
+  if (currentVersion === 13) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS paired_devices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        deviceId TEXT NOT NULL UNIQUE,
+        deviceName TEXT,
+        lastConnected TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id)
+      );
+    `);
+    currentVersion = 14;
   }
 
   await seedUnits(db);

@@ -1,24 +1,22 @@
+import { CartMirror } from "@/components/lan/cart-mirror";
+import { DisplayConnect } from "@/components/lan/display-connect";
+import { useLan } from "@/contexts/lan-context";
+import { useStore } from "@/contexts/store-context";
 import { Monitor, Play } from "@tamagui/lucide-icons";
-import * as ScreenOrientation from "expo-screen-orientation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { StatusBar } from "react-native";
 import { Button, Text, YStack } from "tamagui";
 
 export default function DisplayScreen() {
   const [started, setStarted] = useState(false);
+  const { connectionStatus, cartMirror } = useLan();
+  const { currentStore } = useStore();
 
-  useEffect(() => {
-    return () => {
-      ScreenOrientation.unlockAsync();
-    };
-  }, []);
-
-  const handleStart = async () => {
-    await ScreenOrientation.lockAsync(
-      ScreenOrientation.OrientationLock.LANDSCAPE,
-    );
+  const handleStart = () => {
     setStarted(true);
   };
 
+  // Pre-start: show activation button
   if (!started) {
     return (
       <YStack
@@ -26,20 +24,16 @@ export default function DisplayScreen() {
         bg="$background"
         gap="$6"
         p="$6"
-        style={{ justifyContent: "center", alignItems: "center" }}
+        items="center"
+        justify="center"
       >
         <Monitor size={64} color="$purple10" />
-        <YStack gap="$2" style={{ alignItems: "center" }}>
-          <Text
-            fontSize="$7"
-            fontWeight="bold"
-            color="$color"
-            style={{ textAlign: "center" }}
-          >
+        <YStack gap="$2" items="center">
+          <Text fontSize="$7" fontWeight="bold" color="$color" text="center">
             Modo Display
           </Text>
-          <Text color="$color10" style={{ textAlign: "center" }} fontSize="$4">
-            Activa la pantalla horizontal para el mostrador
+          <Text color="$color10" text="center" fontSize="$4">
+            Activa la pantalla para conectar con un vendedor
           </Text>
         </YStack>
         <Button size="$6" theme="purple" icon={Play} onPress={handleStart}>
@@ -49,26 +43,20 @@ export default function DisplayScreen() {
     );
   }
 
+  // Hide status bar for kiosk experience
+  const isConnected = connectionStatus === "paired";
+
   return (
-    <YStack
-      flex={1}
-      bg="$color12"
-      gap="$4"
-      style={{ justifyContent: "center", alignItems: "center" }}
-    >
-      <Monitor size={48} color="$color1" />
-      <Text
-        fontSize="$12"
-        fontWeight="900"
-        color="$color1"
-        letterSpacing={4}
-        textTransform="uppercase"
-      >
-        Display
-      </Text>
-      <Text color="$color3" fontSize="$6" letterSpacing={1}>
-        Pantalla de mostrador
-      </Text>
+    <YStack flex={1} bg="$background">
+      <StatusBar hidden />
+      {isConnected ? (
+        <CartMirror
+          state={cartMirror}
+          storeName={currentStore?.name ?? "Tienda"}
+        />
+      ) : (
+        <DisplayConnect />
+      )}
     </YStack>
   );
 }

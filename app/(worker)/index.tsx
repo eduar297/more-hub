@@ -1,10 +1,13 @@
+import { ServerStatusBadge } from "@/components/lan/server-status";
 import { useAuth } from "@/contexts/auth-context";
+import { useLan } from "@/contexts/lan-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Product } from "@/models/product";
 import type { PaymentMethod } from "@/models/ticket";
+import type { CartItemWire } from "@/services/lan/protocol";
 import { todayISO } from "@/utils/format";
 import {
   AlertCircle,
@@ -22,7 +25,7 @@ import {
   X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -242,6 +245,24 @@ export default function WorkerScreen() {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // LAN broadcasting
+  const {
+    broadcastCart,
+    broadcastClear,
+    broadcastCheckout,
+    startServer,
+    serverRunning,
+  } = useLan();
+  const serverStarted = useRef(false);
+
+  // Auto-start LAN server on first mount
+  useEffect(() => {
+    if (user && !serverStarted.current) {
+      serverStarted.current = true;
+      startServer().catch(() => {});
+    }
+  }, [user, startServer]);
+
   // Today's summary (worker-scoped)
   const [todaySales, setTodaySales] = useState(0);
   const [todayCount, setTodayCount] = useState(0);
@@ -355,7 +376,20 @@ export default function WorkerScreen() {
     setShowCheckout(false);
     setPaymentMethod("CASH");
     setError(null);
-  }, []);
+    broadcastClear();
+  }, [broadcastClear]);
+
+  // Broadcast cart changes to connected displays
+  useEffect(() => {
+    const wireCart: CartItemWire[] = cart.map((c) => ({
+      productId: c.product.id,
+      name: c.product.name,
+      photoUri: c.product.photoUri,
+      quantity: c.quantity,
+      unitPrice: c.unitPrice,
+    }));
+    broadcastCart(wireCart, cartTotal);
+  }, [cart, cartTotal, broadcastCart]);
 
   // Stock validation
   const stockErrors = useMemo(() => {
@@ -382,17 +416,19 @@ export default function WorkerScreen() {
     setConfirming(true);
     setError(null);
     try {
+      const saleItems = cart.map((c) => ({
+        productId: c.product.id,
+        productName: c.product.name,
+        quantity: c.quantity,
+        unitPrice: c.unitPrice,
+      }));
       await tickets.create({
         paymentMethod,
         workerId: user?.id ?? null,
         workerName: user?.name ?? null,
-        items: cart.map((c) => ({
-          productId: c.product.id,
-          productName: c.product.name,
-          quantity: c.quantity,
-          unitPrice: c.unitPrice,
-        })),
+        items: saleItems,
       });
+      broadcastCheckout(cartTotal, cartItemCount, paymentMethod);
       clearCart();
       await loadSummary();
     } catch (e) {
@@ -407,7 +443,11 @@ export default function WorkerScreen() {
     <YStack flex={1} bg="$background">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <YStack p="$4" gap="$4">
-          {/* Stats row — worker-scoped today */}
+          {/* LAN status + Stats row */}
+          <XStack justify="flex-end" mb="$-2">
+            <ServerStatusBadge />
+          </XStack>
+
           <XStack gap="$3">
             <Card
               flex={1}
