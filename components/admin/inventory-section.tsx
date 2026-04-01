@@ -3,6 +3,7 @@ import { StatCard } from "@/components/admin/stat-card";
 import { StockRow } from "@/components/admin/stock-row";
 import { ProductDetail } from "@/components/product/product-detail";
 import { SearchInput } from "@/components/ui/search-input";
+import { CHART_PALETTE } from "@/constants/colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useProductRepository } from "@/hooks/use-product-repository";
@@ -29,19 +30,6 @@ import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, ScrollView } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import { Card, Separator, Sheet, Spinner, Text, XStack, YStack } from "tamagui";
-
-const CAT_COLORS = [
-  "#3b82f6",
-  "#22c55e",
-  "#a855f7",
-  "#f97316",
-  "#ec4899",
-  "#eab308",
-  "#06b6d4",
-  "#ef4444",
-  "#8b5cf6",
-  "#14b8a6",
-];
 
 export function InventorySection() {
   const productRepo = useProductRepository();
@@ -194,7 +182,7 @@ export function InventorySection() {
         category: c,
         count: countMap.get(c.id) ?? 0,
         value: valueMap.get(c.id) ?? 0,
-        color: CAT_COLORS[idx % CAT_COLORS.length],
+        color: CHART_PALETTE[idx % CHART_PALETTE.length],
       }))
       .sort((a, b) => b.value - a.value);
   }, [allProducts, allCategories, unitMap]);

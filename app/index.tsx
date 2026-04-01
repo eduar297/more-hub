@@ -1,6 +1,5 @@
 import { LoginSheet } from "@/components/auth/login-sheet";
 import { useAuth } from "@/contexts/auth-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { UserRole } from "@/models/user";
 import {
   ChevronRight,
@@ -14,15 +13,8 @@ import {
 } from "@tamagui/lucide-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
-import {
-  Dimensions,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Dimensions, FlatList } from "react-native";
+import { ScrollView, Text, useTheme, View, XStack, YStack } from "tamagui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -40,9 +32,9 @@ const SLIDES = [
   {
     id: "admin",
     icon: LayoutDashboard,
-    color: "#3b82f6",
-    bg: "#dbeafe",
-    darkBg: "#1e3a5f",
+    color: "#a855f7", // purple
+    bg: "#f3e8ff", // light purple
+    darkBg: "#3b0764", // dark purple
     title: "Panel de Administración",
     desc: "Gestiona productos, proveedores y compras. Analiza ventas por período, controla el inventario y revisa el estado financiero.",
   },
@@ -58,9 +50,9 @@ const SLIDES = [
   {
     id: "inventory",
     icon: Package,
-    color: "#a855f7",
-    bg: "#f3e8ff",
-    darkBg: "#3b0764",
+    color: "#06b6d4", // cyan
+    bg: "#cffafe", // light cyan
+    darkBg: "#164e63", // dark cyan
     title: "Control de Inventario",
     desc: "Mantén el stock actualizado automáticamente. Recibe alertas de productos bajos y registra entradas de mercancía.",
   },
@@ -118,34 +110,48 @@ function Slide({
 }) {
   const Icon = item.icon;
   return (
-    <View style={[styles.slide, { width: SCREEN_W - 32 }]}>
+    <YStack
+      items="center"
+      gap="$3"
+      px="$2"
+      py="$5"
+      rounded="$6"
+      width={SCREEN_W - 32}
+    >
       <View
-        style={[
-          styles.slideIconWrap,
-          { backgroundColor: isDark ? item.darkBg : item.bg },
-        ]}
+        width={72}
+        height={72}
+        rounded="$10"
+        items="center"
+        justify="center"
+        mb="$1"
+        bg={(isDark ? item.darkBg : item.bg) as any}
       >
         <Icon size={36} color={item.color as any} />
       </View>
-      <Text
-        style={[styles.slideTitle, { color: isDark ? "#f2f2f7" : "#18181b" }]}
-      >
+      <Text fontSize={20} fontWeight="700" text="center" color="$color">
         {item.title}
       </Text>
       <Text
-        style={[styles.slideDesc, { color: isDark ? "#8e8e93" : "#6b7280" }]}
+        fontSize={14}
+        text="center"
+        style={{ lineHeight: 20 }}
+        px="$2"
+        color="$color8"
       >
         {item.desc}
       </Text>
-    </View>
+    </YStack>
   );
 }
 
 export default function HomeScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const theme = useTheme();
   const { logout } = useAuth();
-  const isDark = colorScheme === "dark";
+  const isDark =
+    (theme.background?.val ?? "").startsWith("#0") ||
+    (theme.background?.val ?? "").startsWith("#1");
 
   // Clear user every time this screen gets focus (back from admin/worker)
   useFocusEffect(
@@ -158,16 +164,6 @@ export default function HomeScreen() {
   const [loginRole, setLoginRole] = useState<UserRole | null>(null);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const flatRef = useRef<FlatList>(null);
-
-  const c = {
-    bg: isDark ? "#151718" : "#f8fafc",
-    card: isDark ? "#1c1c1e" : "#ffffff",
-    text: isDark ? "#f2f2f7" : "#18181b",
-    muted: isDark ? "#8e8e93" : "#6b7280",
-    border: isDark ? "#38383a" : "#e5e7eb",
-    dotActive: isDark ? "#f2f2f7" : "#18181b",
-    dotInactive: isDark ? "#38383a" : "#d1d5db",
-  };
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
@@ -206,14 +202,21 @@ export default function HomeScreen() {
   }, [logout]);
 
   return (
-    <View style={[styles.root, { backgroundColor: c.bg }]}>
+    <YStack flex={1} bg="$background">
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={
+          {
+            paddingHorizontal: 16,
+            paddingTop: 64,
+            paddingBottom: 40,
+            gap: 28,
+          } as any
+        }
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Feature carousel ── */}
-        <View style={styles.carouselSection}>
+        <YStack gap="$3">
           <FlatList
             ref={flatRef}
             data={SLIDES}
@@ -229,68 +232,76 @@ export default function HomeScreen() {
           />
 
           {/* Dots */}
-          <View style={styles.dots}>
+          <XStack justify="center" gap="$1.5" items="center">
             {SLIDES.map((_, i) => (
-              <TouchableOpacity
+              <View
                 key={i}
                 onPress={() =>
                   flatRef.current?.scrollToIndex({ index: i, animated: true })
                 }
-              >
-                <View
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor:
-                        i === activeSlide ? c.dotActive : c.dotInactive,
-                      width: i === activeSlide ? 20 : 6,
-                    },
-                  ]}
-                />
-              </TouchableOpacity>
+                height={6}
+                rounded="$10"
+                bg={i === activeSlide ? "$color" : "$color5"}
+                width={i === activeSlide ? 20 : 6}
+              />
             ))}
-          </View>
-        </View>
+          </XStack>
+        </YStack>
 
         {/* ── Roles ── */}
-        <View style={styles.rolesSection}>
-          <Text style={[styles.rolesTitle, { color: c.muted }]}>
+        <YStack gap="$3">
+          <Text
+            fontSize={12}
+            fontWeight="600"
+            textTransform="uppercase"
+            letterSpacing={0.5}
+            px="$0.5"
+            color="$color8"
+          >
             Selecciona tu modo
           </Text>
-          <View style={styles.rolesGrid}>
+          <YStack gap="$2.5">
             {ROLES.map(
               ({ icon: Icon, label, desc, role, path, color, bg, darkBg }) => (
-                <TouchableOpacity
+                <XStack
                   key={path}
-                  style={[
-                    styles.roleCard,
-                    { backgroundColor: c.card, borderColor: c.border },
-                  ]}
-                  activeOpacity={0.75}
+                  items="center"
+                  rounded="$5"
+                  borderWidth={1}
+                  p="$3.5"
+                  gap="$3"
+                  bg="$color1"
+                  borderColor="$borderColor"
+                  pressStyle={{ opacity: 0.7, scale: 0.98 }}
+                  // @ts-expect-error animation works at runtime on XStack
+                  animation="fast"
                   onPress={() => handleRolePress(role, path)}
+                  enterStyle={{ opacity: 0, y: 10 }}
                 >
                   <View
-                    style={[
-                      styles.roleIconWrap,
-                      { backgroundColor: isDark ? darkBg : bg },
-                    ]}
+                    width={46}
+                    height={46}
+                    rounded="$4"
+                    items="center"
+                    justify="center"
+                    bg={(isDark ? darkBg : bg) as any}
                   >
                     <Icon size={24} color={color as any} />
                   </View>
-                  <View style={styles.roleText}>
-                    <Text style={[styles.roleLabel, { color: c.text }]}>
+                  <YStack grow={1} gap="$0.5">
+                    <Text fontSize={16} fontWeight="700" color="$color">
                       {label}
                     </Text>
-                    <Text style={[styles.roleDesc, { color: c.muted }]}>
+                    <Text fontSize={13} color="$color8">
                       {desc}
                     </Text>
-                  </View>
-                  <ChevronRight size={18} color={c.muted as any} />
-                </TouchableOpacity>
+                  </YStack>
+                  <ChevronRight size={18} color={theme.color8?.val as any} />
+                </XStack>
               ),
             )}
-          </View>
-        </View>
+          </YStack>
+        </YStack>
       </ScrollView>
 
       {/* ── Login modal ── */}
@@ -302,116 +313,6 @@ export default function HomeScreen() {
           onSuccess={handleLoginSuccess}
         />
       )}
-    </View>
+    </YStack>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 64,
-    paddingBottom: 40,
-    gap: 28,
-  },
-  logoSection: {
-    alignItems: "center",
-    gap: 6,
-  },
-  logoIconWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: "800",
-    letterSpacing: -1,
-  },
-  appTagline: {
-    fontSize: 15,
-  },
-  carouselSection: {
-    gap: 12,
-  },
-  slide: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 24,
-    borderRadius: 20,
-  },
-  slideIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  slideTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  slideDesc: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 8,
-  },
-  dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-    alignItems: "center",
-  },
-  dot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  rolesSection: {
-    gap: 10,
-  },
-  rolesTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    paddingHorizontal: 2,
-  },
-  rolesGrid: {
-    gap: 10,
-  },
-  roleCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    gap: 12,
-  },
-  roleIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  roleText: {
-    flex: 1,
-    gap: 2,
-  },
-  roleLabel: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  roleDesc: {
-    fontSize: 13,
-  },
-});

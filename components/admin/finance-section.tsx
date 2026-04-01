@@ -1,3 +1,4 @@
+import { EXPENSE_CATEGORY_COLORS } from "@/constants/colors";
 import { useExpenseRepository } from "@/hooks/use-expense-repository";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
@@ -14,15 +15,6 @@ import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
 import { PeriodSelector } from "./period-selector";
 
 const SCREEN_W = Dimensions.get("window").width;
-
-const CAT_EXPENSE_COLORS: Record<string, string> = {
-  TRANSPORT: "#f97316",
-  ELECTRICITY: "#eab308",
-  RENT: "#ec4899",
-  REPAIRS: "#ef4444",
-  SUPPLIES: "#22c55e",
-  OTHER: "#888888",
-};
 
 export function FinanceSection() {
   const ticketRepo = useTicketRepository();
@@ -192,7 +184,7 @@ export function FinanceSection() {
       items.push({
         label: EXPENSE_CATEGORIES[ec.category],
         value: ec.total,
-        color: CAT_EXPENSE_COLORS[ec.category] ?? "#888",
+        color: EXPENSE_CATEGORY_COLORS[ec.category] ?? "#888",
       });
     }
     return items;

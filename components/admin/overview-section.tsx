@@ -305,6 +305,8 @@ export function OverviewSection() {
               borderColor="$borderColor"
               style={{ borderRadius: 14 }}
               p="$4"
+              animation="fast"
+              enterStyle={{ opacity: 0, y: 10 }}
             >
               <YStack gap="$3">
                 <XStack gap="$2" style={{ alignItems: "center" }}>
@@ -338,6 +340,8 @@ export function OverviewSection() {
             borderColor={profit >= 0 ? "$green6" : "$red6"}
             style={{ borderRadius: 14 }}
             p="$4"
+            animation="fast"
+            enterStyle={{ opacity: 0, y: 10 }}
           >
             <YStack gap="$3">
               <XStack gap="$2" style={{ alignItems: "center" }}>

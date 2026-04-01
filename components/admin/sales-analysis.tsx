@@ -1,4 +1,9 @@
 import { SearchInput } from "@/components/ui/search-input";
+import {
+  AFFINITY_COLORS,
+  DISCOUNT_COLORS,
+  STAGNANT_COLORS,
+} from "@/constants/colors";
 import { useStore } from "@/contexts/store-context";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { fmtMoney } from "@/utils/format";
@@ -39,27 +44,43 @@ const STAGNANT_META: Record<
   StagnantStatus,
   { label: string; color: string; emoji: string }
 > = {
-  no_sales: { label: "Sin ventas", color: "#ef4444", emoji: "🔴" },
-  heavy_drop: { label: "Caída fuerte", color: "#f97316", emoji: "🟠" },
-  slowing: { label: "Desacelerando", color: "#eab308", emoji: "🟡" },
+  no_sales: {
+    label: "Sin ventas",
+    color: STAGNANT_COLORS.no_sales,
+    emoji: "🔴",
+  },
+  heavy_drop: {
+    label: "Caída fuerte",
+    color: STAGNANT_COLORS.heavy_drop,
+    emoji: "🟠",
+  },
+  slowing: {
+    label: "Desacelerando",
+    color: STAGNANT_COLORS.slowing,
+    emoji: "🟡",
+  },
 };
 
 const DISCOUNT_META: Record<
   "possible" | "tight" | "none",
   { label: string; color: string; emoji: string }
 > = {
-  possible: { label: "Descuento posible", color: "#22c55e", emoji: "✅" },
-  tight: { label: "Margen justo", color: "#f59e0b", emoji: "⚠️" },
-  none: { label: "Sin margen", color: "#6b7280", emoji: "🚫" },
+  possible: {
+    label: "Descuento posible",
+    color: DISCOUNT_COLORS.possible,
+    emoji: "✅",
+  },
+  tight: { label: "Margen justo", color: DISCOUNT_COLORS.tight, emoji: "⚠️" },
+  none: { label: "Sin margen", color: DISCOUNT_COLORS.none, emoji: "🚫" },
 };
 
 const AFFINITY_META: Record<
   ComboAffinity,
   { label: string; color: string; emoji: string }
 > = {
-  high: { label: "Alta afinidad", color: "#22c55e", emoji: "💚" },
-  medium: { label: "Media", color: "#f59e0b", emoji: "💛" },
-  low: { label: "Baja", color: "#6b7280", emoji: "⚪" },
+  high: { label: "Alta afinidad", color: AFFINITY_COLORS.high, emoji: "💚" },
+  medium: { label: "Media", color: AFFINITY_COLORS.medium, emoji: "💛" },
+  low: { label: "Baja", color: AFFINITY_COLORS.low, emoji: "⚪" },
 };
 
 function StagnantBadge({ status }: { status: StagnantStatus }) {

@@ -19,6 +19,8 @@ export function StatCard({
       borderWidth={1}
       borderColor="$borderColor"
       style={{ borderRadius: 12 }}
+      animation="fast"
+      enterStyle={{ opacity: 0, y: 10 }}
     >
       <YStack gap="$1">
         {icon}

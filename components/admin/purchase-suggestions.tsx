@@ -1,33 +1,34 @@
 import { SearchInput } from "@/components/ui/search-input";
+import { TREND_COLORS, URGENCY_COLORS } from "@/constants/colors";
 import { useStore } from "@/contexts/store-context";
 import { fmtMoney } from "@/utils/format";
 import type {
-  PurchaseReport,
-  PurchaseSuggestion,
-  SalesTrend,
-  Urgency,
+    PurchaseReport,
+    PurchaseSuggestion,
+    SalesTrend,
+    Urgency,
 } from "@/utils/purchase-suggestions";
 import { runPurchaseSuggestions } from "@/utils/purchase-suggestions";
 import {
-  ArrowUpDown,
-  ChevronDown,
-  Package,
-  ShoppingCart,
+    ArrowUpDown,
+    ChevronDown,
+    Package,
+    ShoppingCart,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Image, ScrollView } from "react-native";
 import {
-  Accordion,
-  Button,
-  Card,
-  Input,
-  Label,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Accordion,
+    Button,
+    Card,
+    Input,
+    Label,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 // ── Urgency helpers ──────────────────────────────────────────────────────────
@@ -36,19 +37,19 @@ const URGENCY_META: Record<
   Urgency,
   { label: string; color: string; emoji: string }
 > = {
-  critical: { label: "Crítico", color: "#ef4444", emoji: "🔴" },
-  low: { label: "Bajo", color: "#f59e0b", emoji: "🟡" },
-  ok: { label: "Bien", color: "#22c55e", emoji: "🟢" },
-  overstock: { label: "Exceso", color: "#8b5cf6", emoji: "🟣" },
+  critical: { label: "Crítico", color: URGENCY_COLORS.critical, emoji: "🔴" },
+  low: { label: "Bajo", color: URGENCY_COLORS.low, emoji: "🟡" },
+  ok: { label: "Bien", color: URGENCY_COLORS.ok, emoji: "🟢" },
+  overstock: { label: "Exceso", color: URGENCY_COLORS.overstock, emoji: "🟣" },
 };
 
 const TREND_META: Record<
   SalesTrend,
   { label: string; emoji: string; color: string }
 > = {
-  rising: { label: "Subiendo", emoji: "📈", color: "#22c55e" },
-  stable: { label: "Estable", emoji: "➡️", color: "#6b7280" },
-  falling: { label: "Bajando", emoji: "📉", color: "#ef4444" },
+  rising: { label: "Subiendo", emoji: "📈", color: TREND_COLORS.rising },
+  stable: { label: "Estable", emoji: "➡️", color: TREND_COLORS.stable },
+  falling: { label: "Bajando", emoji: "📉", color: TREND_COLORS.falling },
 };
 
 function UrgencyBadge({ urgency }: { urgency: Urgency }) {

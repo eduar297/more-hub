@@ -58,3 +58,53 @@ export const BRAND_COLORS = {
   amber: { solid: "#f59e0b", light: "#fef3c7", dark: "#451a03" },
   red: { solid: "#ef4444", light: "#fef2f2", dark: "#2d1515" },
 } as const;
+
+// ── BCG matrix class colors (pricing-analysis) ──────────────────────────────
+
+export const CLASS_META_COLORS: Record<string, string> = {
+  star: "#eab308",
+  cow: "#22c55e",
+  question: "#3b82f6",
+  dog: "#ef4444",
+};
+
+// ── Purchase suggestion colors ───────────────────────────────────────────────
+
+export const URGENCY_COLORS: Record<string, string> = {
+  critical: "#ef4444",
+  low: "#f59e0b",
+  ok: "#22c55e",
+  overstock: "#8b5cf6",
+};
+
+export const TREND_COLORS: Record<string, string> = {
+  rising: "#22c55e",
+  stable: "#6b7280",
+  falling: "#ef4444",
+};
+
+// ── Sales analysis colors ────────────────────────────────────────────────────
+
+export const STAGNANT_COLORS: Record<string, string> = {
+  no_sales: "#ef4444",
+  heavy_drop: "#f97316",
+  slowing: "#eab308",
+};
+
+export const DISCOUNT_COLORS: Record<string, string> = {
+  possible: "#22c55e",
+  tight: "#f59e0b",
+  none: "#6b7280",
+};
+
+export const AFFINITY_COLORS: Record<string, string> = {
+  high: "#22c55e",
+  medium: "#f59e0b",
+  low: "#6b7280",
+};
+
+// ── Chart axis/label colors ──────────────────────────────────────────────────
+
+export const AXIS_LABEL_COLOR = "#888";
+export const AXIS_LINE_COLOR = "#555";
+export const PLACEHOLDER_BG = "#e5e7eb";

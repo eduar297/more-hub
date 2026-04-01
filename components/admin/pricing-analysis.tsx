@@ -1,33 +1,34 @@
 import { SearchInput } from "@/components/ui/search-input";
+import { CLASS_META_COLORS } from "@/constants/colors";
 import { useStore } from "@/contexts/store-context";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { fmtMoney } from "@/utils/format";
 import type {
-  PricingReport,
-  ProductAnalysis,
-  ProductClass,
+    PricingReport,
+    ProductAnalysis,
+    ProductClass,
 } from "@/utils/pricing-analysis";
 import { runPricingAnalysis } from "@/utils/pricing-analysis";
 import {
-  ArrowUpDown,
-  Check,
-  CheckCircle,
-  ChevronDown,
-  TrendingUp,
+    ArrowUpDown,
+    Check,
+    CheckCircle,
+    ChevronDown,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Image, ScrollView } from "react-native";
 import {
-  Accordion,
-  Button,
-  Card,
-  Input,
-  Label,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Accordion,
+    Button,
+    Card,
+    Input,
+    Label,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 // ── Classification helpers ───────────────────────────────────────────────────
@@ -38,25 +39,25 @@ const CLASS_META: Record<
 > = {
   star: {
     label: "Top",
-    color: "#eab308",
+    color: CLASS_META_COLORS.star,
     emoji: "⭐",
     desc: "Se vende mucho + buen margen",
   },
   cow: {
     label: "Rentable",
-    color: "#22c55e",
+    color: CLASS_META_COLORS.cow,
     emoji: "💰",
     desc: "Se vende mucho + margen bajo",
   },
   question: {
     label: "Oportunidad",
-    color: "#3b82f6",
+    color: CLASS_META_COLORS.question,
     emoji: "🔍",
     desc: "Se vende poco + buen margen",
   },
   dog: {
     label: "Revisar",
-    color: "#ef4444",
+    color: CLASS_META_COLORS.dog,
     emoji: "⚠️",
     desc: "Se vende poco + margen bajo",
   },
