@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import React from "react";
 import { Pressable } from "react-native";
 import { Text, useTheme, XStack } from "tamagui";
@@ -49,7 +50,10 @@ export function ScreenTabs<T extends string>({
         return (
           <Pressable
             key={tab.key}
-            onPress={() => onSelect(tab.key)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onSelect(tab.key);
+            }}
             style={{
               flex: 1,
               paddingVertical: 9,

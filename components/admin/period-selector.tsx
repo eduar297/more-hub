@@ -1,6 +1,7 @@
 import type { PeriodNavigation } from "@/hooks/use-period-navigation";
 import { todayISO } from "@/utils/format";
 import { Calendar, ChevronLeft, ChevronRight, X } from "@tamagui/lucide-icons";
+import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
@@ -49,7 +50,10 @@ export function PeriodTabs({
         return (
           <Pressable
             key={p}
-            onPress={() => onChangePeriod(p)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onChangePeriod(p);
+            }}
             style={{
               flex: 1,
               borderRadius: 8,
