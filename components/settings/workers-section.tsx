@@ -120,7 +120,7 @@ export function WorkersSection() {
       setSaving(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, pin, pinConfirm, editing, userRepo, load]);
+  }, [name, pin, pinConfirm, photoUri, editing, userRepo, load]);
 
   const handleDelete = useCallback(
     (w: User) => {

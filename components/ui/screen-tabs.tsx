@@ -61,6 +61,8 @@ export function ScreenTabs<T extends string>({
               alignItems: "center",
               gap: 4,
               borderRadius: 11,
+              borderWidth: 1,
+              borderColor: isActive ? accent : "transparent",
               backgroundColor: isActive ? activePillBg : "transparent",
               shadowColor: shadowColor,
               shadowOffset: { width: 0, height: 1 },
