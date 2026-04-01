@@ -30,7 +30,7 @@ export function EmptyState({ icon, title, description }: EmptyStateProps) {
           color="$color10"
           style={{ textAlign: "center" }}
           fontSize="$3"
-          maxWidth={280}
+          maxW={280}
         >
           {description}
         </Text>

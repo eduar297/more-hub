@@ -27,7 +27,7 @@ export function FeedbackBanner({
 
   return (
     <XStack
-      bg={bg}
+      bg={bg as any}
       px="$3"
       py="$2.5"
       rounded="$3"
@@ -36,8 +36,8 @@ export function FeedbackBanner({
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
     >
-      <Icon size={16} color={color} />
-      <Text fontSize="$2" color={color} flex={1}>
+      <Icon size={16} color={color as any} />
+      <Text fontSize="$2" color={color as any} flex={1}>
         {message}
       </Text>
       {onDismiss && (
@@ -45,7 +45,7 @@ export function FeedbackBanner({
           size="$2"
           chromeless
           circular
-          icon={<X size={14} color={color} />}
+          icon={<X size={14} color={color as any} />}
           onPress={onDismiss}
           accessibilityLabel="Cerrar notificación"
         />
