@@ -570,7 +570,7 @@ export default function WorkerScreen() {
                 <CartItemRow
                   key={item.product.id}
                   item={item}
-                  editable={false}
+                  editable
                   onChangeQty={(q) =>
                     updateCartItem(item.product.id, { quantity: q })
                   }
@@ -580,6 +580,21 @@ export default function WorkerScreen() {
                   onRemove={() => removeCartItem(item.product.id)}
                 />
               ))}
+
+              {/* Stock warnings inline */}
+              {stockErrors.length > 0 && (
+                <YStack px="$3" py="$2" gap="$1">
+                  {stockErrors.map((err) => (
+                    <XStack key={err} style={{ alignItems: "center" }} gap="$2">
+                      <AlertCircle size={14} color="$red10" />
+                      <Text fontSize="$2" color="$red10">
+                        {err}
+                      </Text>
+                    </XStack>
+                  ))}
+                </YStack>
+              )}
+
               <YStack px="$3" py="$3" gap="$3">
                 <XStack
                   style={{
@@ -596,8 +611,9 @@ export default function WorkerScreen() {
                 </XStack>
                 <Button
                   size="$5"
-                  theme="blue"
+                  theme="green"
                   icon={Receipt}
+                  disabled={stockErrors.length > 0}
                   onPress={() => setShowCheckout(true)}
                 >
                   Finalizar venta
@@ -839,7 +855,7 @@ export default function WorkerScreen() {
         open={showCheckout}
         onOpenChange={setShowCheckout}
         modal
-        snapPoints={[95]}
+        snapPoints={[65]}
         dismissOnSnapToBottom
       >
         <Sheet.Overlay
@@ -849,107 +865,112 @@ export default function WorkerScreen() {
         />
         <Sheet.Frame theme={themeName as any}>
           <Sheet.Handle />
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-          >
-            <YStack p="$4" gap="$4">
-              <Text fontSize="$6" fontWeight="bold" color="$color">
-                Resumen de venta
-              </Text>
+          <YStack p="$4" gap="$4">
+            <Text fontSize="$6" fontWeight="bold" color="$color">
+              Confirmar venta
+            </Text>
 
-              <Card
-                borderWidth={1}
-                borderColor="$borderColor"
-                style={{ borderRadius: 14 }}
-                overflow="hidden"
-                bg="$background"
-              >
-                {cart.map((item) => (
-                  <CartItemRow
+            {/* Order summary */}
+            <Card
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              overflow="hidden"
+              bg="$color2"
+              p="$3"
+              gap="$2"
+            >
+              {cart.map((item) => {
+                const subtotal = item.quantity * item.unitPrice;
+                return (
+                  <XStack
                     key={item.product.id}
-                    item={item}
-                    editable
-                    onChangeQty={(q) =>
-                      updateCartItem(item.product.id, { quantity: q })
-                    }
-                    onChangePrice={(p) =>
-                      updateCartItem(item.product.id, { unitPrice: p })
-                    }
-                    onRemove={() => removeCartItem(item.product.id)}
-                  />
-                ))}
-              </Card>
-
-              {stockErrors.length > 0 && (
-                <YStack bg="$red2" p="$3" style={{ borderRadius: 12 }} gap="$1">
-                  {stockErrors.map((err) => (
-                    <XStack key={err} style={{ alignItems: "center" }} gap="$2">
-                      <AlertCircle size={14} color="$red10" />
-                      <Text fontSize="$2" color="$red10">
-                        {err}
-                      </Text>
-                    </XStack>
-                  ))}
-                </YStack>
-              )}
-
-              <YStack gap="$2">
-                <Text fontSize="$4" fontWeight="bold" color="$color">
-                  Método de pago
-                </Text>
-                <XStack gap="$3">
-                  <Button
-                    flex={1}
-                    size="$5"
-                    icon={Banknote}
-                    theme={paymentMethod === "CASH" ? "green" : undefined}
-                    variant={paymentMethod === "CASH" ? undefined : "outlined"}
-                    onPress={() => setPaymentMethod("CASH")}
+                    style={{ alignItems: "center" }}
+                    justify="space-between"
                   >
-                    Efectivo
-                  </Button>
-                  <Button
-                    flex={1}
-                    size="$5"
-                    icon={CreditCard}
-                    theme={paymentMethod === "CARD" ? "blue" : undefined}
-                    variant={paymentMethod === "CARD" ? undefined : "outlined"}
-                    onPress={() => setPaymentMethod("CARD")}
-                  >
-                    Tarjeta
-                  </Button>
-                </XStack>
-              </YStack>
+                    <Text
+                      fontSize="$3"
+                      color="$color"
+                      flex={1}
+                      numberOfLines={1}
+                    >
+                      {item.product.name}
+                    </Text>
+                    <Text fontSize="$2" color="$color10" mx="$2">
+                      x{item.quantity} × ${item.unitPrice.toFixed(2)}
+                    </Text>
+                    <Text
+                      fontSize="$3"
+                      fontWeight="bold"
+                      color="$green10"
+                      width={80}
+                      style={{ textAlign: "right" }}
+                    >
+                      ${subtotal.toFixed(2)}
+                    </Text>
+                  </XStack>
+                );
+              })}
+            </Card>
 
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-                py="$2"
-              >
-                <Text fontSize="$6" fontWeight="bold" color="$color">
-                  Total
-                </Text>
-                <Text fontSize="$8" fontWeight="bold" color="$green10">
-                  ${cartTotal.toFixed(2)}
-                </Text>
+            {/* Payment method */}
+            <YStack gap="$2">
+              <Text fontSize="$4" fontWeight="bold" color="$color">
+                Método de pago
+              </Text>
+              <XStack gap="$3">
+                <Button
+                  flex={1}
+                  size="$5"
+                  icon={Banknote}
+                  theme={paymentMethod === "CASH" ? "green" : undefined}
+                  variant={paymentMethod === "CASH" ? undefined : "outlined"}
+                  onPress={() => setPaymentMethod("CASH")}
+                >
+                  Efectivo
+                </Button>
+                <Button
+                  flex={1}
+                  size="$5"
+                  icon={CreditCard}
+                  theme={paymentMethod === "CARD" ? "blue" : undefined}
+                  variant={paymentMethod === "CARD" ? undefined : "outlined"}
+                  onPress={() => setPaymentMethod("CARD")}
+                >
+                  Tarjeta
+                </Button>
               </XStack>
-
-              <Button
-                size="$5"
-                theme="green"
-                icon={confirming ? <Spinner /> : ShoppingCart}
-                disabled={
-                  confirming || cart.length === 0 || stockErrors.length > 0
-                }
-                onPress={handleConfirmSale}
-              >
-                {confirming ? "Registrando..." : "Confirmar venta"}
-              </Button>
             </YStack>
-          </ScrollView>
+
+            {/* Total */}
+            <XStack
+              style={{
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+              py="$2"
+              borderTopWidth={1}
+              borderColor="$borderColor"
+            >
+              <Text fontSize="$6" fontWeight="bold" color="$color">
+                Total
+              </Text>
+              <Text fontSize="$8" fontWeight="bold" color="$green10">
+                ${cartTotal.toFixed(2)}
+              </Text>
+            </XStack>
+
+            {/* Confirm */}
+            <Button
+              size="$5"
+              theme="green"
+              icon={confirming ? <Spinner /> : ShoppingCart}
+              disabled={confirming || cart.length === 0}
+              onPress={handleConfirmSale}
+            >
+              {confirming ? "Registrando..." : "Confirmar venta"}
+            </Button>
+          </YStack>
         </Sheet.Frame>
       </Sheet>
     </YStack>
