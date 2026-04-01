@@ -1,34 +1,17 @@
-import {
-    CalendarSheet,
-    DateNavigator,
-    PeriodTabs,
-    type DateRange,
-    type Period,
-} from "@/components/admin/period-selector";
 import { useExpenseRepository } from "@/hooks/use-expense-repository";
+import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
-import {
-    currentYear,
-    currentYearMonth,
-    dayLabel,
-    fmtMoney,
-    MONTH_NAMES_SHORT,
-    monthLabel,
-    parseYearMonth,
-    rangeLabel,
-    shiftDay,
-    shiftMonth,
-    todayISO,
-} from "@/utils/format";
+import { fmtMoney, MONTH_NAMES_SHORT, weekEndISO } from "@/utils/format";
 import { ShoppingBag, TrendingDown, TrendingUp } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Dimensions, ScrollView } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
+import { PeriodSelector } from "./period-selector";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -46,15 +29,7 @@ export function FinanceSection() {
   const purchaseRepo = usePurchaseRepository();
   const expenseRepo = useExpenseRepository();
 
-  const [period, setPeriod] = useState<Period>("month");
-  const [selectedMonth, setSelectedMonth] = useState(currentYearMonth);
-  const [selectedDay, setSelectedDay] = useState(todayISO);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: todayISO(),
-    to: todayISO(),
-  });
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const nav = usePeriodNavigation();
   const [loading, setLoading] = useState(true);
 
   // P&L data
@@ -81,12 +56,12 @@ export function FinanceSection() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      if (period === "day") {
+      if (nav.period === "day") {
         const [daySumm, dayP, dayE, dayExpCat] = await Promise.all([
-          ticketRepo.daySummary(selectedDay),
-          purchaseRepo.daySummary(selectedDay),
-          expenseRepo.dayTotal(selectedDay),
-          expenseRepo.daySummaryByCategory(selectedDay),
+          ticketRepo.daySummary(nav.selectedDay),
+          purchaseRepo.daySummary(nav.selectedDay),
+          expenseRepo.dayTotal(nav.selectedDay),
+          expenseRepo.daySummaryByCategory(nav.selectedDay),
         ]);
         setSalesTotal(daySumm.totalSales);
         setSalesTickets(daySumm.ticketCount);
@@ -94,12 +69,26 @@ export function FinanceSection() {
         setPurchTransport(dayP.totalTransport);
         setExpenseTotal(dayE);
         setExpensesByCategory(dayExpCat);
-      } else if (period === "week" || period === "month") {
+      } else if (nav.period === "week") {
+        const wkEnd = weekEndISO(nav.selectedWeekStart);
+        const [wkTickets, wkPurch, wkExp, wkExpCat] = await Promise.all([
+          ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
+          purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
+          expenseRepo.rangeTotal(nav.selectedWeekStart, wkEnd),
+          expenseRepo.rangeSummaryByCategory(nav.selectedWeekStart, wkEnd),
+        ]);
+        setSalesTotal(wkTickets.reduce((s, t) => s + t.total, 0));
+        setSalesTickets(wkTickets.length);
+        setPurchTotal(wkPurch.totalSpent);
+        setPurchTransport(wkPurch.totalTransport);
+        setExpenseTotal(wkExp);
+        setExpensesByCategory(wkExpCat);
+      } else if (nav.period === "month") {
         const [monthS, monthP, monthE, expByCat] = await Promise.all([
-          ticketRepo.monthlySummary(selectedMonth),
-          purchaseRepo.monthlySummary(selectedMonth),
-          expenseRepo.monthlyTotal(selectedMonth),
-          expenseRepo.monthlySummaryByCategory(selectedMonth),
+          ticketRepo.monthlySummary(nav.selectedMonth),
+          purchaseRepo.monthlySummary(nav.selectedMonth),
+          expenseRepo.monthlyTotal(nav.selectedMonth),
+          expenseRepo.monthlySummaryByCategory(nav.selectedMonth),
         ]);
         setSalesTotal(monthS.totalSales);
         setSalesTickets(monthS.ticketCount);
@@ -107,11 +96,11 @@ export function FinanceSection() {
         setPurchTransport(monthP.totalTransport);
         setExpenseTotal(monthE);
         setExpensesByCategory(expByCat);
-      } else if (period === "year") {
+      } else if (nav.period === "year") {
         const [ySales, yPurch, yExp] = await Promise.all([
-          ticketRepo.monthlySalesForYear(selectedYear),
-          purchaseRepo.monthlyTotalsForYear(selectedYear),
-          expenseRepo.monthlyTotalsForYear(selectedYear),
+          ticketRepo.monthlySalesForYear(nav.selectedYear),
+          purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
+          expenseRepo.monthlyTotalsForYear(nav.selectedYear),
         ]);
         setYearSalesTrend(ySales);
         setYearPurchaseTrend(yPurch);
@@ -126,10 +115,13 @@ export function FinanceSection() {
         // range
         const [rangeTickets, rangePurch, rangeExp, rangeExpCat] =
           await Promise.all([
-            ticketRepo.findByDateRange(dateRange.from, dateRange.to),
-            purchaseRepo.rangeSummary(dateRange.from, dateRange.to),
-            expenseRepo.rangeTotal(dateRange.from, dateRange.to),
-            expenseRepo.rangeSummaryByCategory(dateRange.from, dateRange.to),
+            ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to),
+            purchaseRepo.rangeSummary(nav.dateRange.from, nav.dateRange.to),
+            expenseRepo.rangeTotal(nav.dateRange.from, nav.dateRange.to),
+            expenseRepo.rangeSummaryByCategory(
+              nav.dateRange.from,
+              nav.dateRange.to,
+            ),
           ]);
         setSalesTotal(rangeTickets.reduce((s, t) => s + t.total, 0));
         setSalesTickets(rangeTickets.length);
@@ -139,9 +131,12 @@ export function FinanceSection() {
         setExpensesByCategory(rangeExpCat);
       }
 
-      // Always load yearly trends for month and week views
-      if (period === "month" || period === "week") {
-        const yr = parseYearMonth(selectedMonth).year;
+      // Load yearly trends for month and week views
+      if (nav.period === "month" || nav.period === "week") {
+        const yr =
+          nav.period === "week"
+            ? new Date(nav.selectedWeekStart + "T12:00:00").getFullYear()
+            : parseInt(nav.selectedMonth.slice(0, 4), 10);
         const [ySales, yPurch, yExp] = await Promise.all([
           ticketRepo.monthlySalesForYear(String(yr)),
           purchaseRepo.monthlyTotalsForYear(String(yr)),
@@ -155,11 +150,12 @@ export function FinanceSection() {
       setLoading(false);
     }
   }, [
-    period,
-    selectedDay,
-    selectedMonth,
-    selectedYear,
-    dateRange,
+    nav.period,
+    nav.selectedDay,
+    nav.selectedMonth,
+    nav.selectedWeekStart,
+    nav.selectedYear,
+    nav.dateRange,
     ticketRepo,
     purchaseRepo,
     expenseRepo,
@@ -170,47 +166,6 @@ export function FinanceSection() {
       loadData();
     }, [loadData]),
   );
-
-  // Navigation
-  const navigateBack = () => {
-    if (period === "day") setSelectedDay((d) => shiftDay(d, -1));
-    else if (period === "month" || period === "week") {
-      const newMonth = shiftMonth(selectedMonth, -1);
-      setSelectedMonth(newMonth);
-      setSelectedYear(String(parseYearMonth(newMonth).year));
-    } else if (period === "year") setSelectedYear((y) => String(Number(y) - 1));
-  };
-  const navigateForward = () => {
-    if (period === "day") {
-      const next = shiftDay(selectedDay, 1);
-      if (next <= todayISO()) setSelectedDay(next);
-    } else if (period === "month" || period === "week") {
-      const newMonth = shiftMonth(selectedMonth, 1);
-      if (newMonth <= currentYearMonth()) {
-        setSelectedMonth(newMonth);
-        setSelectedYear(String(parseYearMonth(newMonth).year));
-      }
-    } else if (period === "year") {
-      const next = String(Number(selectedYear) + 1);
-      if (Number(next) <= new Date().getFullYear()) setSelectedYear(next);
-    }
-  };
-  const canGoForward = useMemo(() => {
-    if (period === "day") return selectedDay < todayISO();
-    if (period === "month" || period === "week")
-      return selectedMonth < currentYearMonth();
-    if (period === "year")
-      return Number(selectedYear) < new Date().getFullYear();
-    return false;
-  }, [period, selectedDay, selectedMonth, selectedYear]);
-
-  const dateLabelText = useMemo(() => {
-    if (period === "day") return dayLabel(selectedDay);
-    if (period === "month" || period === "week")
-      return monthLabel(selectedMonth);
-    if (period === "year") return selectedYear;
-    return rangeLabel(dateRange.from, dateRange.to);
-  }, [period, selectedDay, selectedMonth, selectedYear, dateRange]);
 
   // Derived
   const purchaseMerchandise = purchTotal - purchTransport;
@@ -322,14 +277,7 @@ export function FinanceSection() {
         style={{ borderRadius: 16 }}
       >
         <YStack gap="$2">
-          <PeriodTabs period={period} onChangePeriod={setPeriod} />
-          <DateNavigator
-            label={dateLabelText}
-            onPrev={navigateBack}
-            onNext={navigateForward}
-            canGoForward={canGoForward}
-            onCalendarPress={() => setCalendarOpen(true)}
-          />
+          <PeriodSelector nav={nav} />
         </YStack>
       </Card>
 
@@ -550,13 +498,13 @@ export function FinanceSection() {
           )}
 
           {/* Yearly trends — show for month, week, year */}
-          {period !== "day" && period !== "range" && (
+          {nav.period !== "day" && nav.period !== "range" && (
             <>
               <Text fontSize="$5" fontWeight="bold" color="$color" mt="$2">
                 Tendencias{" "}
-                {period === "year"
-                  ? selectedYear
-                  : String(parseYearMonth(selectedMonth).year)}
+                {nav.period === "year"
+                  ? nav.selectedYear
+                  : nav.selectedMonth.slice(0, 4)}
               </Text>
 
               {/* Income vs Outflow bar chart */}
@@ -678,9 +626,9 @@ export function FinanceSection() {
                 <YStack p="$4" pb="$2">
                   <Text fontSize="$3" fontWeight="600" color="$color10">
                     Resumen mensual{" "}
-                    {period === "year"
-                      ? selectedYear
-                      : String(parseYearMonth(selectedMonth).year)}
+                    {nav.period === "year"
+                      ? nav.selectedYear
+                      : nav.selectedMonth.slice(0, 4)}
                   </Text>
                 </YStack>
                 <XStack px="$4" py="$2" bg="$color2">
@@ -759,26 +707,6 @@ export function FinanceSection() {
           )}
         </YStack>
       </ScrollView>
-
-      <CalendarSheet
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        mode={period}
-        selectedDay={selectedDay}
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        range={dateRange}
-        onSelectDay={(d) => {
-          setSelectedDay(d);
-          setPeriod("day");
-        }}
-        onSelectMonth={(m) => setSelectedMonth(m)}
-        onSelectYear={(y) => setSelectedYear(y)}
-        onSelectRange={(r) => {
-          setDateRange(r);
-          setPeriod("range");
-        }}
-      />
     </>
   );
 }

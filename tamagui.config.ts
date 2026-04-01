@@ -20,6 +20,18 @@ const animations = createAnimations({
     damping: 20,
     stiffness: 60,
   },
+  quick: {
+    type: "spring",
+    damping: 20,
+    mass: 0.8,
+    stiffness: 300,
+  },
+  bouncy: {
+    type: "spring",
+    damping: 9,
+    mass: 0.9,
+    stiffness: 150,
+  },
 });
 
 export const config = createTamagui({

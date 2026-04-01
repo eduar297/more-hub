@@ -1,6 +1,5 @@
 import { useAuth } from "@/contexts/auth-context";
 import { useStore } from "@/contexts/store-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { Store } from "@/models/store";
 import type { User, UserRole } from "@/models/user";
 import { UserRepository } from "@/repositories/user.repository";
@@ -38,6 +37,7 @@ import {
   Vibration,
   View,
 } from "react-native";
+import { useTheme } from "tamagui";
 
 /* ── Carousel constants ── */
 const STORE_PALETTE = [
@@ -77,7 +77,7 @@ export function LoginSheet({
   onClose,
   onSuccess,
 }: LoginSheetProps) {
-  const colorScheme = useColorScheme();
+  const theme = useTheme();
   const db = useSQLiteContext();
   const { stores, setCurrentStore } = useStore();
   const { setUser } = useAuth();
@@ -109,27 +109,20 @@ export function LoginSheet({
   const stepSlide = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  const isDark = colorScheme === "dark";
+  const isDark = (theme.background?.val as string)?.startsWith("#0");
   const c = {
-    bg: isDark ? "#1c1c1e" : "#ffffff",
+    bg: theme.background?.val as string,
     overlay: "rgba(0,0,0,0.55)",
-    text: isDark ? "#f2f2f7" : "#18181b",
-    muted: isDark ? "#8e8e93" : "#6b7280",
-    border: isDark ? "#38383a" : "#e5e7eb",
-    input: isDark ? "#2c2c2e" : "#f3f4f6",
-    accent: role === "ADMIN" ? "#3b82f6" : "#22c55e",
-    accentLight: role === "ADMIN" ? "#dbeafe" : "#dcfce7",
-    error: "#ef4444",
-    errorBg: isDark ? "#2d1515" : "#fef2f2",
-    cardBg: isDark ? "#2c2c2e" : "#f9fafb",
-    cardBgSelected:
-      role === "ADMIN"
-        ? isDark
-          ? "#1e3a5f"
-          : "#dbeafe"
-        : isDark
-          ? "#14532d"
-          : "#dcfce7",
+    text: theme.color?.val as string,
+    muted: theme.color8?.val as string,
+    border: theme.borderColor?.val as string,
+    input: theme.color2?.val as string,
+    accent: (role === "ADMIN" ? theme.blue10?.val : theme.green10?.val) as string,
+    accentLight: (role === "ADMIN" ? theme.blue3?.val : theme.green3?.val) as string,
+    error: theme.red10?.val as string,
+    errorBg: theme.red3?.val as string,
+    cardBg: theme.color2?.val as string,
+    cardBgSelected: (role === "ADMIN" ? theme.blue3?.val : theme.green3?.val) as string,
   };
 
   const multiStore = stores.length > 1;

@@ -1,60 +1,50 @@
-import {
-    CalendarSheet,
-    DateNavigator,
-    PeriodTabs,
-    type DateRange,
-    type Period,
-} from "@/components/admin/period-selector";
 import { StatCard } from "@/components/admin/stat-card";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import {
-    currentYearMonth,
-    dayLabel,
-    daysInMonth,
-    fmtMoney,
-    fmtTime,
-    MONTH_NAMES_SHORT,
-    monthLabel,
-    rangeLabel,
-    shiftDay,
-    shiftMonth,
-    todayISO,
+  daysInMonth,
+  fmtMoney,
+  fmtTime,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    ChevronRight,
-    CreditCard,
-    DollarSign,
-    Receipt,
-    ShoppingCart,
-    TrendingUp,
-    User,
-    Users,
-    X,
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  Receipt,
+  ShoppingCart,
+  TrendingUp,
+  User,
+  Users,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Dimensions,
-    FlatList,
-    Image,
-    Pressable,
-    ScrollView,
+  Dimensions,
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView,
 } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import {
-    Button,
-    Card,
-    Separator,
-    Sheet,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Separator,
+  Sheet,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
+import { PeriodSelector } from "./period-selector";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -134,17 +124,7 @@ export function SalesSection() {
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
 
-  const [period, setPeriod] = useState<Period>("month");
-  const [selectedMonth, setSelectedMonth] = useState(currentYearMonth);
-  const [selectedDay, setSelectedDay] = useState(todayISO);
-  const [selectedYear, setSelectedYear] = useState(
-    String(new Date().getFullYear()),
-  );
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: todayISO(),
-    to: todayISO(),
-  });
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const nav = usePeriodNavigation();
   const [loading, setLoading] = useState(true);
 
   // Worker filter
@@ -212,39 +192,53 @@ export function SalesSection() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      if (period === "day") {
+      if (nav.period === "day") {
         const [summary, hourly, dayTickets] = await Promise.all([
-          ticketRepo.daySummary(selectedDay, wId),
-          ticketRepo.hourlySales(selectedDay, wId),
-          ticketRepo.findByDateRange(selectedDay, selectedDay, wId),
+          ticketRepo.daySummary(nav.selectedDay, wId),
+          ticketRepo.hourlySales(nav.selectedDay, wId),
+          ticketRepo.findByDateRange(nav.selectedDay, nav.selectedDay, wId),
         ]);
         setDaySummary(summary);
         setHourlySales(hourly);
         setTickets(dayTickets);
-      } else if (period === "week") {
-        const [weekly, monthSummary, monthDailySales, top, payment] =
-          await Promise.all([
-            ticketRepo.weeklySales(selectedMonth, wId),
-            ticketRepo.monthlySummary(selectedMonth, wId),
-            ticketRepo.dailySales(selectedMonth, wId),
-            ticketRepo.topProducts(selectedMonth, 5, wId),
-            ticketRepo.paymentMethodBreakdown(selectedMonth, wId),
-          ]);
-        setWeeklySales(weekly);
-        setMonthlySummary(monthSummary);
-        setDailySales(monthDailySales);
+      } else if (nav.period === "week") {
+        const weekEnd = weekEndISO(nav.selectedWeekStart);
+        const [weekTickets, top, payment] = await Promise.all([
+          ticketRepo.findByDateRange(nav.selectedWeekStart, weekEnd, wId),
+          ticketRepo.topProducts(nav.selectedWeekStart.slice(0, 7), 5, wId),
+          ticketRepo.paymentMethodBreakdown(
+            nav.selectedWeekStart.slice(0, 7),
+            wId,
+          ),
+        ]);
+        setTickets(weekTickets);
+        // Build daily totals for the 7-day chart (index 0=Mon … 6=Sun)
+        const weekDailyTotals = Array.from({ length: 7 }, (_, i) => {
+          const dayKey = shiftDay(nav.selectedWeekStart, i);
+          return {
+            day: i + 1,
+            total: weekTickets
+              .filter((t) => t.createdAt.slice(0, 10) === dayKey)
+              .reduce((s, t) => s + t.total, 0),
+          };
+        });
+        setDailySales(weekDailyTotals);
+        setMonthlySummary({
+          totalSales: weekTickets.reduce((s, t) => s + t.total, 0),
+          ticketCount: weekTickets.length,
+        });
         setTopProducts(top);
         setPaymentBreakdown(payment);
-      } else if (period === "month") {
+      } else if (nav.period === "month") {
         const [daily, monthSummary, top, payment, monthTickets] =
           await Promise.all([
-            ticketRepo.dailySales(selectedMonth, wId),
-            ticketRepo.monthlySummary(selectedMonth, wId),
-            ticketRepo.topProducts(selectedMonth, 10, wId),
-            ticketRepo.paymentMethodBreakdown(selectedMonth, wId),
+            ticketRepo.dailySales(nav.selectedMonth, wId),
+            ticketRepo.monthlySummary(nav.selectedMonth, wId),
+            ticketRepo.topProducts(nav.selectedMonth, 10, wId),
+            ticketRepo.paymentMethodBreakdown(nav.selectedMonth, wId),
             ticketRepo.findByDateRange(
-              `${selectedMonth}-01`,
-              `${selectedMonth}-${String(daysInMonth(selectedMonth)).padStart(2, "0")}`,
+              `${nav.selectedMonth}-01`,
+              `${nav.selectedMonth}-${String(daysInMonth(nav.selectedMonth)).padStart(2, "0")}`,
               wId,
             ),
           ]);
@@ -253,9 +247,9 @@ export function SalesSection() {
         setTopProducts(top);
         setPaymentBreakdown(payment);
         setTickets(monthTickets);
-      } else if (period === "year") {
+      } else if (nav.period === "year") {
         const [yearly, top] = await Promise.all([
-          ticketRepo.monthlySalesForYear(selectedYear, wId),
+          ticketRepo.monthlySalesForYear(nav.selectedYear, wId),
           ticketRepo.topProducts(undefined, 10, wId),
         ]);
         setYearlySales(yearly);
@@ -267,8 +261,8 @@ export function SalesSection() {
       } else {
         // range
         const rangeTickets = await ticketRepo.findByDateRange(
-          dateRange.from,
-          dateRange.to,
+          nav.dateRange.from,
+          nav.dateRange.to,
           wId,
         );
         setTickets(rangeTickets);
@@ -281,11 +275,12 @@ export function SalesSection() {
       setLoading(false);
     }
   }, [
-    period,
-    selectedDay,
-    selectedMonth,
-    selectedYear,
-    dateRange,
+    nav.period,
+    nav.selectedDay,
+    nav.selectedMonth,
+    nav.selectedWeekStart,
+    nav.selectedYear,
+    nav.dateRange,
     ticketRepo,
     wId,
   ]);
@@ -296,46 +291,10 @@ export function SalesSection() {
     }, [loadData]),
   );
 
-  // ── Navigation ────────────────────────────────────────────────────────────
-  const navigateBack = () => {
-    if (period === "day") setSelectedDay((d) => shiftDay(d, -1));
-    else if (period === "month" || period === "week")
-      setSelectedMonth((m) => shiftMonth(m, -1));
-    else if (period === "year") setSelectedYear((y) => String(Number(y) - 1));
-  };
-  const navigateForward = () => {
-    if (period === "day") {
-      const next = shiftDay(selectedDay, 1);
-      if (next <= todayISO()) setSelectedDay(next);
-    } else if (period === "month" || period === "week") {
-      const next = shiftMonth(selectedMonth, 1);
-      if (next <= currentYearMonth()) setSelectedMonth(next);
-    } else if (period === "year") {
-      const next = String(Number(selectedYear) + 1);
-      if (Number(next) <= new Date().getFullYear()) setSelectedYear(next);
-    }
-  };
-  const canGoForward = useMemo(() => {
-    if (period === "day") return selectedDay < todayISO();
-    if (period === "month" || period === "week")
-      return selectedMonth < currentYearMonth();
-    if (period === "year")
-      return Number(selectedYear) < new Date().getFullYear();
-    return false;
-  }, [period, selectedDay, selectedMonth, selectedYear]);
-
-  const periodLabel = useMemo(() => {
-    if (period === "day") return dayLabel(selectedDay);
-    if (period === "month" || period === "week")
-      return monthLabel(selectedMonth);
-    if (period === "year") return selectedYear;
-    return rangeLabel(dateRange.from, dateRange.to);
-  }, [period, selectedDay, selectedMonth, selectedYear, dateRange]);
-
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    if (period === "range") return [];
-    if (period === "day") {
+    if (nav.period === "range") return [];
+    if (nav.period === "day") {
       return hourlySales.map((h) => ({
         value: h.total,
         label: `${h.hour}h`,
@@ -343,16 +302,17 @@ export function SalesSection() {
         labelTextStyle: { fontSize: 8, color: "#888" },
       }));
     }
-    if (period === "week") {
-      return weeklySales.map((w) => ({
-        value: w.total,
-        label: `S${w.week}`,
-        frontColor: "#3b82f6",
+    if (nav.period === "week") {
+      const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+      return dailySales.map((d, i) => ({
+        value: d.total,
+        label: DAY_LABELS[i] ?? String(i + 1),
+        frontColor: d.total > 0 ? "#3b82f6" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
       }));
     }
-    if (period === "month") {
-      const days = daysInMonth(selectedMonth);
+    if (nav.period === "month") {
+      const days = daysInMonth(nav.selectedMonth);
       const dataMap = new Map(dailySales.map((d) => [d.day, d.total]));
       return Array.from({ length: days }, (_, i) => ({
         value: dataMap.get(i + 1) ?? 0,
@@ -371,31 +331,32 @@ export function SalesSection() {
         labelTextStyle: { fontSize: 8, color: "#888" },
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    period,
+    nav.period,
     hourlySales,
     weeklySales,
     dailySales,
     yearlySales,
-    selectedMonth,
+    nav.selectedMonth,
   ]);
 
   const barWidth = useMemo(() => {
-    if (period === "day") return 14;
-    if (period === "week") return 40;
-    if (period === "year") return 16;
-    const days = daysInMonth(selectedMonth);
+    if (nav.period === "day") return 14;
+    if (nav.period === "week") return 40;
+    if (nav.period === "year") return 16;
+    const days = daysInMonth(nav.selectedMonth);
     const chartW = SCREEN_W - 80;
     return Math.max(3, Math.min(14, chartW / days / 1.6));
-  }, [period, selectedMonth]);
+  }, [nav.period, nav.selectedMonth]);
 
   const barSpacing = useMemo(() => {
-    if (period === "day") return 4;
-    if (period === "week") return 12;
-    if (period === "year") return 6;
-    const days = daysInMonth(selectedMonth);
+    if (nav.period === "day") return 4;
+    if (nav.period === "week") return 12;
+    if (nav.period === "year") return 6;
+    const days = daysInMonth(nav.selectedMonth);
     return Math.max(1, Math.min(4, (SCREEN_W - 80) / days / 4));
-  }, [period, selectedMonth]);
+  }, [nav.period, nav.selectedMonth]);
 
   const paymentPieData = useMemo(() => {
     if (paymentBreakdown.length === 0) return [];
@@ -406,9 +367,9 @@ export function SalesSection() {
   }, [paymentBreakdown]);
 
   const summaryTotal =
-    period === "day" ? daySummary.totalSales : monthlySummary.totalSales;
+    nav.period === "day" ? daySummary.totalSales : monthlySummary.totalSales;
   const summaryTickets =
-    period === "day" ? daySummary.ticketCount : monthlySummary.ticketCount;
+    nav.period === "day" ? daySummary.ticketCount : monthlySummary.ticketCount;
   const summaryAvg = summaryTickets > 0 ? summaryTotal / summaryTickets : 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -447,11 +408,11 @@ export function SalesSection() {
         >
           <YStack gap="$2">
             <Text fontSize="$3" fontWeight="600" color="$color10">
-              {period === "day"
+              {nav.period === "day"
                 ? "Ventas por hora"
-                : period === "week"
+                : nav.period === "week"
                   ? "Ventas por semana"
-                  : period === "month"
+                  : nav.period === "month"
                     ? "Ventas diarias"
                     : "Ventas mensuales"}
             </Text>
@@ -474,7 +435,7 @@ export function SalesSection() {
       )}
 
       {/* Payment breakdown */}
-      {(period === "month" || period === "week") &&
+      {(nav.period === "month" || nav.period === "week") &&
         paymentPieData.length > 0 && (
           <Card
             bg="$color1"
@@ -580,7 +541,7 @@ export function SalesSection() {
       )}
 
       {/* Tickets header */}
-      {period !== "year" && tickets.length > 0 && (
+      {nav.period !== "year" && tickets.length > 0 && (
         <XStack gap="$2" style={{ alignItems: "center" }} mt="$2">
           <Receipt size={18} color="$blue10" />
           <Text fontSize="$4" fontWeight="bold" color="$color">
@@ -605,9 +566,9 @@ export function SalesSection() {
   }
 
   const showTickets =
-    period !== "year" && period !== "range"
+    nav.period !== "year" && nav.period !== "range"
       ? tickets.length > 0
-      : period === "range" && tickets.length > 0;
+      : nav.period === "range" && tickets.length > 0;
 
   return (
     <>
@@ -622,14 +583,7 @@ export function SalesSection() {
         style={{ borderRadius: 16 }}
       >
         <YStack gap="$2">
-          <PeriodTabs period={period} onChangePeriod={setPeriod} />
-          <DateNavigator
-            label={periodLabel}
-            onPrev={navigateBack}
-            onNext={navigateForward}
-            canGoForward={canGoForward}
-            onCalendarPress={() => setCalendarOpen(true)}
-          />
+          <PeriodSelector nav={nav} />
           {/* Worker filter chips */}
           {workers.length > 0 && (
             <ScrollView
@@ -728,26 +682,6 @@ export function SalesSection() {
           renderItem={() => null}
         />
       )}
-
-      <CalendarSheet
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        mode={period}
-        selectedDay={selectedDay}
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        range={dateRange}
-        onSelectDay={(d) => {
-          setSelectedDay(d);
-          setPeriod("day");
-        }}
-        onSelectMonth={(m) => setSelectedMonth(m)}
-        onSelectYear={(y) => setSelectedYear(y)}
-        onSelectRange={(r) => {
-          setDateRange(r);
-          setPeriod("range");
-        }}
-      />
 
       {/* Ticket detail Sheet */}
       <Sheet

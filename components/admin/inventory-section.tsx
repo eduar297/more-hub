@@ -1,43 +1,28 @@
-import {
-    CalendarSheet,
-    DateNavigator,
-    PeriodTabs,
-    type DateRange,
-    type Period,
-} from "@/components/admin/period-selector";
+import { PeriodSelector } from "@/components/admin/period-selector";
 import { StatCard } from "@/components/admin/stat-card";
 import { StockRow } from "@/components/admin/stock-row";
 import { ProductDetail } from "@/components/product/product-detail";
 import { SearchInput } from "@/components/ui/search-input";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
 import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
+import { fmtMoney, weekEndISO } from "@/utils/format";
 import {
-    currentYear,
-    currentYearMonth,
-    dayLabel,
-    fmtMoney,
-    monthLabel,
-    rangeLabel,
-    shiftDay,
-    shiftMonth,
-    todayISO,
-} from "@/utils/format";
-import {
-    AlertTriangle,
-    ArrowDownToLine,
-    ArrowUpFromLine,
-    DollarSign,
-    Package,
-    PackageX,
-    Ruler,
-    Tag,
-    TrendingDown,
-    TrendingUp,
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  DollarSign,
+  Package,
+  PackageX,
+  Ruler,
+  Tag,
+  TrendingDown,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -66,15 +51,7 @@ export function InventorySection() {
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
 
-  const [period, setPeriod] = useState<Period>("month");
-  const [selectedMonth, setSelectedMonth] = useState(currentYearMonth);
-  const [selectedDay, setSelectedDay] = useState(todayISO);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: todayISO(),
-    to: todayISO(),
-  });
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const nav = usePeriodNavigation();
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,32 +78,40 @@ export function InventorySection() {
       setAllCategories(cats);
 
       // Load period movement data
-      if (period === "day") {
+      if (nav.period === "day") {
         const [daySumm, dayPurch] = await Promise.all([
-          ticketRepo.daySummary(selectedDay),
-          purchaseRepo.daySummary(selectedDay),
+          ticketRepo.daySummary(nav.selectedDay),
+          purchaseRepo.daySummary(nav.selectedDay),
         ]);
         setPeriodSales(daySumm.totalSales);
         setPeriodPurchases(dayPurch.totalSpent);
-      } else if (period === "week" || period === "month") {
+      } else if (nav.period === "week") {
+        const wkEnd = weekEndISO(nav.selectedWeekStart);
+        const [wkTickets, wkPurch] = await Promise.all([
+          ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
+          purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
+        ]);
+        setPeriodSales(wkTickets.reduce((s, t) => s + t.total, 0));
+        setPeriodPurchases(wkPurch.totalSpent);
+      } else if (nav.period === "month") {
         const [monthSumm, monthPurch] = await Promise.all([
-          ticketRepo.monthlySummary(selectedMonth),
-          purchaseRepo.monthlySummary(selectedMonth),
+          ticketRepo.monthlySummary(nav.selectedMonth),
+          purchaseRepo.monthlySummary(nav.selectedMonth),
         ]);
         setPeriodSales(monthSumm.totalSales);
         setPeriodPurchases(monthPurch.totalSpent);
-      } else if (period === "year") {
+      } else if (nav.period === "year") {
         const [yearSales, yearPurch] = await Promise.all([
-          ticketRepo.monthlySalesForYear(selectedYear),
-          purchaseRepo.monthlyTotalsForYear(selectedYear),
+          ticketRepo.monthlySalesForYear(nav.selectedYear),
+          purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
         ]);
         setPeriodSales(yearSales.reduce((s, y) => s + y.total, 0));
         setPeriodPurchases(yearPurch.reduce((s, y) => s + y.total, 0));
       } else {
         // range
         const [rangeTickets, rangePurch] = await Promise.all([
-          ticketRepo.findByDateRange(dateRange.from, dateRange.to),
-          purchaseRepo.rangeSummary(dateRange.from, dateRange.to),
+          ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to),
+          purchaseRepo.rangeSummary(nav.dateRange.from, nav.dateRange.to),
         ]);
         setPeriodSales(rangeTickets.reduce((s, t) => s + t.total, 0));
         setPeriodPurchases(rangePurch.totalSpent);
@@ -135,11 +120,12 @@ export function InventorySection() {
       setLoading(false);
     }
   }, [
-    period,
-    selectedDay,
-    selectedMonth,
-    selectedYear,
-    dateRange,
+    nav.period,
+    nav.selectedDay,
+    nav.selectedMonth,
+    nav.selectedWeekStart,
+    nav.selectedYear,
+    nav.dateRange,
     productRepo,
     unitRepo,
     purchaseRepo,
@@ -151,42 +137,6 @@ export function InventorySection() {
       loadData();
     }, [loadData]),
   );
-
-  // Navigation
-  const navigateBack = () => {
-    if (period === "day") setSelectedDay((d) => shiftDay(d, -1));
-    else if (period === "month" || period === "week")
-      setSelectedMonth((m) => shiftMonth(m, -1));
-    else if (period === "year") setSelectedYear((y) => String(Number(y) - 1));
-  };
-  const navigateForward = () => {
-    if (period === "day") {
-      const next = shiftDay(selectedDay, 1);
-      if (next <= todayISO()) setSelectedDay(next);
-    } else if (period === "month" || period === "week") {
-      const next = shiftMonth(selectedMonth, 1);
-      if (next <= currentYearMonth()) setSelectedMonth(next);
-    } else if (period === "year") {
-      const next = String(Number(selectedYear) + 1);
-      if (Number(next) <= new Date().getFullYear()) setSelectedYear(next);
-    }
-  };
-  const canGoForward = useMemo(() => {
-    if (period === "day") return selectedDay < todayISO();
-    if (period === "month" || period === "week")
-      return selectedMonth < currentYearMonth();
-    if (period === "year")
-      return Number(selectedYear) < new Date().getFullYear();
-    return false;
-  }, [period, selectedDay, selectedMonth, selectedYear]);
-
-  const dateLabelText = useMemo(() => {
-    if (period === "day") return dayLabel(selectedDay);
-    if (period === "month" || period === "week")
-      return monthLabel(selectedMonth);
-    if (period === "year") return selectedYear;
-    return rangeLabel(dateRange.from, dateRange.to);
-  }, [period, selectedDay, selectedMonth, selectedYear, dateRange]);
 
   const unitMap = useMemo(
     () => new Map(allUnits.map((u) => [u.id, u])),
@@ -306,14 +256,7 @@ export function InventorySection() {
         style={{ borderRadius: 16 }}
       >
         <YStack gap="$2">
-          <PeriodTabs period={period} onChangePeriod={setPeriod} />
-          <DateNavigator
-            label={dateLabelText}
-            onPrev={navigateBack}
-            onNext={navigateForward}
-            canGoForward={canGoForward}
-            onCalendarPress={() => setCalendarOpen(true)}
-          />
+          <PeriodSelector nav={nav} />
         </YStack>
       </Card>
 
@@ -775,26 +718,6 @@ export function InventorySection() {
           </ScrollView>
         </Sheet.Frame>
       </Sheet>
-
-      <CalendarSheet
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        mode={period}
-        selectedDay={selectedDay}
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        range={dateRange}
-        onSelectDay={(d) => {
-          setSelectedDay(d);
-          setPeriod("day");
-        }}
-        onSelectMonth={(m) => setSelectedMonth(m)}
-        onSelectYear={(y) => setSelectedYear(y)}
-        onSelectRange={(r) => {
-          setDateRange(r);
-          setPeriod("range");
-        }}
-      />
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { useAuth } from "@/contexts/auth-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import { hashPin } from "@/utils/auth";
 import {
@@ -25,14 +24,14 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { useTheme } from "tamagui";
 
 export default function WorkerProfileScreen() {
-  const colorScheme = useColorScheme();
+  const theme = useTheme();
   const userRepo = useUserRepository();
   const { user, setUser, logout } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
-  const isDark = colorScheme === "dark";
 
   const [photoUri, setPhotoUri] = useState<string | null>(
     user?.photoUri ?? null,
@@ -46,20 +45,20 @@ export default function WorkerProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const c = {
-    bg: isDark ? "#151718" : "#f8fafc",
-    card: isDark ? "#1c1c1e" : "#ffffff",
-    text: isDark ? "#f2f2f7" : "#18181b",
-    muted: isDark ? "#8e8e93" : "#6b7280",
-    border: isDark ? "#38383a" : "#e5e7eb",
-    input: isDark ? "#2c2c2e" : "#f3f4f6",
-    accent: "#22c55e",
-    accentLight: isDark ? "#14532d" : "#dcfce7",
-    error: "#ef4444",
-    errorBg: isDark ? "#2d1515" : "#fef2f2",
-    successBg: isDark ? "#14290f" : "#f0fdf4",
-    success: "#22c55e",
-    dangerBg: isDark ? "#2d1515" : "#fef2f2",
-    danger: "#ef4444",
+    bg: theme.background?.val as string,
+    card: theme.color1?.val as string,
+    text: theme.color?.val as string,
+    muted: theme.color8?.val as string,
+    border: theme.borderColor?.val as string,
+    input: theme.color2?.val as string,
+    accent: theme.green10?.val as string,
+    accentLight: theme.green3?.val as string,
+    error: theme.red10?.val as string,
+    errorBg: theme.red3?.val as string,
+    successBg: theme.green3?.val as string,
+    success: theme.green10?.val as string,
+    dangerBg: theme.red3?.val as string,
+    danger: theme.red10?.val as string,
   };
 
   const handleChangePin = useCallback(async () => {

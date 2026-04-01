@@ -1,35 +1,20 @@
-import {
-    CalendarSheet,
-    DateNavigator,
-    PeriodTabs,
-    type DateRange,
-    type Period,
-} from "@/components/admin/period-selector";
+import { PeriodSelector } from "@/components/admin/period-selector";
 import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
+import { fmtMoney, weekEndISO } from "@/utils/format";
 import {
-    currentYear,
-    currentYearMonth,
-    dayLabel,
-    fmtMoney,
-    monthLabel,
-    rangeLabel,
-    shiftDay,
-    shiftMonth,
-    todayISO,
-} from "@/utils/format";
-import {
-    Banknote,
-    ClipboardList,
-    CreditCard,
-    Package,
-    Receipt,
-    TrendingUp,
+  Banknote,
+  ClipboardList,
+  CreditCard,
+  Package,
+  Receipt,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FlatList, Image, ScrollView } from "react-native";
 import { Card, Separator, Sheet, Spinner, Text, XStack, YStack } from "tamagui";
 
@@ -110,15 +95,7 @@ export default function HistoryScreen() {
   const { user } = useAuth();
 
   // Period state
-  const [period, setPeriod] = useState<Period>("day");
-  const [selectedDay, setSelectedDay] = useState(() => todayISO());
-  const [selectedMonth, setSelectedMonth] = useState(() => currentYearMonth());
-  const [selectedYear, setSelectedYear] = useState(() => currentYear());
-  const [dateRange, setDateRange] = useState<DateRange>(() => ({
-    from: todayISO(),
-    to: todayISO(),
-  }));
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const nav = usePeriodNavigation();
 
   // Data
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
@@ -137,19 +114,22 @@ export default function HistoryScreen() {
     try {
       let from: string;
       let to: string;
-      if (period === "day") {
-        from = to = selectedDay;
-      } else if (period === "week" || period === "month") {
-        const [y, m] = selectedMonth.split("-").map(Number);
-        from = `${selectedMonth}-01`;
+      if (nav.period === "day") {
+        from = to = nav.selectedDay;
+      } else if (nav.period === "week") {
+        from = nav.selectedWeekStart;
+        to = weekEndISO(nav.selectedWeekStart);
+      } else if (nav.period === "month") {
+        const [y, m] = nav.selectedMonth.split("-").map(Number);
+        from = `${nav.selectedMonth}-01`;
         const lastDay = new Date(y, m, 0).getDate();
-        to = `${selectedMonth}-${String(lastDay).padStart(2, "0")}`;
-      } else if (period === "year") {
-        from = `${selectedYear}-01-01`;
-        to = `${selectedYear}-12-31`;
+        to = `${nav.selectedMonth}-${String(lastDay).padStart(2, "0")}`;
+      } else if (nav.period === "year") {
+        from = `${nav.selectedYear}-01-01`;
+        to = `${nav.selectedYear}-12-31`;
       } else {
-        from = dateRange.from;
-        to = dateRange.to;
+        from = nav.dateRange.from;
+        to = nav.dateRange.to;
       }
       const [list, stats] = await Promise.all([
         ticketRepo.findByWorkerAndDateRange(user.id, from, to),
@@ -165,11 +145,12 @@ export default function HistoryScreen() {
   }, [
     ticketRepo,
     user,
-    period,
-    selectedDay,
-    selectedMonth,
-    selectedYear,
-    dateRange,
+    nav.period,
+    nav.selectedDay,
+    nav.selectedMonth,
+    nav.selectedYear,
+    nav.selectedWeekStart,
+    nav.dateRange,
   ]);
 
   useFocusEffect(
@@ -180,45 +161,7 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     loadTickets();
-  }, [period, selectedDay, selectedMonth, selectedYear, dateRange]); // eslint-disable-line
-
-  // ── Period navigation ───────────────────────────────────────────────────
-  const dateLabel = useMemo(() => {
-    if (period === "day") return dayLabel(selectedDay);
-    if (period === "month" || period === "week")
-      return monthLabel(selectedMonth);
-    if (period === "year") return selectedYear;
-    return rangeLabel(dateRange.from, dateRange.to);
-  }, [period, selectedDay, selectedMonth, selectedYear, dateRange]);
-
-  const canGoForward = useMemo(() => {
-    if (period === "day") return selectedDay < todayISO();
-    if (period === "month" || period === "week")
-      return selectedMonth < currentYearMonth();
-    if (period === "year")
-      return Number(selectedYear) < new Date().getFullYear();
-    return false;
-  }, [period, selectedDay, selectedMonth, selectedYear]);
-
-  const navigateBack = () => {
-    if (period === "day") setSelectedDay((d) => shiftDay(d, -1));
-    else if (period === "month" || period === "week")
-      setSelectedMonth((m) => shiftMonth(m, -1));
-    else if (period === "year") setSelectedYear((y) => String(Number(y) - 1));
-  };
-
-  const navigateForward = () => {
-    if (period === "day") {
-      const next = shiftDay(selectedDay, 1);
-      if (next <= todayISO()) setSelectedDay(next);
-    } else if (period === "month" || period === "week") {
-      const next = shiftMonth(selectedMonth, 1);
-      if (next <= currentYearMonth()) setSelectedMonth(next);
-    } else if (period === "year") {
-      const next = String(Number(selectedYear) + 1);
-      if (Number(next) <= new Date().getFullYear()) setSelectedYear(next);
-    }
-  };
+  }, [loadTickets]);
 
   // ── Detail ──────────────────────────────────────────────────────────────
   const openDetail = useCallback(
@@ -245,14 +188,7 @@ export default function HistoryScreen() {
         style={{ borderRadius: 16 }}
       >
         <YStack gap="$2">
-          <PeriodTabs period={period} onChangePeriod={setPeriod} />
-          <DateNavigator
-            label={dateLabel}
-            onPrev={navigateBack}
-            onNext={navigateForward}
-            canGoForward={canGoForward}
-            onCalendarPress={() => setCalendarOpen(true)}
-          />
+          <PeriodSelector nav={nav} />
         </YStack>
       </Card>
 
@@ -333,33 +269,6 @@ export default function HistoryScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
         />
       </Card>
-
-      {/* Calendar sheet */}
-      <CalendarSheet
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        mode={period}
-        selectedDay={selectedDay}
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        range={dateRange}
-        onSelectDay={(d) => {
-          setSelectedDay(d);
-          setCalendarOpen(false);
-        }}
-        onSelectMonth={(m) => {
-          setSelectedMonth(m);
-          setCalendarOpen(false);
-        }}
-        onSelectYear={(y) => {
-          setSelectedYear(y);
-          setCalendarOpen(false);
-        }}
-        onSelectRange={(r) => {
-          setDateRange(r);
-          setCalendarOpen(false);
-        }}
-      />
 
       {/* Ticket detail sheet */}
       <Sheet

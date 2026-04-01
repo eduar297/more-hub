@@ -6,39 +6,18 @@ import { Store, Store as StoreIcon } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
-  Image,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Image,
+    PanResponder,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ScrollView, Sheet, Text as TText, YStack } from "tamagui";
-
-function useColors(isDark: boolean) {
-  return {
-    bg: isDark ? "#151718" : "#f8fafc",
-    card: isDark ? "#1c1c1e" : "#ffffff",
-    text: isDark ? "#f2f2f7" : "#18181b",
-    muted: isDark ? "#8e8e93" : "#6b7280",
-    border: isDark ? "#38383a" : "#e5e7eb",
-    input: isDark ? "#2c2c2e" : "#f3f4f6",
-    blue: "#3b82f6",
-    blueLight: isDark ? "#1e3a5f" : "#dbeafe",
-    green: "#22c55e",
-    greenLight: isDark ? "#14532d" : "#dcfce7",
-    danger: "#ef4444",
-    dangerBg: isDark ? "#2d1515" : "#fef2f2",
-    successBg: isDark ? "#14290f" : "#f0fdf4",
-    rowBg: isDark ? "#1c1c1e" : "#ffffff",
-    divider: isDark ? "#2c2c2e" : "#f1f5f9",
-    editBg: isDark ? "#2c2c2e" : "#f1f5f9",
-  };
-}
+import { ScrollView, Sheet, Text as TText, YStack, useTheme } from "tamagui";
 
 const BUBBLE_SIZE = 44;
 const EDGE_MARGIN = 8;
@@ -52,7 +31,7 @@ export function StoreBubble() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
-  const c = useColors(colorScheme === "dark");
+  const theme = useTheme();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -202,7 +181,10 @@ export function StoreBubble() {
                   <View key={s.id}>
                     {idx > 0 && (
                       <View
-                        style={[styles.divider, { backgroundColor: c.divider }]}
+                        style={[
+                          styles.divider,
+                          { backgroundColor: theme.color3?.val },
+                        ]}
                       />
                     )}
                     <TouchableOpacity
@@ -220,11 +202,12 @@ export function StoreBubble() {
                             backgroundColor: s.color
                               ? `${s.color}22`
                               : isActive
-                                ? c.blueLight
-                                : c.editBg,
+                                ? (theme.blue3?.val as string)
+                                : (theme.color3?.val as string),
                             overflow: "hidden",
                             borderWidth: isActive ? 2 : 0,
-                            borderColor: s.color ?? c.blue,
+                            borderColor:
+                              s.color ?? (theme.blue10?.val as string),
                           },
                         ]}
                       >
@@ -237,7 +220,10 @@ export function StoreBubble() {
                           <Store
                             size={18}
                             color={
-                              (s.color ?? (isActive ? c.blue : c.muted)) as any
+                              (s.color ??
+                                (isActive
+                                  ? theme.blue10?.val
+                                  : theme.color8?.val)) as any
                             }
                           />
                         )}
@@ -255,17 +241,23 @@ export function StoreBubble() {
                               width: 8,
                               height: 8,
                               borderRadius: 4,
-                              backgroundColor: s.color ?? c.blue,
+                              backgroundColor:
+                                s.color ?? (theme.blue10?.val as string),
                             }}
                           />
-                          <Text style={[styles.workerName, { color: c.text }]}>
+                          <Text
+                            style={[
+                              styles.workerName,
+                              { color: theme.color?.val as string },
+                            ]}
+                          >
                             {s.name}
                           </Text>
                           {isActive && (
                             <Text
                               style={{
                                 fontSize: 10,
-                                color: s.color ?? c.blue,
+                                color: s.color ?? (theme.blue10?.val as string),
                                 fontWeight: "700",
                               }}
                             >

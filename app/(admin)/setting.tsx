@@ -44,32 +44,32 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Input, Sheet, Text as TText, XStack, YStack } from "tamagui";
+import { Button, Input, Sheet, Text as TText, XStack, YStack, useTheme } from "tamagui";
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 
-function useColors(isDark: boolean) {
+function useColors() {
+  const theme = useTheme();
   return {
-    bg: isDark ? "#151718" : "#f8fafc",
-    card: isDark ? "#1c1c1e" : "#ffffff",
-    text: isDark ? "#f2f2f7" : "#18181b",
-    muted: isDark ? "#8e8e93" : "#6b7280",
-    border: isDark ? "#38383a" : "#e5e7eb",
-    input: isDark ? "#2c2c2e" : "#f3f4f6",
-    blue: "#3b82f6",
-    blueLight: isDark ? "#1e3a5f" : "#dbeafe",
-    green: "#22c55e",
-    greenLight: isDark ? "#14532d" : "#dcfce7",
-    danger: "#ef4444",
-    dangerBg: isDark ? "#2d1515" : "#fef2f2",
-    successBg: isDark ? "#14290f" : "#f0fdf4",
-    rowBg: isDark ? "#1c1c1e" : "#ffffff",
-    divider: isDark ? "#2c2c2e" : "#f1f5f9",
-    editBg: isDark ? "#2c2c2e" : "#f1f5f9",
+    bg: theme.background?.val as string,
+    card: theme.color1?.val as string,
+    text: theme.color?.val as string,
+    muted: theme.color8?.val as string,
+    border: theme.borderColor?.val as string,
+    input: theme.color2?.val as string,
+    blue: theme.blue10?.val as string,
+    blueLight: theme.blue3?.val as string,
+    green: theme.green10?.val as string,
+    greenLight: theme.green3?.val as string,
+    danger: theme.red10?.val as string,
+    dangerBg: theme.red3?.val as string,
+    successBg: theme.green3?.val as string,
+    rowBg: theme.color1?.val as string,
+    divider: theme.color3?.val as string,
+    editBg: theme.color3?.val as string,
   };
 }
 
-type Colors = ReturnType<typeof useColors>;
 type SettingTab = "workers" | "profile" | "stores" | "prefs";
 
 // ── Store color palette ───────────────────────────────────────────────────────
@@ -97,17 +97,15 @@ function PinPromptDialog({
   description,
   onConfirm,
   onCancel,
-  isDark,
 }: {
   open: boolean;
   title: string;
   description: string;
   onConfirm: (pin: string) => void;
   onCancel: () => void;
-  isDark: boolean;
 }) {
   const [pin, setPin] = useState("");
-  const c = useColors(isDark);
+  const c = useColors();
 
   useEffect(() => {
     if (open) setPin("");
@@ -190,7 +188,9 @@ function PinPromptDialog({
 
 // ── Workers section ───────────────────────────────────────────────────────────
 
-function WorkersSection({ isDark, c }: { isDark: boolean; c: Colors }) {
+function WorkersSection() {
+  const c = useColors();
+  const isDark = useColorScheme() === "dark";
   const userRepo = useUserRepository();
   const [workers, setWorkers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -558,7 +558,8 @@ function WorkersSection({ isDark, c }: { isDark: boolean; c: Colors }) {
 
 // ── Profile section ───────────────────────────────────────────────────────────
 
-function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
+function ProfileSection() {
+  const c = useColors();
   const { user, setUser } = useAuth();
   const userRepo = useUserRepository();
   const db = useSQLiteContext();
@@ -1080,7 +1081,6 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         }
         onConfirm={handlePinConfirm}
         onCancel={() => setPinDialogOpen(false)}
-        isDark={isDark}
       />
     </>
   );
@@ -1088,7 +1088,9 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
 
 // ── Stores section ────────────────────────────────────────────────────────────
 
-function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
+function StoresSection() {
+  const c = useColors();
+  const isDark = useColorScheme() === "dark";
   const storeRepo = useStoreRepository();
   const { stores, refreshStores, currentStore, setCurrentStore } = useStore();
   const { user } = useAuth();
@@ -1362,7 +1364,6 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
           setPinDialogOpen(false);
           setStoreToDelete(null);
         }}
-        isDark={isDark}
       />
 
       {/* ── Store form Sheet ──────────────────────────────────────────── */}
@@ -1541,7 +1542,8 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
 
 // ── Preferences section ───────────────────────────────────────────────────────
 
-function PreferencesSection({ isDark, c }: { isDark: boolean; c: Colors }) {
+function PreferencesSection() {
+  const c = useColors();
   const { showStoreBubble, setShowStoreBubble } = usePreferences();
 
   return (
@@ -1587,19 +1589,17 @@ const TABS: TabDef<SettingTab>[] = [
 ];
 
 export default function SettingScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const c = useColors(isDark);
+  const c = useColors();
   const [activeTab, setActiveTab] = useState<SettingTab>("profile");
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <ScreenTabs tabs={TABS} active={activeTab} onSelect={setActiveTab} />
 
-      {activeTab === "workers" && <WorkersSection isDark={isDark} c={c} />}
-      {activeTab === "profile" && <ProfileSection isDark={isDark} c={c} />}
-      {activeTab === "stores" && <StoresSection isDark={isDark} c={c} />}
-      {activeTab === "prefs" && <PreferencesSection isDark={isDark} c={c} />}
+      {activeTab === "workers" && <WorkersSection />}
+      {activeTab === "profile" && <ProfileSection />}
+      {activeTab === "stores" && <StoresSection />}
+      {activeTab === "prefs" && <PreferencesSection />}
     </View>
   );
 }

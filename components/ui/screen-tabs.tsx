@@ -1,7 +1,6 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import React from "react";
 import { Pressable } from "react-native";
-import { Text, XStack } from "tamagui";
+import { Text, useTheme, XStack } from "tamagui";
 
 export interface TabDef<T extends string = string> {
   key: T;
@@ -20,21 +19,16 @@ export function ScreenTabs<T extends string>({
   tabs,
   active,
   onSelect,
-  accentColor = "#2563eb",
+  accentColor,
 }: ScreenTabsProps<T>) {
-  const dark = useColorScheme() === "dark";
+  const theme = useTheme();
 
-  // Track background: subtle pill on the outer rail
-  const railBg = dark ? "#18181b" : "#f4f4f5";
-  const railBorder = dark ? "#3f3f46" : "#e4e4e7";
-
-  // Active pill gets a solid white (light) or zinc-800 (dark) card feel
-  const activePillBg = dark ? "#27272a" : "#ffffff";
-  const activePillShadow = dark ? "transparent" : "#00000014";
-
-  // Text / icon colors — high contrast
-  const activeTextColor = accentColor;
-  const inactiveTextColor = dark ? "#71717a" : "#a1a1aa";
+  const accent = accentColor ?? theme.blue10?.val;
+  const railBg = theme.color2?.val;
+  const railBorder = theme.borderColor?.val;
+  const activePillBg = theme.background?.val;
+  const inactiveText = theme.color8?.val;
+  const shadowColor = theme.shadowColor?.val;
 
   return (
     <XStack
@@ -64,23 +58,19 @@ export function ScreenTabs<T extends string>({
               gap: 4,
               borderRadius: 11,
               backgroundColor: isActive ? activePillBg : "transparent",
-              // subtle lift shadow on active (iOS)
-              shadowColor: isActive ? activePillShadow : "transparent",
+              shadowColor: shadowColor,
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: isActive ? 1 : 0,
               shadowRadius: 3,
               elevation: isActive ? 2 : 0,
             }}
           >
-            <tab.Icon
-              size={17}
-              color={isActive ? activeTextColor : inactiveTextColor}
-            />
+            <tab.Icon size={17} color={isActive ? accent : inactiveText} />
             <Text
               fontSize={11}
               fontWeight={isActive ? "700" : "400"}
               style={{
-                color: isActive ? activeTextColor : inactiveTextColor,
+                color: isActive ? accent : inactiveText,
                 letterSpacing: isActive ? 0.1 : 0,
               }}
             >

@@ -1,17 +1,17 @@
+import type { PeriodNavigation } from "@/hooks/use-period-navigation";
 import { todayISO } from "@/utils/format";
 import { Calendar, ChevronLeft, ChevronRight, X } from "@tamagui/lucide-icons";
 import { useEffect, useMemo, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    Text as RNText,
-    StyleSheet,
-    View,
-    useColorScheme,
+  Modal,
+  Pressable,
+  Text as RNText,
+  StyleSheet,
+  View,
 } from "react-native";
 import type { DateData } from "react-native-calendars";
 import { Calendar as RNCalendar } from "react-native-calendars";
-import { Button, Card, Text, XStack } from "tamagui";
+import { Button, Card, Text, XStack, useTheme } from "tamagui";
 
 export type Period = "day" | "week" | "month" | "year" | "range";
 
@@ -35,6 +35,7 @@ export function PeriodTabs({
   period: Period;
   onChangePeriod: (p: Period) => void;
 }) {
+  const theme = useTheme();
   return (
     <XStack
       bg="$color2"
@@ -52,7 +53,7 @@ export function PeriodTabs({
             style={{
               flex: 1,
               borderRadius: 8,
-              backgroundColor: active ? "#2563eb" : "transparent",
+              backgroundColor: active ? theme.blue10?.val : "transparent",
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -77,12 +78,14 @@ export function DateNavigator({
   onNext,
   canGoForward,
   onCalendarPress,
+  hideArrows,
 }: {
   label: string;
   onPrev: () => void;
   onNext: () => void;
   canGoForward: boolean;
   onCalendarPress?: () => void;
+  hideArrows?: boolean;
 }) {
   return (
     <Card
@@ -93,7 +96,9 @@ export function DateNavigator({
       p="$2"
     >
       <XStack style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <Button size="$3" chromeless icon={ChevronLeft} onPress={onPrev} />
+        {!hideArrows && (
+          <Button size="$3" chromeless icon={ChevronLeft} onPress={onPrev} />
+        )}
         <Pressable
           onPress={onCalendarPress}
           style={{ alignItems: "center", flex: 1 }}
@@ -109,14 +114,16 @@ export function DateNavigator({
             {label}
           </Text>
         </Pressable>
-        <Button
-          size="$3"
-          chromeless
-          icon={ChevronRight}
-          onPress={onNext}
-          disabled={!canGoForward}
-          opacity={canGoForward ? 1 : 0.3}
-        />
+        {!hideArrows && (
+          <Button
+            size="$3"
+            chromeless
+            icon={ChevronRight}
+            onPress={onNext}
+            disabled={!canGoForward}
+            opacity={canGoForward ? 1 : 0.3}
+          />
+        )}
       </XStack>
     </Card>
   );
@@ -161,10 +168,12 @@ export function CalendarSheet({
   selectedDay,
   selectedMonth,
   selectedYear,
+  selectedWeek,
   range,
   onSelectDay,
   onSelectMonth,
   onSelectYear,
+  onSelectWeek,
   onSelectRange,
 }: {
   open: boolean;
@@ -173,30 +182,32 @@ export function CalendarSheet({
   selectedDay?: string;
   selectedMonth?: string;
   selectedYear?: string;
+  selectedWeek?: string;
   range?: DateRange;
   onSelectDay?: (date: string) => void;
   onSelectMonth?: (month: string) => void;
   onSelectYear?: (year: string) => void;
+  onSelectWeek?: (weekStart: string) => void;
   onSelectRange?: (range: DateRange) => void;
 }) {
-  const dark = useColorScheme() === "dark";
+  const theme = useTheme();
   const today = todayISO();
   const nowYear = new Date().getFullYear();
   const nowYM = `${nowYear}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
   const c = useMemo(
     () => ({
-      bg: dark ? "#1c1c1e" : "#ffffff",
-      card: dark ? "#2c2c2e" : "#f2f2f7",
-      text: dark ? "#f2f2f7" : "#1c1c1e",
-      muted: dark ? "#8e8e93" : "#8e8e93",
-      border: dark ? "#3a3a3c" : "#e5e5ea",
-      blue: "#2563eb",
-      blueLight: "#93c5fd",
-      blueFaint: dark ? "#1e3a5f" : "#eff6ff",
-      disabled: dark ? "#3a3a3c" : "#d1d1d6",
+      bg: theme.background?.val as string,
+      card: theme.color2?.val as string,
+      text: theme.color?.val as string,
+      muted: theme.color8?.val as string,
+      border: theme.borderColor?.val as string,
+      blue: theme.blue10?.val as string,
+      blueLight: theme.blue7?.val as string,
+      blueFaint: theme.blue3?.val as string,
+      disabled: theme.color5?.val as string,
     }),
-    [dark],
+    [theme],
   );
 
   const [rangeStart, setRangeStart] = useState<string | null>(null);
@@ -206,9 +217,11 @@ export function CalendarSheet({
 
   useEffect(() => {
     if (!open) return;
+    // For range: if from===to it's a fresh default — show only start so the
+    // user picks a proper end instead of seeing a weird single-day period mark.
     setRangeStart(range?.from ?? null);
-    setRangeEnd(range?.to ?? null);
-    setWeekStart(null);
+    setRangeEnd(range?.from !== range?.to ? (range?.to ?? null) : null);
+    setWeekStart(selectedWeek ?? null);
     if (mode === "month") {
       setPickerYear(
         selectedMonth ? parseInt(selectedMonth.slice(0, 4), 10) : nowYear,
@@ -216,7 +229,15 @@ export function CalendarSheet({
     } else {
       setPickerYear(nowYear);
     }
-  }, [open, range?.from, range?.to, mode, selectedMonth, nowYear]);
+  }, [
+    open,
+    range?.from,
+    range?.to,
+    mode,
+    selectedMonth,
+    nowYear,
+    selectedWeek,
+  ]);
 
   const markedDates = useMemo(() => {
     if (mode === "day") {
@@ -379,7 +400,7 @@ export function CalendarSheet({
         <Pressable
           onPress={() => {
             if (weekStart) {
-              onSelectMonth?.(weekStart.slice(0, 7));
+              onSelectWeek?.(weekStart);
               onClose();
             }
           }}
@@ -527,6 +548,7 @@ export function CalendarSheet({
                 <RNCalendar
                   markingType="period"
                   markedDates={markedDates}
+                  current={rangeStart ?? undefined}
                   onDayPress={(day: DateData) => {
                     if (day.dateString > today) return;
                     if (!rangeStart || (rangeStart && rangeEnd)) {
@@ -705,3 +727,36 @@ const styles = StyleSheet.create({
     color: "white",
   },
 });
+
+/* ── Unified period selector ──────────────────────────────────────────────── */
+
+export function PeriodSelector({ nav }: { nav: PeriodNavigation }) {
+  return (
+    <>
+      <PeriodTabs period={nav.period} onChangePeriod={nav.setPeriod} />
+      <DateNavigator
+        label={nav.periodLabel}
+        onPrev={nav.navigateBack}
+        onNext={nav.navigateForward}
+        canGoForward={nav.canGoForward}
+        onCalendarPress={nav.openCalendar}
+        hideArrows={nav.period === "range"}
+      />
+      <CalendarSheet
+        open={nav.calendarOpen}
+        onClose={nav.closeCalendar}
+        mode={nav.period}
+        selectedDay={nav.selectedDay}
+        selectedMonth={nav.selectedMonth}
+        selectedYear={nav.selectedYear}
+        selectedWeek={nav.selectedWeekStart}
+        range={nav.dateRange}
+        onSelectDay={nav.selectDay}
+        onSelectMonth={nav.selectMonth}
+        onSelectYear={nav.selectYear}
+        onSelectWeek={nav.selectWeek}
+        onSelectRange={nav.selectRange}
+      />
+    </>
+  );
+}

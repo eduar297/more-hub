@@ -112,3 +112,43 @@ export function shortDayLabel(date: string): string {
 export function rangeLabel(from: string, to: string): string {
   return `${shortDayLabel(from)} — ${shortDayLabel(to)}`;
 }
+
+// ── Week helpers ──────────────────────────────────────────────────────────────
+
+/** ISO date of the Monday of the week that contains `dateStr`. */
+export function getMondayISO(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay(); // 0=Sun, 1=Mon...
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return d.toISOString().slice(0, 10);
+}
+
+/** ISO date of the Monday of the current week. */
+export function currentWeekMonday(): string {
+  return getMondayISO(todayISO());
+}
+
+/** Shift a week-start (Monday) by `delta` weeks. */
+export function shiftWeek(weekMon: string, delta: number): string {
+  return shiftDay(weekMon, delta * 7);
+}
+
+/** ISO date of the Sunday that ends the week starting on `weekMon`. */
+export function weekEndISO(weekMon: string): string {
+  return shiftDay(weekMon, 6);
+}
+
+/** Human label like "23 - 29 Mar" or "28 Mar - 3 Abr". */
+export function weekLabel(weekMon: string): string {
+  const start = new Date(weekMon + "T12:00:00");
+  const end = new Date(weekMon + "T12:00:00");
+  end.setDate(end.getDate() + 6);
+  const startDay = start.getDate();
+  const endDay = end.getDate();
+  const startMonth = MONTH_NAMES_SHORT[start.getMonth()];
+  const endMonth = MONTH_NAMES_SHORT[end.getMonth()];
+  if (start.getMonth() === end.getMonth()) {
+    return `${startDay} - ${endDay} ${endMonth}`;
+  }
+  return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+}
