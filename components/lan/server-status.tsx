@@ -1,5 +1,6 @@
 import { useLan } from "@/contexts/lan-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { LAN_PORT } from "@/services/lan/protocol";
 import {
     Copy,
     Monitor,
@@ -9,7 +10,8 @@ import {
 } from "@tamagui/lucide-icons";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { Alert } from "react-native";
+import { Alert, ScrollView } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { Button, Sheet, Text, XStack, YStack } from "tamagui";
 
 export function ServerStatusBadge() {
@@ -100,7 +102,7 @@ function ServerSheet({
       open={open}
       onOpenChange={onOpenChange}
       modal
-      snapPoints={[55]}
+      snapPoints={[85]}
       dismissOnSnapToBottom
     >
       <Sheet.Overlay
@@ -110,76 +112,103 @@ function ServerSheet({
       />
       <Sheet.Frame theme={themeName as any}>
         <Sheet.Handle />
-        <YStack p="$4" gap="$4">
-          <Text fontSize="$6" fontWeight="bold" color="$color">
-            Conexión LAN
-          </Text>
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+          <YStack p="$4" gap="$4">
+            <Text fontSize="$6" fontWeight="bold" color="$color">
+              Conexión LAN
+            </Text>
 
-          {/* Status */}
-          <XStack
-            bg={serverRunning ? "$green2" : "$color2"}
-            p="$4"
-            rounded="$4"
-            items="center"
-            gap="$3"
-          >
-            {serverRunning ? (
-              <Monitor size={28} color="$green10" />
-            ) : (
-              <MonitorOff size={28} color="$color10" />
-            )}
-            <YStack flex={1}>
-              <Text fontSize="$4" fontWeight="600" color="$color">
-                {serverRunning ? "Servidor activo" : "Servidor apagado"}
-              </Text>
-              {serverRunning && (
-                <Text fontSize="$2" color="$color10">
-                  IP: {serverIp} · {connectedDisplays} pantalla
-                  {connectedDisplays !== 1 ? "s" : ""}
-                </Text>
+            {/* Status */}
+            <XStack
+              bg={serverRunning ? "$green2" : "$color2"}
+              p="$4"
+              rounded="$4"
+              items="center"
+              gap="$3"
+            >
+              {serverRunning ? (
+                <Monitor size={28} color="$green10" />
+              ) : (
+                <MonitorOff size={28} color="$color10" />
               )}
-            </YStack>
-          </XStack>
-
-          {/* Pairing Code */}
-          {serverRunning && (
-            <YStack bg="$blue2" p="$4" rounded="$4" items="center" gap="$2">
-              <Text fontSize="$3" color="$blue10" fontWeight="600">
-                Código de emparejamiento
-              </Text>
-              <XStack items="center" gap="$3">
-                <Text
-                  fontSize={40}
-                  fontWeight="900"
-                  color="$blue10"
-                  letterSpacing={8}
-                >
-                  {pairingCode}
+              <YStack flex={1}>
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  {serverRunning ? "Servidor activo" : "Servidor apagado"}
                 </Text>
-                <Button
-                  size="$3"
-                  circular
-                  chromeless
-                  icon={<Copy size={18} />}
-                  onPress={handleCopyCode}
-                />
-              </XStack>
-              <Text fontSize="$2" color="$color10" text="center">
-                Ingresa este código en la pantalla para conectarla
-              </Text>
-            </YStack>
-          )}
+                {serverRunning && (
+                  <Text fontSize="$2" color="$color10">
+                    IP: {serverIp} · {connectedDisplays} pantalla
+                    {connectedDisplays !== 1 ? "s" : ""}
+                  </Text>
+                )}
+              </YStack>
+            </XStack>
 
-          {/* Toggle button */}
-          <Button
-            size="$5"
-            theme={serverRunning ? "red" : "green"}
-            icon={serverRunning ? WifiOff : Wifi}
-            onPress={handleToggle}
-          >
-            {serverRunning ? "Detener servidor" : "Iniciar servidor LAN"}
-          </Button>
-        </YStack>
+            {/* Pairing QR + Code */}
+            {serverRunning && (
+              <YStack bg="$blue2" p="$4" rounded="$4" items="center" gap="$3">
+                <Text fontSize="$3" color="$blue10" fontWeight="600">
+                  Código de emparejamiento
+                </Text>
+
+                {/* QR Code */}
+                <YStack bg="white" p="$3" rounded="$3">
+                  <QRCode
+                    value={`morehub://${serverIp}:${LAN_PORT}/${pairingCode}`}
+                    size={160}
+                    backgroundColor="white"
+                    color="black"
+                  />
+                </YStack>
+
+                <Text fontSize="$2" color="$color10" text="center">
+                  Escanea el QR desde la pantalla display
+                </Text>
+
+                {/* Manual code fallback */}
+                <YStack
+                  bg="$blue3"
+                  px="$4"
+                  py="$2"
+                  rounded="$3"
+                  items="center"
+                  gap="$1"
+                >
+                  <Text fontSize="$1" color="$color10">
+                    O ingresa el código manualmente
+                  </Text>
+                  <XStack items="center" gap="$3">
+                    <Text
+                      fontSize={32}
+                      fontWeight="900"
+                      color="$blue10"
+                      letterSpacing={8}
+                    >
+                      {pairingCode}
+                    </Text>
+                    <Button
+                      size="$3"
+                      circular
+                      chromeless
+                      icon={<Copy size={18} />}
+                      onPress={handleCopyCode}
+                    />
+                  </XStack>
+                </YStack>
+              </YStack>
+            )}
+
+            {/* Toggle button */}
+            <Button
+              size="$5"
+              theme={serverRunning ? "red" : "green"}
+              icon={serverRunning ? WifiOff : Wifi}
+              onPress={handleToggle}
+            >
+              {serverRunning ? "Detener servidor" : "Iniciar servidor LAN"}
+            </Button>
+          </YStack>
+        </ScrollView>
       </Sheet.Frame>
     </Sheet>
   );
