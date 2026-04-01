@@ -35,6 +35,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Switch,
@@ -87,6 +88,105 @@ const STORE_COLORS = [
   "#06b6d4",
   "#84cc16",
 ];
+
+// ── PIN prompt dialog (cross-platform, replaces Alert.prompt) ───────────────────
+
+function PinPromptDialog({
+  open,
+  title,
+  description,
+  onConfirm,
+  onCancel,
+  isDark,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  onConfirm: (pin: string) => void;
+  onCancel: () => void;
+  isDark: boolean;
+}) {
+  const [pin, setPin] = useState("");
+  const c = useColors(isDark);
+
+  useEffect(() => {
+    if (open) setPin("");
+  }, [open]);
+
+  return (
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <View style={styles.pinModalOverlay}>
+        <View
+          style={[
+            styles.pinModalCard,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
+          <Text style={[styles.pinModalTitle, { color: c.text }]}>{title}</Text>
+          <Text style={[styles.pinModalDesc, { color: c.muted }]}>
+            {description}
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: c.input,
+                color: c.text,
+                borderColor: c.border,
+              },
+            ]}
+            placeholder="••••"
+            placeholderTextColor={c.muted}
+            value={pin}
+            onChangeText={setPin}
+            secureTextEntry
+            keyboardType="numeric"
+            maxLength={8}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (pin) onConfirm(pin);
+            }}
+          />
+          <View style={styles.pinModalActions}>
+            <TouchableOpacity
+              style={[
+                styles.pinModalBtn,
+                { borderWidth: 1, borderColor: c.border },
+              ]}
+              onPress={onCancel}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.pinModalBtnText, { color: c.text }]}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.pinModalBtn,
+                { backgroundColor: c.blue, opacity: pin ? 1 : 0.5 },
+              ]}
+              onPress={() => {
+                if (pin) onConfirm(pin);
+              }}
+              disabled={!pin}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.pinModalBtnText, { color: "#fff" }]}>
+                Confirmar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 // ── Workers section ───────────────────────────────────────────────────────────
 
@@ -478,6 +578,10 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
   const [resetting, setResetting] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedProgress, setSeedProgress] = useState("");
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pinDialogMode, setPinDialogMode] = useState<"reset" | "seed" | null>(
+    null,
+  );
 
   useEffect(() => {
     setName(user?.name ?? "");
@@ -510,16 +614,24 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
   );
 
   const handleReset = useCallback(() => {
-    Alert.prompt(
-      "🔐 Confirmar identidad",
-      "Ingresa tu PIN de administrador para limpiar la base de datos",
-      async (pin) => {
-        if (!pin) return;
-        const valid = await verifyAdminPin(pin);
-        if (!valid) {
-          setError("PIN incorrecto");
-          return;
-        }
+    setPinDialogMode("reset");
+    setPinDialogOpen(true);
+  }, []);
+
+  const handleSeed = useCallback(() => {
+    setPinDialogMode("seed");
+    setPinDialogOpen(true);
+  }, []);
+
+  const handlePinConfirm = useCallback(
+    async (pin: string) => {
+      setPinDialogOpen(false);
+      const valid = await verifyAdminPin(pin);
+      if (!valid) {
+        setError("PIN incorrecto");
+        return;
+      }
+      if (pinDialogMode === "reset") {
         Alert.alert(
           "⚠️ Borrar base de datos",
           "Se eliminarán TODOS los datos: productos, tickets, compras, gastos, proveedores, trabajadores y fotos. Solo se conservará tu cuenta de administrador y las unidades del sistema.\n\n¿Estás completamente seguro?",
@@ -546,25 +658,7 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
             },
           ],
         );
-      },
-      "secure-text",
-      "",
-      "numeric",
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verifyAdminPin, db]);
-
-  const handleSeed = useCallback(() => {
-    Alert.prompt(
-      "🔐 Confirmar identidad",
-      "Ingresa tu PIN de administrador para sembrar datos de prueba",
-      async (pin) => {
-        if (!pin) return;
-        const valid = await verifyAdminPin(pin);
-        if (!valid) {
-          setError("PIN incorrecto");
-          return;
-        }
+      } else if (pinDialogMode === "seed") {
         Alert.alert(
           "Sembrar datos de prueba",
           "Se creará un año completo de datos simulados: trabajadores, productos, compras, tickets y gastos.\n\nEs recomendable limpiar la base de datos primero.\n\n¿Continuar?",
@@ -593,13 +687,17 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
             },
           ],
         );
-      },
-      "secure-text",
-      "",
-      "numeric",
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verifyAdminPin, db]);
+      }
+    },
+    [
+      verifyAdminPin,
+      pinDialogMode,
+      db,
+      refreshStores,
+      setCurrentStore,
+      currentStore,
+    ],
+  );
 
   const handleSave = useCallback(async () => {
     if (!user) return;
@@ -653,155 +751,109 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
   }, [user, name, curPin, newPin, confPin, userRepo]);
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.profileContent}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Avatar */}
-      <View style={styles.profileAvatarRow}>
-        <TouchableOpacity
-          onPress={() => setShowPhotoPicker((v) => !v)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.avatarWrapper}>
-            <View
-              style={[styles.avatarLarge, { backgroundColor: c.blueLight }]}
-            >
-              {photoUri ? (
-                <Image
-                  source={{ uri: photoUri }}
-                  style={styles.avatarLargeImage}
-                />
-              ) : (
-                <UserCog size={34} color={c.blue as any} />
-              )}
+    <>
+      <ScrollView
+        contentContainerStyle={styles.profileContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Avatar */}
+        <View style={styles.profileAvatarRow}>
+          <TouchableOpacity
+            onPress={() => setShowPhotoPicker((v) => !v)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.avatarWrapper}>
+              <View
+                style={[styles.avatarLarge, { backgroundColor: c.blueLight }]}
+              >
+                {photoUri ? (
+                  <Image
+                    source={{ uri: photoUri }}
+                    style={styles.avatarLargeImage}
+                  />
+                ) : (
+                  <UserCog size={34} color={c.blue as any} />
+                )}
+              </View>
+              <View
+                style={[styles.avatarEditBadge, { backgroundColor: c.blue }]}
+              >
+                <Camera size={12} color="#fff" />
+              </View>
             </View>
-            <View style={[styles.avatarEditBadge, { backgroundColor: c.blue }]}>
-              <Camera size={12} color="#fff" />
-            </View>
-          </View>
-        </TouchableOpacity>
-        <Text style={[styles.profileName, { color: c.text }]}>
-          {user?.name ?? "—"}
-        </Text>
-        <View style={[styles.roleBadge, { backgroundColor: c.blueLight }]}>
-          <Text style={[styles.roleText, { color: c.blue }]}>
-            Administrador
+          </TouchableOpacity>
+          <Text style={[styles.profileName, { color: c.text }]}>
+            {user?.name ?? "—"}
           </Text>
+          <View style={[styles.roleBadge, { backgroundColor: c.blueLight }]}>
+            <Text style={[styles.roleText, { color: c.blue }]}>
+              Administrador
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {/* Photo picker (inline) */}
-      {showPhotoPicker && (
+        {/* Photo picker (inline) */}
+        {showPhotoPicker && (
+          <View
+            style={[
+              styles.profileCard,
+              { backgroundColor: c.card, borderColor: c.border },
+            ]}
+          >
+            <PhotoPicker uri={photoUri} onChange={handlePhotoChange} />
+          </View>
+        )}
+
+        {/* Name */}
         <View
           style={[
             styles.profileCard,
             { backgroundColor: c.card, borderColor: c.border },
           ]}
         >
-          <PhotoPicker uri={photoUri} onChange={handlePhotoChange} />
-        </View>
-      )}
-
-      {/* Name */}
-      <View
-        style={[
-          styles.profileCard,
-          { backgroundColor: c.card, borderColor: c.border },
-        ]}
-      >
-        <Text style={[styles.cardTitle, { color: c.text }]}>
-          Información personal
-        </Text>
-        <View style={styles.formField}>
-          <Text style={[styles.fieldLabel, { color: c.muted }]}>Nombre</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: c.input,
-                color: c.text,
-                borderColor: c.border,
-              },
-            ]}
-            value={name}
-            onChangeText={(v) => {
-              setName(v);
-              clearFeedback();
-            }}
-            placeholder="Nombre del administrador"
-            placeholderTextColor={c.muted}
-            autoCapitalize="words"
-          />
-        </View>
-      </View>
-
-      {/* PIN change */}
-      <View
-        style={[
-          styles.profileCard,
-          { backgroundColor: c.card, borderColor: c.border },
-        ]}
-      >
-        <View style={styles.cardTitleRow}>
-          <Lock size={14} color={c.blue as any} />
-          <Text style={[styles.cardTitle, { color: c.text }]}>Cambiar PIN</Text>
-        </View>
-
-        <View style={styles.formField}>
-          <Text style={[styles.fieldLabel, { color: c.muted }]}>
-            PIN actual
+          <Text style={[styles.cardTitle, { color: c.text }]}>
+            Información personal
           </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: c.input,
-                color: c.text,
-                borderColor: c.border,
-              },
-            ]}
-            placeholder="••••"
-            placeholderTextColor={c.muted}
-            value={curPin}
-            onChangeText={(v) => {
-              setCurPin(v);
-              clearFeedback();
-            }}
-            secureTextEntry
-            keyboardType="numeric"
-            maxLength={8}
-          />
+          <View style={styles.formField}>
+            <Text style={[styles.fieldLabel, { color: c.muted }]}>Nombre</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: c.input,
+                  color: c.text,
+                  borderColor: c.border,
+                },
+              ]}
+              value={name}
+              onChangeText={(v) => {
+                setName(v);
+                clearFeedback();
+              }}
+              placeholder="Nombre del administrador"
+              placeholderTextColor={c.muted}
+              autoCapitalize="words"
+            />
+          </View>
         </View>
 
-        <View style={styles.formField}>
-          <Text style={[styles.fieldLabel, { color: c.muted }]}>Nuevo PIN</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: c.input,
-                color: c.text,
-                borderColor: c.border,
-              },
-            ]}
-            placeholder="••••"
-            placeholderTextColor={c.muted}
-            value={newPin}
-            onChangeText={(v) => {
-              setNewPin(v);
-              clearFeedback();
-            }}
-            secureTextEntry
-            keyboardType="numeric"
-            maxLength={8}
-          />
-        </View>
+        {/* PIN change */}
+        <View
+          style={[
+            styles.profileCard,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
+          <View style={styles.cardTitleRow}>
+            <Lock size={14} color={c.blue as any} />
+            <Text style={[styles.cardTitle, { color: c.text }]}>
+              Cambiar PIN
+            </Text>
+          </View>
 
-        {newPin.length > 0 && (
           <View style={styles.formField}>
             <Text style={[styles.fieldLabel, { color: c.muted }]}>
-              Confirmar nuevo PIN
+              PIN actual
             </Text>
             <TextInput
               style={[
@@ -814,156 +866,223 @@ function ProfileSection({ isDark, c }: { isDark: boolean; c: Colors }) {
               ]}
               placeholder="••••"
               placeholderTextColor={c.muted}
-              value={confPin}
+              value={curPin}
               onChangeText={(v) => {
-                setConfPin(v);
+                setCurPin(v);
                 clearFeedback();
               }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={8}
-              returnKeyType="done"
-              onSubmitEditing={handleSave}
             />
           </View>
-        )}
-      </View>
 
-      {/* Feedback */}
-      {!!error && (
-        <View style={[styles.feedbackRow, { backgroundColor: c.dangerBg }]}>
-          <AlertCircle size={15} color={c.danger as any} />
-          <Text style={[styles.feedbackText, { color: c.danger }]}>
-            {error}
-          </Text>
-        </View>
-      )}
-      {!!success && (
-        <View style={[styles.feedbackRow, { backgroundColor: c.successBg }]}>
-          <CheckCircle size={15} color={c.green as any} />
-          <Text style={[styles.feedbackText, { color: c.green }]}>
-            {success}
-          </Text>
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={[
-          styles.btnSolidFull,
-          { backgroundColor: c.blue, opacity: saving ? 0.7 : 1 },
-        ]}
-        onPress={handleSave}
-        disabled={saving}
-        activeOpacity={0.8}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.btnSolidText}>Guardar cambios</Text>
-        )}
-      </TouchableOpacity>
-
-      {/* ── Danger zone ─────────────────────────────────────────────── */}
-      <View
-        style={[
-          styles.profileCard,
-          {
-            backgroundColor: c.card,
-            borderColor: c.danger,
-            borderWidth: 1.5,
-            marginTop: 10,
-          },
-        ]}
-      >
-        <View style={styles.cardTitleRow}>
-          <TriangleAlert size={15} color={c.danger as any} />
-          <Text style={[styles.cardTitle, { color: c.danger }]}>
-            Zona peligrosa
-          </Text>
-        </View>
-
-        {/* Reset DB */}
-        <View style={styles.dangerBlock}>
-          <View style={styles.dangerInfo}>
-            <View style={styles.cardTitleRow}>
-              <Database size={14} color={c.danger as any} />
-              <Text style={[styles.dangerLabel, { color: c.text }]}>
-                Limpiar base de datos
-              </Text>
-            </View>
-            <Text style={[styles.dangerDesc, { color: c.muted }]}>
-              Elimina todos los datos excepto tu cuenta y unidades del sistema.
+          <View style={styles.formField}>
+            <Text style={[styles.fieldLabel, { color: c.muted }]}>
+              Nuevo PIN
             </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: c.input,
+                  color: c.text,
+                  borderColor: c.border,
+                },
+              ]}
+              placeholder="••••"
+              placeholderTextColor={c.muted}
+              value={newPin}
+              onChangeText={(v) => {
+                setNewPin(v);
+                clearFeedback();
+              }}
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={8}
+            />
           </View>
-          <TouchableOpacity
-            style={[
-              styles.dangerBtn,
-              { borderColor: c.danger, opacity: resetting ? 0.7 : 1 },
-            ]}
-            onPress={handleReset}
-            disabled={resetting || seeding}
-            activeOpacity={0.8}
-          >
-            {resetting ? (
-              <ActivityIndicator color={c.danger} size="small" />
-            ) : (
-              <>
-                <Trash2 size={14} color={c.danger as any} />
-                <Text style={[styles.dangerBtnText, { color: c.danger }]}>
-                  Limpiar todo
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
 
-        <View style={[styles.dangerDivider, { backgroundColor: c.border }]} />
-
-        {/* Seed simulation */}
-        <View style={styles.dangerBlock}>
-          <View style={styles.dangerInfo}>
-            <View style={styles.cardTitleRow}>
-              <Play size={14} color={c.blue as any} />
-              <Text style={[styles.dangerLabel, { color: c.text }]}>
-                Sembrar datos de prueba
+          {newPin.length > 0 && (
+            <View style={styles.formField}>
+              <Text style={[styles.fieldLabel, { color: c.muted }]}>
+                Confirmar nuevo PIN
               </Text>
-            </View>
-            <Text style={[styles.dangerDesc, { color: c.muted }]}>
-              Genera un año de datos simulados: 4 trabajadores, 44 productos, 5
-              proveedores, compras, tickets diarios y gastos.
-            </Text>
-          </View>
-          {!!seedProgress && (
-            <View
-              style={[styles.feedbackRow, { backgroundColor: c.blueLight }]}
-            >
-              <ActivityIndicator color={c.blue} size="small" />
-              <Text style={[styles.feedbackText, { color: c.blue }]}>
-                {seedProgress}
-              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: c.input,
+                    color: c.text,
+                    borderColor: c.border,
+                  },
+                ]}
+                placeholder="••••"
+                placeholderTextColor={c.muted}
+                value={confPin}
+                onChangeText={(v) => {
+                  setConfPin(v);
+                  clearFeedback();
+                }}
+                secureTextEntry
+                keyboardType="numeric"
+                maxLength={8}
+                returnKeyType="done"
+                onSubmitEditing={handleSave}
+              />
             </View>
           )}
-          <TouchableOpacity
-            style={[
-              styles.seedBtn,
-              { backgroundColor: c.blue, opacity: seeding ? 0.7 : 1 },
-            ]}
-            onPress={handleSeed}
-            disabled={seeding || resetting}
-            activeOpacity={0.8}
-          >
-            {seeding ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <Play size={14} color="#fff" />
-                <Text style={styles.btnSolidText}>Iniciar simulación</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+
+        {/* Feedback */}
+        {!!error && (
+          <View style={[styles.feedbackRow, { backgroundColor: c.dangerBg }]}>
+            <AlertCircle size={15} color={c.danger as any} />
+            <Text style={[styles.feedbackText, { color: c.danger }]}>
+              {error}
+            </Text>
+          </View>
+        )}
+        {!!success && (
+          <View style={[styles.feedbackRow, { backgroundColor: c.successBg }]}>
+            <CheckCircle size={15} color={c.green as any} />
+            <Text style={[styles.feedbackText, { color: c.green }]}>
+              {success}
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.btnSolidFull,
+            { backgroundColor: c.blue, opacity: saving ? 0.7 : 1 },
+          ]}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.btnSolidText}>Guardar cambios</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* ── Danger zone ─────────────────────────────────────────────── */}
+        <View
+          style={[
+            styles.profileCard,
+            {
+              backgroundColor: c.card,
+              borderColor: c.danger,
+              borderWidth: 1.5,
+              marginTop: 10,
+            },
+          ]}
+        >
+          <View style={styles.cardTitleRow}>
+            <TriangleAlert size={15} color={c.danger as any} />
+            <Text style={[styles.cardTitle, { color: c.danger }]}>
+              Zona peligrosa
+            </Text>
+          </View>
+
+          {/* Reset DB */}
+          <View style={styles.dangerBlock}>
+            <View style={styles.dangerInfo}>
+              <View style={styles.cardTitleRow}>
+                <Database size={14} color={c.danger as any} />
+                <Text style={[styles.dangerLabel, { color: c.text }]}>
+                  Limpiar base de datos
+                </Text>
+              </View>
+              <Text style={[styles.dangerDesc, { color: c.muted }]}>
+                Elimina todos los datos excepto tu cuenta y unidades del
+                sistema.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.dangerBtn,
+                { borderColor: c.danger, opacity: resetting ? 0.7 : 1 },
+              ]}
+              onPress={handleReset}
+              disabled={resetting || seeding}
+              activeOpacity={0.8}
+            >
+              {resetting ? (
+                <ActivityIndicator color={c.danger} size="small" />
+              ) : (
+                <>
+                  <Trash2 size={14} color={c.danger as any} />
+                  <Text style={[styles.dangerBtnText, { color: c.danger }]}>
+                    Limpiar todo
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.dangerDivider, { backgroundColor: c.border }]} />
+
+          {/* Seed simulation */}
+          <View style={styles.dangerBlock}>
+            <View style={styles.dangerInfo}>
+              <View style={styles.cardTitleRow}>
+                <Play size={14} color={c.blue as any} />
+                <Text style={[styles.dangerLabel, { color: c.text }]}>
+                  Sembrar datos de prueba
+                </Text>
+              </View>
+              <Text style={[styles.dangerDesc, { color: c.muted }]}>
+                Genera un año de datos simulados: 4 trabajadores, 44 productos,
+                5 proveedores, compras, tickets diarios y gastos.
+              </Text>
+            </View>
+            {!!seedProgress && (
+              <View
+                style={[styles.feedbackRow, { backgroundColor: c.blueLight }]}
+              >
+                <ActivityIndicator color={c.blue} size="small" />
+                <Text style={[styles.feedbackText, { color: c.blue }]}>
+                  {seedProgress}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.seedBtn,
+                { backgroundColor: c.blue, opacity: seeding ? 0.7 : 1 },
+              ]}
+              onPress={handleSeed}
+              disabled={seeding || resetting}
+              activeOpacity={0.8}
+            >
+              {seeding ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Play size={14} color="#fff" />
+                  <Text style={styles.btnSolidText}>Iniciar simulación</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+      <PinPromptDialog
+        open={pinDialogOpen}
+        title="🔐 Confirmar identidad"
+        description={
+          pinDialogMode === "reset"
+            ? "Ingresa tu PIN de administrador para limpiar la base de datos"
+            : "Ingresa tu PIN de administrador para sembrar datos de prueba"
+        }
+        onConfirm={handlePinConfirm}
+        onCancel={() => setPinDialogOpen(false)}
+        isDark={isDark}
+      />
+    </>
   );
 }
 
@@ -983,6 +1102,8 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
   const [color, setColor] = useState("#3b82f6");
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [storeToDelete, setStoreToDelete] = useState<StoreModel | null>(null);
 
   const themeName = isDark ? "dark" : "light";
 
@@ -1059,25 +1180,26 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
         Alert.alert("Error", "No puedes eliminar la única tienda.");
         return;
       }
-      Alert.prompt(
-        "🔐 Confirmar identidad",
-        `Ingresa tu PIN de administrador para eliminar "${s.name}"`,
-        async (pin) => {
-          if (!pin) return;
-          const valid = await verifyAdminPin(pin);
-          if (!valid) {
-            Alert.alert("Error", "PIN incorrecto");
-            return;
-          }
-          await storeRepo.delete(s.id);
-          await refreshStores();
-        },
-        "secure-text",
-        "",
-        "numeric",
-      );
+      setStoreToDelete(s);
+      setPinDialogOpen(true);
     },
-    [storeRepo, refreshStores, stores.length, verifyAdminPin],
+    [stores.length],
+  );
+
+  const handlePinConfirm = useCallback(
+    async (pin: string) => {
+      setPinDialogOpen(false);
+      if (!storeToDelete) return;
+      const valid = await verifyAdminPin(pin);
+      if (!valid) {
+        Alert.alert("Error", "PIN incorrecto");
+        return;
+      }
+      await storeRepo.delete(storeToDelete.id);
+      await refreshStores();
+      setStoreToDelete(null);
+    },
+    [storeToDelete, verifyAdminPin, storeRepo, refreshStores],
   );
 
   const handleSwitchStore = useCallback(
@@ -1229,6 +1351,19 @@ function StoresSection({ isDark, c }: { isDark: boolean; c: Colors }) {
           </View>
         )}
       </ScrollView>
+
+      {/* ── PIN confirmation dialog ─────────────────────────────────── */}
+      <PinPromptDialog
+        open={pinDialogOpen}
+        title="🔐 Confirmar identidad"
+        description={`Ingresa tu PIN de administrador para eliminar "${storeToDelete?.name ?? ""}"`}
+        onConfirm={handlePinConfirm}
+        onCancel={() => {
+          setPinDialogOpen(false);
+          setStoreToDelete(null);
+        }}
+        isDark={isDark}
+      />
 
       {/* ── Store form Sheet ──────────────────────────────────────────── */}
       <Sheet
@@ -1643,5 +1778,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+
+  // PIN prompt modal
+  pinModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  pinModalCard: {
+    width: "100%" as const,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    gap: 14,
+  },
+  pinModalTitle: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+  },
+  pinModalDesc: {
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  pinModalActions: {
+    flexDirection: "row" as const,
+    gap: 10,
+    marginTop: 4,
+  },
+  pinModalBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  pinModalBtnText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
   },
 });
