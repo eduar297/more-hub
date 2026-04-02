@@ -6,6 +6,7 @@ import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
 import {
+  daysInMonth,
   fmtMoney,
   MONTH_NAMES_SHORT,
   shiftDay,
@@ -57,6 +58,9 @@ export function FinanceSection() {
   const [weekDailyData, setWeekDailyData] = useState<
     { label: string; income: number; outflow: number }[]
   >([]);
+  const [monthDailySales, setMonthDailySales] = useState<
+    { day: number; total: number }[]
+  >([]);
   const [rangeDailyData, setRangeDailyData] = useState<
     { label: string; income: number; outflow: number }[]
   >([]);
@@ -105,18 +109,21 @@ export function FinanceSection() {
         });
         setWeekDailyData(daily);
       } else if (nav.period === "month") {
-        const [monthS, monthP, monthE, expByCat] = await Promise.all([
-          ticketRepo.monthlySummary(nav.selectedMonth),
-          purchaseRepo.monthlySummary(nav.selectedMonth),
-          expenseRepo.monthlyTotal(nav.selectedMonth),
-          expenseRepo.monthlySummaryByCategory(nav.selectedMonth),
-        ]);
+        const [monthS, monthP, monthE, expByCat, monthDaily] =
+          await Promise.all([
+            ticketRepo.monthlySummary(nav.selectedMonth),
+            purchaseRepo.monthlySummary(nav.selectedMonth),
+            expenseRepo.monthlyTotal(nav.selectedMonth),
+            expenseRepo.monthlySummaryByCategory(nav.selectedMonth),
+            ticketRepo.dailySales(nav.selectedMonth),
+          ]);
         setSalesTotal(monthS.totalSales);
         setSalesTickets(monthS.ticketCount);
         setPurchTotal(monthP.totalSpent);
         setPurchTransport(monthP.totalTransport);
         setExpenseTotal(monthE);
         setExpensesByCategory(expByCat);
+        setMonthDailySales(monthDaily);
       } else if (nav.period === "year") {
         const yearStart = `${nav.selectedYear}-01-01`;
         const yearEnd = `${nav.selectedYear}-12-31`;
@@ -329,6 +336,22 @@ export function FinanceSection() {
       labelTextStyle: { fontSize: 9, color: "#888" },
     }));
   }, [nav.period, rangeDailyData]);
+
+  // Month daily income bar chart
+  const monthChartData = useMemo(() => {
+    if (nav.period !== "month") return [];
+    const numDays = daysInMonth(nav.selectedMonth);
+    const dayMap = new Map(monthDailySales.map((d) => [d.day, d.total]));
+    return Array.from({ length: numDays }, (_, i) => {
+      const total = dayMap.get(i + 1) ?? 0;
+      return {
+        value: total,
+        label: String(i + 1),
+        frontColor: total > 0 ? "#22c55e" : "#555555",
+        labelTextStyle: { fontSize: 9, color: "#888" },
+      };
+    });
+  }, [nav.period, nav.selectedMonth, monthDailySales]);
 
   const hasNegativeProfit = profitTrendData.some((d) => d.value < 0);
   const hasPositiveProfit = profitTrendData.some((d) => d.value > 0);
@@ -648,6 +671,24 @@ export function FinanceSection() {
             </Card>
           )}
 
+          {/* Month: daily income chart */}
+          {nav.period === "month" && monthChartData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <YStack gap="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Ingresos diarios del mes
+                </Text>
+                <AdminBarChart data={monthChartData} />
+              </YStack>
+            </Card>
+          )}
+
           {/* Yearly trends — show for month and year */}
           {(nav.period === "month" || nav.period === "year") && (
             <>
@@ -746,7 +787,7 @@ export function FinanceSection() {
               >
                 <YStack p="$4" pb="$2">
                   <Text fontSize="$3" fontWeight="600" color="$color10">
-                    Desglose por hora
+                    Desglose del día por hora
                   </Text>
                 </YStack>
                 <XStack px="$4" py="$2" bg="$color2">
@@ -814,7 +855,7 @@ export function FinanceSection() {
             >
               <YStack p="$4" pb="$2">
                 <Text fontSize="$3" fontWeight="600" color="$color10">
-                  Desglose semanal
+                  Desglose de la semana por día
                 </Text>
               </YStack>
               <XStack px="$4" py="$2" bg="$color2">
@@ -850,8 +891,8 @@ export function FinanceSection() {
             </Card>
           )}
 
-          {(nav.period === "month" || nav.period === "year") &&
-            yearlyTrendData.length > 0 && (
+          {nav.period === "month" &&
+            monthDailySales.some((d) => d.total > 0) && (
               <Card
                 bg="$color1"
                 borderWidth={1}
@@ -861,94 +902,145 @@ export function FinanceSection() {
               >
                 <YStack p="$4" pb="$2">
                   <Text fontSize="$3" fontWeight="600" color="$color10">
-                    {nav.period === "year"
-                      ? `Resumen anual ${nav.selectedYear}`
-                      : `Resumen mensual ${nav.selectedMonth.slice(0, 4)}`}
+                    Desglose del mes por día
                   </Text>
                 </YStack>
                 <XStack px="$4" py="$2" bg="$color2">
                   <Text
-                    width={35}
+                    flex={1}
                     fontSize="$2"
                     fontWeight="600"
                     color="$color10"
                   >
-                    Mes
+                    Día
                   </Text>
                   <Text
-                    flex={1}
                     fontSize="$2"
                     fontWeight="600"
                     color="$green10"
-                    style={{ textAlign: "right" }}
+                    style={{ width: 80, textAlign: "right" }}
                   >
-                    Ingreso
-                  </Text>
-                  <Text
-                    flex={1}
-                    fontSize="$2"
-                    fontWeight="600"
-                    color="$red10"
-                    style={{ textAlign: "right" }}
-                  >
-                    Egreso
-                  </Text>
-                  <Text
-                    flex={1}
-                    fontSize="$2"
-                    fontWeight="600"
-                    color="$color"
-                    style={{ textAlign: "right" }}
-                  >
-                    Resultado
+                    Ingresos
                   </Text>
                 </XStack>
-                {yearlyTrendData.map((item, idx) => {
-                  const netResult = item.income - item.outflow;
-                  if (item.income === 0 && item.outflow === 0) return null;
-                  return (
-                    <YStack key={idx}>
+                {monthDailySales
+                  .filter((d) => d.total > 0)
+                  .map((d) => (
+                    <YStack key={d.day}>
                       <Separator />
                       <XStack px="$4" py="$2" style={{ alignItems: "center" }}>
-                        <Text width={35} fontSize="$3" color="$color">
-                          {MONTH_NAMES_SHORT[item.month - 1]}
+                        <Text flex={1} fontSize="$3" color="$color">
+                          {d.day}
                         </Text>
                         <Text
-                          flex={1}
                           fontSize="$3"
                           color="$green10"
-                          style={{ textAlign: "right" }}
-                          numberOfLines={1}
+                          style={{ width: 80, textAlign: "right" }}
                         >
-                          ${fmtMoney(item.income)}
-                        </Text>
-                        <Text
-                          flex={1}
-                          fontSize="$3"
-                          color="$red10"
-                          style={{ textAlign: "right" }}
-                          numberOfLines={1}
-                        >
-                          ${fmtMoney(item.outflow)}
-                        </Text>
-                        <Text
-                          flex={1}
-                          fontSize="$3"
-                          fontWeight="bold"
-                          color={netResult >= 0 ? "$green10" : "$red10"}
-                          style={{ textAlign: "right" }}
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                        >
-                          {netResult >= 0 ? "+" : "-"}$
-                          {fmtMoney(Math.abs(netResult))}
+                          ${fmtMoney(d.total)}
                         </Text>
                       </XStack>
                     </YStack>
-                  );
-                })}
+                  ))}
               </Card>
             )}
+
+          {nav.period === "year" && yearlyTrendData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              overflow="hidden"
+            >
+              <YStack p="$4" pb="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Desglose anual por mes
+                </Text>
+              </YStack>
+              <XStack px="$4" py="$2" bg="$color2">
+                <Text
+                  width={35}
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$color10"
+                >
+                  Mes
+                </Text>
+                <Text
+                  flex={1}
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$green10"
+                  style={{ textAlign: "right" }}
+                >
+                  Ingreso
+                </Text>
+                <Text
+                  flex={1}
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$red10"
+                  style={{ textAlign: "right" }}
+                >
+                  Egreso
+                </Text>
+                <Text
+                  flex={1}
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$color"
+                  style={{ textAlign: "right" }}
+                >
+                  Resultado
+                </Text>
+              </XStack>
+              {yearlyTrendData.map((item, idx) => {
+                const netResult = item.income - item.outflow;
+                if (item.income === 0 && item.outflow === 0) return null;
+                return (
+                  <YStack key={idx}>
+                    <Separator />
+                    <XStack px="$4" py="$2" style={{ alignItems: "center" }}>
+                      <Text width={35} fontSize="$3" color="$color">
+                        {MONTH_NAMES_SHORT[item.month - 1]}
+                      </Text>
+                      <Text
+                        flex={1}
+                        fontSize="$3"
+                        color="$green10"
+                        style={{ textAlign: "right" }}
+                        numberOfLines={1}
+                      >
+                        ${fmtMoney(item.income)}
+                      </Text>
+                      <Text
+                        flex={1}
+                        fontSize="$3"
+                        color="$red10"
+                        style={{ textAlign: "right" }}
+                        numberOfLines={1}
+                      >
+                        ${fmtMoney(item.outflow)}
+                      </Text>
+                      <Text
+                        flex={1}
+                        fontSize="$3"
+                        fontWeight="bold"
+                        color={netResult >= 0 ? "$green10" : "$red10"}
+                        style={{ textAlign: "right" }}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {netResult >= 0 ? "+" : "-"}$
+                        {fmtMoney(Math.abs(netResult))}
+                      </Text>
+                    </XStack>
+                  </YStack>
+                );
+              })}
+            </Card>
+          )}
 
           {nav.period === "range" && rangeDailyData.length > 0 && (
             <Card
