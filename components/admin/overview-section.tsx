@@ -6,17 +6,17 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-    daysInMonth,
-    fmtMoney,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    BarChart3,
-    DollarSign,
-    Package,
-    TrendingUp,
+  BarChart3,
+  DollarSign,
+  Package,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -314,8 +314,6 @@ export function OverviewSection() {
               borderColor="$borderColor"
               style={{ borderRadius: 14 }}
               p="$4"
-              animation="fast"
-              enterStyle={{ opacity: 0, y: 10 }}
             >
               <YStack gap="$3">
                 <XStack gap="$2" style={{ alignItems: "center" }}>
@@ -350,8 +348,6 @@ export function OverviewSection() {
             borderColor={profit >= 0 ? "$green6" : "$red6"}
             style={{ borderRadius: 14 }}
             p="$4"
-            animation="fast"
-            enterStyle={{ opacity: 0, y: 10 }}
           >
             <YStack gap="$3">
               <XStack gap="$2" style={{ alignItems: "center" }}>
