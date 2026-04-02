@@ -6,21 +6,22 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-  daysInMonth,
-  fmtMoney,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  BarChart3,
-  DollarSign,
-  Package,
-  TrendingUp,
+    BarChart3,
+    DollarSign,
+    Package,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Dimensions, ScrollView } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
 
@@ -131,6 +132,23 @@ export function OverviewSection() {
         setTicketCount(rangeTickets.length);
         setPurchasesTotal(rangePurch.totalSpent);
         setExpensesTotal(rangeExp);
+        // Build daily totals for range chart
+        const dayCount =
+          Math.round(
+            (new Date(nav.dateRange.to + "T12:00:00").getTime() -
+              new Date(nav.dateRange.from + "T12:00:00").getTime()) /
+              86400000,
+          ) + 1;
+        const rangeDailyTotals = Array.from({ length: dayCount }, (_, i) => {
+          const dayKey = shiftDay(nav.dateRange.from, i);
+          return {
+            day: i + 1,
+            total: rangeTickets
+              .filter((t) => t.createdAt.slice(0, 10) === dayKey)
+              .reduce((s, t) => s + t.total, 0),
+          };
+        });
+        setDailySalesData(rangeDailyTotals);
       }
     } finally {
       setLoading(false);
@@ -163,14 +181,13 @@ export function OverviewSection() {
   }, []);
 
   const chartData = useMemo(() => {
-    if (nav.period === "range") return [];
     if (nav.period === "day") {
       const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
       return Array.from({ length: 24 }, (_, i) => {
         const total = hourMap.get(i) ?? 0;
         return {
           value: total,
-          label: i % 3 === 0 ? `${i}h` : "",
+          label: `${i}h`,
           frontColor: total > 0 ? "#22c55e" : "#555555",
           labelTextStyle: { fontSize: 10, color: "#888" },
         };
@@ -190,10 +207,21 @@ export function OverviewSection() {
       const dataMap = new Map(dailySalesData.map((d) => [d.day, d.total]));
       return Array.from({ length: days }, (_, i) => ({
         value: dataMap.get(i + 1) ?? 0,
-        label:
-          i === 0 || (i + 1) % 5 === 0 || i === days - 1 ? String(i + 1) : "",
+        label: String(i + 1),
         frontColor: (dataMap.get(i + 1) ?? 0) > 0 ? "#22c55e" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
+      }));
+    }
+    if (nav.period === "range") {
+      const dayCount = dailySalesData.length;
+      if (dayCount === 0) return [];
+      return dailySalesData.map((d, i) => ({
+        value: d.total,
+        label: shortDayLabel(shiftDay(nav.dateRange.from, i))
+          .replace(/\sde\s/g, " ")
+          .slice(0, 6),
+        frontColor: d.total > 0 ? "#22c55e" : "#555555",
+        labelTextStyle: { fontSize: 9, color: "#888" },
       }));
     }
     return Array.from({ length: 12 }, (_, i) => {
@@ -205,24 +233,29 @@ export function OverviewSection() {
         labelTextStyle: { fontSize: 10, color: "#888" },
       };
     });
-  }, [nav.period, hourlySales, dailySalesData, yearlySales, nav.selectedMonth]);
+  }, [
+    nav.period,
+    hourlySales,
+    dailySalesData,
+    yearlySales,
+    nav.selectedMonth,
+    nav.dateRange,
+  ]);
 
   const barWidth = useMemo(() => {
-    if (nav.period === "day") return 8;
     if (nav.period === "week") return 30;
-    if (nav.period === "year") return 16;
-    const days = daysInMonth(nav.selectedMonth);
-    const chartW = SCREEN_W - 80;
-    return Math.max(3, Math.min(14, chartW / days / 1.6));
-  }, [nav.period, nav.selectedMonth]);
+    if (nav.period === "year") return 20;
+    // day (24), month (28-31), range — all scrollable with wide bars
+    return 22;
+  }, [nav.period]);
 
   const barSpacing = useMemo(() => {
-    if (nav.period === "day") return 2;
-    if (nav.period === "week") return 10;
-    if (nav.period === "year") return 6;
-    const days = daysInMonth(nav.selectedMonth);
-    return Math.max(1, Math.min(4, (SCREEN_W - 80) / days / 4));
-  }, [nav.period, nav.selectedMonth]);
+    if (nav.period === "week") return 12;
+    if (nav.period === "year") return 8;
+    return 8;
+  }, [nav.period]);
+
+  const isScrollable = nav.period !== "week" && nav.period !== "year";
 
   const totalEgresos = purchasesTotal + expensesTotal;
   const profit = salesTotal - totalEgresos;
@@ -245,10 +278,12 @@ export function OverviewSection() {
     nav.period === "day"
       ? "Ventas por hora"
       : nav.period === "week"
-        ? "Ventas de la semana"
-        : nav.period === "month"
-          ? "Ventas diarias"
-          : "Ventas mensuales";
+      ? "Ventas de la semana"
+      : nav.period === "month"
+      ? "Ventas diarias"
+      : nav.period === "range"
+      ? "Ventas del período"
+      : "Ventas mensuales";
 
   return (
     <>
@@ -324,7 +359,7 @@ export function OverviewSection() {
                 </XStack>
                 <BarChart
                   data={chartData}
-                  height={110}
+                  height={130}
                   barWidth={barWidth}
                   spacing={barSpacing}
                   noOfSections={3}
@@ -333,9 +368,36 @@ export function OverviewSection() {
                   formatYLabel={fmtYLabel}
                   yAxisThickness={0}
                   xAxisThickness={0}
+                  xAxisLabelTextStyle={{ fontSize: 10, color: "#888" }}
+                  labelsExtraHeight={20}
                   isAnimated
                   animationDuration={400}
-                  barBorderRadius={2}
+                  barBorderRadius={4}
+                  scrollable={isScrollable}
+                  showScrollIndicator={isScrollable}
+                  initialSpacing={10}
+                  endSpacing={10}
+                  renderTooltip={(item: { value: number; label?: string }) => (
+                    <View
+                      style={{
+                        backgroundColor: "#333",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ${fmtMoney(item.value)}
+                      </Text>
+                    </View>
+                  )}
                 />
               </YStack>
             </Card>
@@ -418,9 +480,14 @@ export function OverviewSection() {
                   {profit >= 0 ? "Ganancia" : "Pérdida"}
                 </Text>
                 <Text
-                  fontSize="$7"
+                  fontSize="$6"
                   fontWeight="bold"
                   color={profit >= 0 ? "$green10" : "$red10"}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  flex={1}
+                  textAlign="right"
+                  ml="$2"
                 >
                   {profit >= 0 ? "+" : "-"}${fmtMoney(Math.abs(profit))}
                 </Text>

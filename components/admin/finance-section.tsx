@@ -5,11 +5,17 @@ import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
-import { fmtMoney, MONTH_NAMES_SHORT, weekEndISO } from "@/utils/format";
+import {
+    fmtMoney,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shortDayLabel,
+    weekEndISO,
+} from "@/utils/format";
 import { ShoppingBag, TrendingDown, TrendingUp } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Dimensions, ScrollView } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
 import { PeriodSelector } from "./period-selector";
@@ -45,15 +51,27 @@ export function FinanceSection() {
     { month: number; total: number }[]
   >([]);
 
+  // Day/week/range chart data
+  const [hourlySales, setHourlySales] = useState<
+    { hour: number; total: number; tickets: number }[]
+  >([]);
+  const [weekDailyData, setWeekDailyData] = useState<
+    { label: string; income: number; outflow: number }[]
+  >([]);
+  const [rangeDailyData, setRangeDailyData] = useState<
+    { label: string; income: number; outflow: number }[]
+  >([]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       if (nav.period === "day") {
-        const [daySumm, dayP, dayE, dayExpCat] = await Promise.all([
+        const [daySumm, dayP, dayE, dayExpCat, hourly] = await Promise.all([
           ticketRepo.daySummary(nav.selectedDay),
           purchaseRepo.daySummary(nav.selectedDay),
           expenseRepo.dayTotal(nav.selectedDay),
           expenseRepo.daySummaryByCategory(nav.selectedDay),
+          ticketRepo.hourlySales(nav.selectedDay),
         ]);
         setSalesTotal(daySumm.totalSales);
         setSalesTickets(daySumm.ticketCount);
@@ -61,6 +79,7 @@ export function FinanceSection() {
         setPurchTransport(dayP.totalTransport);
         setExpenseTotal(dayE);
         setExpensesByCategory(dayExpCat);
+        setHourlySales(hourly);
       } else if (nav.period === "week") {
         const wkEnd = weekEndISO(nav.selectedWeekStart);
         const [wkTickets, wkPurch, wkExp, wkExpCat] = await Promise.all([
@@ -75,6 +94,17 @@ export function FinanceSection() {
         setPurchTransport(wkPurch.totalTransport);
         setExpenseTotal(wkExp);
         setExpensesByCategory(wkExpCat);
+        // Build daily income/outflow for week chart
+        const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+        const daily = Array.from({ length: 7 }, (_, i) => {
+          const dayKey = shiftDay(nav.selectedWeekStart, i);
+          const dayIncome = wkTickets
+            .filter((t) => t.createdAt.slice(0, 10) === dayKey)
+            .reduce((s, t) => s + t.total, 0);
+          // Outflow distributed proportionally (we don't have daily purchase/expense breakdown for week)
+          return { label: DAY_LABELS[i], income: dayIncome, outflow: 0 };
+        });
+        setWeekDailyData(daily);
       } else if (nav.period === "month") {
         const [monthS, monthP, monthE, expByCat] = await Promise.all([
           ticketRepo.monthlySummary(nav.selectedMonth),
@@ -124,6 +154,27 @@ export function FinanceSection() {
         setPurchTransport(rangePurch.totalTransport);
         setExpenseTotal(rangeExp);
         setExpensesByCategory(rangeExpCat);
+        // Build daily income for range chart
+        const dayCount =
+          Math.round(
+            (new Date(nav.dateRange.to + "T12:00:00").getTime() -
+              new Date(nav.dateRange.from + "T12:00:00").getTime()) /
+              86400000,
+          ) + 1;
+        const rangeDaily = Array.from({ length: dayCount }, (_, i) => {
+          const dayKey = shiftDay(nav.dateRange.from, i);
+          const dayIncome = rangeTickets
+            .filter((t) => t.createdAt.slice(0, 10) === dayKey)
+            .reduce((s, t) => s + t.total, 0);
+          return {
+            label: shortDayLabel(dayKey)
+              .replace(/\sde\s/g, " ")
+              .slice(0, 6),
+            income: dayIncome,
+            outflow: 0,
+          };
+        });
+        setRangeDailyData(rangeDaily);
       }
 
       // Load yearly trends for month view
@@ -248,7 +299,65 @@ export function FinanceSection() {
     [yearlyTrendData],
   );
 
+  // Hourly chart for day view
+  const hourlyChartData = useMemo(() => {
+    if (nav.period !== "day") return [];
+    const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
+    return Array.from({ length: 24 }, (_, i) => {
+      const total = hourMap.get(i) ?? 0;
+      return {
+        value: total,
+        label: `${i}h`,
+        frontColor: total > 0 ? "#22c55e" : "#555555",
+        labelTextStyle: { fontSize: 10, color: "#888" },
+      };
+    });
+  }, [nav.period, hourlySales]);
+
+  // Week daily income bar chart
+  const weekChartData = useMemo(() => {
+    if (nav.period !== "week") return [];
+    return weekDailyData.map((d) => ({
+      value: d.income,
+      label: d.label,
+      frontColor: d.income > 0 ? "#22c55e" : "#555555",
+      labelTextStyle: { fontSize: 10, color: "#888" },
+    }));
+  }, [nav.period, weekDailyData]);
+
+  // Range daily income bar chart
+  const rangeChartData = useMemo(() => {
+    if (nav.period !== "range" || rangeDailyData.length === 0) return [];
+    return rangeDailyData.map((d) => ({
+      value: d.income,
+      label: d.label,
+      frontColor: d.income > 0 ? "#22c55e" : "#555555",
+      labelTextStyle: { fontSize: 9, color: "#888" },
+    }));
+  }, [nav.period, rangeDailyData]);
+
+  const rangeBarWidth = 22;
+  const rangeBarSpacing = 8;
+  const isRangeScrollable = rangeDailyData.length > 7;
+
   const hasNegativeProfit = profitTrendData.some((d) => d.value < 0);
+  const hasPositiveProfit = profitTrendData.some((d) => d.value > 0);
+  const profitAbsMax =
+    profitTrendData.length > 0
+      ? Math.max(
+          Math.abs(Math.max(0, ...profitTrendData.map((d) => d.value))),
+          Math.abs(Math.min(0, ...profitTrendData.map((d) => d.value))),
+        )
+      : 0;
+  const profitStep = profitAbsMax > 0 ? Math.ceil(profitAbsMax / 3) : 1;
+  const profitSectionsAbove = hasPositiveProfit ? 3 : 1;
+  const profitSectionsBelow = hasNegativeProfit ? 3 : 0;
+  const profitChartHeight =
+    hasNegativeProfit && hasPositiveProfit
+      ? 200
+      : hasNegativeProfit
+      ? 160
+      : 130;
 
   if (loading) {
     return (
@@ -408,9 +517,14 @@ export function FinanceSection() {
                   </Text>
                 </YStack>
                 <Text
-                  fontSize="$7"
+                  fontSize="$6"
                   fontWeight="bold"
                   color={profit >= 0 ? "$green10" : "$red10"}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  flex={1}
+                  textAlign="right"
+                  ml="$2"
                 >
                   {profit >= 0 ? "+" : "-"}${fmtMoney(Math.abs(profit))}
                 </Text>
@@ -496,14 +610,185 @@ export function FinanceSection() {
             </Card>
           )}
 
+          {/* Day: hourly sales chart */}
+          {nav.period === "day" && hourlyChartData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <YStack gap="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Ingresos por hora
+                </Text>
+                <BarChart
+                  data={hourlyChartData}
+                  height={130}
+                  barWidth={22}
+                  spacing={8}
+                  noOfSections={3}
+                  hideRules
+                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                  formatYLabel={fmtYLabel}
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  labelsExtraHeight={20}
+                  isAnimated
+                  animationDuration={400}
+                  barBorderRadius={4}
+                  scrollable
+                  showScrollIndicator
+                  initialSpacing={10}
+                  endSpacing={10}
+                  renderTooltip={(item: { value: number }) => (
+                    <View
+                      style={{
+                        backgroundColor: "#333",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ${fmtMoney(item.value)}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </YStack>
+            </Card>
+          )}
+
+          {/* Week: daily income chart */}
+          {nav.period === "week" && weekChartData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <YStack gap="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Ingresos de la semana
+                </Text>
+                <BarChart
+                  data={weekChartData}
+                  height={130}
+                  barWidth={30}
+                  spacing={12}
+                  noOfSections={3}
+                  hideRules
+                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                  formatYLabel={fmtYLabel}
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  labelsExtraHeight={20}
+                  isAnimated
+                  animationDuration={400}
+                  barBorderRadius={4}
+                  initialSpacing={10}
+                  endSpacing={10}
+                  renderTooltip={(item: { value: number }) => (
+                    <View
+                      style={{
+                        backgroundColor: "#333",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ${fmtMoney(item.value)}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </YStack>
+            </Card>
+          )}
+
+          {/* Range: daily income chart */}
+          {nav.period === "range" && rangeChartData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <YStack gap="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Ingresos del período
+                </Text>
+                <BarChart
+                  data={rangeChartData}
+                  height={130}
+                  barWidth={rangeBarWidth}
+                  spacing={rangeBarSpacing}
+                  noOfSections={3}
+                  hideRules
+                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                  formatYLabel={fmtYLabel}
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  labelsExtraHeight={20}
+                  isAnimated
+                  animationDuration={400}
+                  barBorderRadius={4}
+                  scrollable={isRangeScrollable}
+                  showScrollIndicator={isRangeScrollable}
+                  initialSpacing={10}
+                  endSpacing={10}
+                  renderTooltip={(item: { value: number }) => (
+                    <View
+                      style={{
+                        backgroundColor: "#333",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "600",
+                        }}
+                      >
+                        ${fmtMoney(item.value)}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </YStack>
+            </Card>
+          )}
+
           {/* Yearly trends — show for month and year */}
           {(nav.period === "month" || nav.period === "year") && (
             <>
               <Text fontSize="$5" fontWeight="bold" color="$color" mt="$2">
-                Tendencias{" "}
                 {nav.period === "year"
-                  ? nav.selectedYear
-                  : nav.selectedMonth.slice(0, 4)}
+                  ? `Tendencias ${nav.selectedYear}`
+                  : `Tendencias anuales ${nav.selectedMonth.slice(0, 4)}`}
               </Text>
 
               {/* Income vs Outflow bar chart */}
@@ -563,6 +848,7 @@ export function FinanceSection() {
                       formatYLabel={fmtYLabel}
                       yAxisThickness={0}
                       xAxisThickness={0}
+                      labelsExtraHeight={20}
                       isAnimated
                       animationDuration={400}
                       barBorderRadius={2}
@@ -586,7 +872,7 @@ export function FinanceSection() {
                     </Text>
                     <BarChart
                       data={profitTrendData}
-                      height={130}
+                      height={profitChartHeight}
                       barWidth={Math.max(
                         12,
                         Math.min(
@@ -601,13 +887,21 @@ export function FinanceSection() {
                           (SCREEN_W - 100) / profitTrendData.length / 3,
                         ),
                       )}
-                      noOfSections={3}
-                      noOfSectionsBelowXAxis={hasNegativeProfit ? 2 : 0}
+                      stepValue={profitStep}
+                      noOfSections={profitSectionsAbove}
+                      noOfSectionsBelowXAxis={profitSectionsBelow}
+                      maxValue={profitStep * profitSectionsAbove}
+                      mostNegativeValue={
+                        hasNegativeProfit
+                          ? -(profitStep * profitSectionsBelow)
+                          : undefined
+                      }
                       yAxisTextStyle={{ fontSize: 11, color: "#888" }}
                       formatYLabel={fmtYLabel}
                       yAxisThickness={0}
                       xAxisThickness={1}
                       xAxisColor="#555"
+                      labelsExtraHeight={20}
                       isAnimated
                       animationDuration={400}
                       barBorderRadius={3}
@@ -615,8 +909,12 @@ export function FinanceSection() {
                   </YStack>
                 </Card>
               )}
+            </>
+          )}
 
-              {/* Monthly breakdown table */}
+          {/* Period-aware summary table */}
+          {nav.period === "day" &&
+            hourlySales.some((h) => h.total > 0 || h.tickets > 0) && (
               <Card
                 bg="$color1"
                 borderWidth={1}
@@ -626,10 +924,124 @@ export function FinanceSection() {
               >
                 <YStack p="$4" pb="$2">
                   <Text fontSize="$3" fontWeight="600" color="$color10">
-                    Resumen mensual{" "}
+                    Desglose por hora
+                  </Text>
+                </YStack>
+                <XStack px="$4" py="$2" bg="$color2">
+                  <Text
+                    flex={1}
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$color10"
+                  >
+                    Hora
+                  </Text>
+                  <Text
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$green10"
+                    style={{ width: 70, textAlign: "right" }}
+                  >
+                    Ventas
+                  </Text>
+                  <Text
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$blue10"
+                    style={{ width: 50, textAlign: "right" }}
+                  >
+                    Tickets
+                  </Text>
+                </XStack>
+                {hourlySales
+                  .filter((h) => h.total > 0 || h.tickets > 0)
+                  .map((h) => (
+                    <YStack key={h.hour}>
+                      <Separator />
+                      <XStack px="$4" py="$2" style={{ alignItems: "center" }}>
+                        <Text flex={1} fontSize="$3" color="$color">
+                          {h.hour}:00
+                        </Text>
+                        <Text
+                          fontSize="$3"
+                          color="$green10"
+                          style={{ width: 70, textAlign: "right" }}
+                        >
+                          ${fmtMoney(h.total)}
+                        </Text>
+                        <Text
+                          fontSize="$3"
+                          color="$blue10"
+                          style={{ width: 50, textAlign: "right" }}
+                        >
+                          {h.tickets}
+                        </Text>
+                      </XStack>
+                    </YStack>
+                  ))}
+              </Card>
+            )}
+
+          {nav.period === "week" && weekDailyData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              overflow="hidden"
+            >
+              <YStack p="$4" pb="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Desglose semanal
+                </Text>
+              </YStack>
+              <XStack px="$4" py="$2" bg="$color2">
+                <Text flex={1} fontSize="$2" fontWeight="600" color="$color10">
+                  Día
+                </Text>
+                <Text
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$green10"
+                  style={{ width: 80, textAlign: "right" }}
+                >
+                  Ingresos
+                </Text>
+              </XStack>
+              {weekDailyData.map((d, idx) => (
+                <YStack key={idx}>
+                  <Separator />
+                  <XStack px="$4" py="$2" style={{ alignItems: "center" }}>
+                    <Text flex={1} fontSize="$3" color="$color">
+                      {d.label}
+                    </Text>
+                    <Text
+                      fontSize="$3"
+                      color="$green10"
+                      style={{ width: 80, textAlign: "right" }}
+                    >
+                      ${fmtMoney(d.income)}
+                    </Text>
+                  </XStack>
+                </YStack>
+              ))}
+            </Card>
+          )}
+
+          {(nav.period === "month" || nav.period === "year") &&
+            yearlyTrendData.length > 0 && (
+              <Card
+                bg="$color1"
+                borderWidth={1}
+                borderColor="$borderColor"
+                style={{ borderRadius: 14 }}
+                overflow="hidden"
+              >
+                <YStack p="$4" pb="$2">
+                  <Text fontSize="$3" fontWeight="600" color="$color10">
                     {nav.period === "year"
-                      ? nav.selectedYear
-                      : nav.selectedMonth.slice(0, 4)}
+                      ? `Resumen anual ${nav.selectedYear}`
+                      : `Resumen mensual ${nav.selectedMonth.slice(0, 4)}`}
                   </Text>
                 </YStack>
                 <XStack px="$4" py="$2" bg="$color2">
@@ -661,7 +1073,7 @@ export function FinanceSection() {
                     fontSize="$2"
                     fontWeight="600"
                     color="$color"
-                    style={{ width: 70, textAlign: "right" }}
+                    style={{ width: 80, textAlign: "right" }}
                   >
                     Resultado
                   </Text>
@@ -680,6 +1092,7 @@ export function FinanceSection() {
                           fontSize="$3"
                           color="$green10"
                           style={{ width: 70, textAlign: "right" }}
+                          numberOfLines={1}
                         >
                           ${fmtMoney(item.income)}
                         </Text>
@@ -687,6 +1100,7 @@ export function FinanceSection() {
                           fontSize="$3"
                           color="$red10"
                           style={{ width: 70, textAlign: "right" }}
+                          numberOfLines={1}
                         >
                           ${fmtMoney(item.outflow)}
                         </Text>
@@ -694,7 +1108,9 @@ export function FinanceSection() {
                           fontSize="$3"
                           fontWeight="bold"
                           color={netResult >= 0 ? "$green10" : "$red10"}
-                          style={{ width: 70, textAlign: "right" }}
+                          style={{ width: 80, textAlign: "right" }}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
                         >
                           {netResult >= 0 ? "+" : "-"}$
                           {fmtMoney(Math.abs(netResult))}
@@ -704,7 +1120,52 @@ export function FinanceSection() {
                   );
                 })}
               </Card>
-            </>
+            )}
+
+          {nav.period === "range" && rangeDailyData.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              overflow="hidden"
+            >
+              <YStack p="$4" pb="$2">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  Desglose del período
+                </Text>
+              </YStack>
+              <XStack px="$4" py="$2" bg="$color2">
+                <Text flex={1} fontSize="$2" fontWeight="600" color="$color10">
+                  Fecha
+                </Text>
+                <Text
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$green10"
+                  style={{ width: 80, textAlign: "right" }}
+                >
+                  Ingresos
+                </Text>
+              </XStack>
+              {rangeDailyData.map((d, idx) => (
+                <YStack key={idx}>
+                  <Separator />
+                  <XStack px="$4" py="$2" style={{ alignItems: "center" }}>
+                    <Text flex={1} fontSize="$3" color="$color">
+                      {d.label}
+                    </Text>
+                    <Text
+                      fontSize="$3"
+                      color="$green10"
+                      style={{ width: 80, textAlign: "right" }}
+                    >
+                      ${fmtMoney(d.income)}
+                    </Text>
+                  </XStack>
+                </YStack>
+              ))}
+            </Card>
           )}
         </YStack>
       </ScrollView>

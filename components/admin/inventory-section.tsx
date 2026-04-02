@@ -14,21 +14,21 @@ import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { fmtMoney, weekEndISO } from "@/utils/format";
 import {
-  AlertTriangle,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  DollarSign,
-  Package,
-  PackageX,
-  Ruler,
-  Tag,
-  TrendingDown,
-  TrendingUp,
+    AlertTriangle,
+    ArrowDownToLine,
+    ArrowUpFromLine,
+    DollarSign,
+    Package,
+    PackageX,
+    Ruler,
+    Tag,
+    TrendingDown,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, ScrollView } from "react-native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
+import { PieChart } from "react-native-gifted-charts";
 import { Card, Separator, Sheet, Spinner, Text, XStack, YStack } from "tamagui";
 
 export function InventorySection() {
@@ -52,6 +52,14 @@ export function InventorySection() {
   // Movement data for selected period
   const [periodSales, setPeriodSales] = useState(0);
   const [periodPurchases, setPeriodPurchases] = useState(0);
+  const [topMovers, setTopMovers] = useState<
+    {
+      productId: number;
+      productName: string;
+      totalQty: number;
+      totalRevenue: number;
+    }[]
+  >([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -67,42 +75,58 @@ export function InventorySection() {
 
       // Load period movement data
       if (nav.period === "day") {
-        const [daySumm, dayPurch] = await Promise.all([
+        const [daySumm, dayPurch, top] = await Promise.all([
           ticketRepo.daySummary(nav.selectedDay),
           purchaseRepo.daySummary(nav.selectedDay),
+          ticketRepo.topProductsByRange(nav.selectedDay, nav.selectedDay, 10),
         ]);
         setPeriodSales(daySumm.totalSales);
         setPeriodPurchases(dayPurch.totalSpent);
+        setTopMovers(top);
       } else if (nav.period === "week") {
         const wkEnd = weekEndISO(nav.selectedWeekStart);
-        const [wkTickets, wkPurch] = await Promise.all([
+        const [wkTickets, wkPurch, top] = await Promise.all([
           ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
           purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
+          ticketRepo.topProductsByRange(nav.selectedWeekStart, wkEnd, 10),
         ]);
         setPeriodSales(wkTickets.reduce((s, t) => s + t.total, 0));
         setPeriodPurchases(wkPurch.totalSpent);
+        setTopMovers(top);
       } else if (nav.period === "month") {
-        const [monthSumm, monthPurch] = await Promise.all([
+        const [monthSumm, monthPurch, top] = await Promise.all([
           ticketRepo.monthlySummary(nav.selectedMonth),
           purchaseRepo.monthlySummary(nav.selectedMonth),
+          ticketRepo.topProducts(nav.selectedMonth, 10),
         ]);
         setPeriodSales(monthSumm.totalSales);
         setPeriodPurchases(monthPurch.totalSpent);
+        setTopMovers(top);
       } else if (nav.period === "year") {
-        const [yearSales, yearPurch] = await Promise.all([
+        const yearStart = `${nav.selectedYear}-01-01`;
+        const yearEnd = `${nav.selectedYear}-12-31`;
+        const [yearSales, yearPurch, top] = await Promise.all([
           ticketRepo.monthlySalesForYear(nav.selectedYear),
           purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
+          ticketRepo.topProductsByRange(yearStart, yearEnd, 10),
         ]);
         setPeriodSales(yearSales.reduce((s, y) => s + y.total, 0));
         setPeriodPurchases(yearPurch.reduce((s, y) => s + y.total, 0));
+        setTopMovers(top);
       } else {
         // range
-        const [rangeTickets, rangePurch] = await Promise.all([
+        const [rangeTickets, rangePurch, top] = await Promise.all([
           ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to),
           purchaseRepo.rangeSummary(nav.dateRange.from, nav.dateRange.to),
+          ticketRepo.topProductsByRange(
+            nav.dateRange.from,
+            nav.dateRange.to,
+            10,
+          ),
         ]);
         setPeriodSales(rangeTickets.reduce((s, t) => s + t.total, 0));
         setPeriodPurchases(rangePurch.totalSpent);
+        setTopMovers(top);
       }
     } finally {
       setLoading(false);
@@ -206,24 +230,6 @@ export function InventorySection() {
         .slice(0, 10),
     [allProducts],
   );
-
-  const stockBarData = useMemo(
-    () =>
-      topValueProducts.map((p) => ({
-        value: p.stockValue,
-        label: p.name.slice(0, 6),
-        frontColor: "#3b82f6",
-        labelTextStyle: { fontSize: 10, color: "#888" },
-      })),
-    [topValueProducts],
-  );
-
-  const fmtYLabel = useCallback((v: string) => {
-    const n = Number(v);
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return v;
-  }, []);
 
   if (loading) {
     return (
@@ -409,35 +415,115 @@ export function InventorySection() {
               </Card>
             )}
 
-            {/* Top value products bar chart */}
-            {stockBarData.length > 0 && (
+            {/* Top value products ranked list */}
+            {topValueProducts.length > 0 && (
               <Card
                 bg="$color1"
                 borderWidth={1}
                 borderColor="$borderColor"
                 style={{ borderRadius: 14 }}
-                p="$4"
+                overflow="hidden"
               >
-                <YStack gap="$2">
-                  <Text fontSize="$3" fontWeight="600" color="$color10">
-                    Top 10 por valor en stock
-                  </Text>
-                  <BarChart
-                    data={stockBarData}
-                    height={120}
-                    barWidth={18}
-                    spacing={8}
-                    noOfSections={3}
-                    hideRules
-                    yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                    formatYLabel={fmtYLabel}
-                    yAxisThickness={0}
-                    xAxisThickness={0}
-                    isAnimated
-                    animationDuration={400}
-                    barBorderRadius={3}
-                  />
+                <YStack px="$4" pt="$4" pb="$2">
+                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                    <DollarSign size={16} color="$green10" />
+                    <Text fontSize="$3" fontWeight="600" color="$color10">
+                      Top 10 por valor en stock
+                    </Text>
+                  </XStack>
                 </YStack>
+                {topValueProducts.map((p, idx) => (
+                  <YStack key={p.id}>
+                    {idx > 0 && <Separator />}
+                    <Pressable
+                      onPress={() => {
+                        setSelectedProduct(p);
+                        setShowDetailSheet(true);
+                      }}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                    >
+                      <XStack
+                        px="$4"
+                        py="$3"
+                        style={{ alignItems: "center" }}
+                        gap="$3"
+                      >
+                        <Text
+                          fontSize="$2"
+                          fontWeight="bold"
+                          color="$color10"
+                          width={22}
+                          textAlign="center"
+                        >
+                          {idx + 1}
+                        </Text>
+                        <Text
+                          flex={1}
+                          fontSize="$3"
+                          color="$color"
+                          numberOfLines={1}
+                        >
+                          {p.name}
+                        </Text>
+                        <Text fontSize="$3" fontWeight="600" color="$green10">
+                          ${fmtMoney(p.stockValue)}
+                        </Text>
+                      </XStack>
+                    </Pressable>
+                  </YStack>
+                ))}
+              </Card>
+            )}
+
+            {/* Top movers for the period */}
+            {topMovers.length > 0 && (
+              <Card
+                bg="$color1"
+                borderWidth={1}
+                borderColor="$borderColor"
+                style={{ borderRadius: 14 }}
+                overflow="hidden"
+              >
+                <YStack px="$4" pt="$4" pb="$2">
+                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                    <TrendingUp size={16} color="$blue10" />
+                    <Text fontSize="$3" fontWeight="600" color="$color10">
+                      Más vendidos del período
+                    </Text>
+                  </XStack>
+                </YStack>
+                {topMovers.map((m, idx) => (
+                  <YStack key={m.productId}>
+                    {idx > 0 && <Separator />}
+                    <XStack
+                      px="$4"
+                      py="$3"
+                      style={{ alignItems: "center" }}
+                      gap="$3"
+                    >
+                      <Text
+                        fontSize="$2"
+                        fontWeight="bold"
+                        color="$color10"
+                        width={22}
+                        textAlign="center"
+                      >
+                        {idx + 1}
+                      </Text>
+                      <YStack flex={1}>
+                        <Text fontSize="$3" color="$color" numberOfLines={1}>
+                          {m.productName}
+                        </Text>
+                        <Text fontSize="$2" color="$color10">
+                          {m.totalQty} vendidos
+                        </Text>
+                      </YStack>
+                      <Text fontSize="$3" fontWeight="600" color="$blue10">
+                        ${fmtMoney(m.totalRevenue)}
+                      </Text>
+                    </XStack>
+                  </YStack>
+                ))}
               </Card>
             )}
 
@@ -617,8 +703,8 @@ export function InventorySection() {
             p.stockBaseQty === 0
               ? "$red10"
               : p.stockBaseQty <= 5
-                ? "$orange10"
-                : "$green10";
+              ? "$orange10"
+              : "$green10";
           return (
             <Pressable
               onPress={() => {

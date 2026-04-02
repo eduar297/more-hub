@@ -6,43 +6,45 @@ import { useUserRepository } from "@/hooks/use-user-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import {
-  daysInMonth,
-  fmtMoney,
-  fmtTime,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    fmtTime,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  ChevronRight,
-  CreditCard,
-  DollarSign,
-  Receipt,
-  ShoppingCart,
-  TrendingUp,
-  User,
-  Users,
-  X,
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    Receipt,
+    ShoppingCart,
+    TrendingUp,
+    User,
+    Users,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Dimensions,
-  FlatList,
-  Image,
-  Pressable,
-  ScrollView,
+    Dimensions,
+    FlatList,
+    Image,
+    Pressable,
+    ScrollView,
+    View,
 } from "react-native";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import {
-  Button,
-  Card,
-  Separator,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Separator,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 import { PeriodSelector } from "./period-selector";
 
@@ -249,7 +251,9 @@ export function SalesSection() {
             ticketRepo.paymentMethodBreakdown(nav.selectedMonth, wId),
             ticketRepo.findByDateRange(
               `${nav.selectedMonth}-01`,
-              `${nav.selectedMonth}-${String(daysInMonth(nav.selectedMonth)).padStart(2, "0")}`,
+              `${nav.selectedMonth}-${String(
+                daysInMonth(nav.selectedMonth),
+              ).padStart(2, "0")}`,
               wId,
             ),
           ]);
@@ -296,6 +300,23 @@ export function SalesSection() {
           totalSales: rangeTickets.reduce((s, t) => s + t.total, 0),
           ticketCount: rangeTickets.length,
         });
+        // Build daily totals for range chart
+        const dayCount =
+          Math.round(
+            (new Date(nav.dateRange.to + "T12:00:00").getTime() -
+              new Date(nav.dateRange.from + "T12:00:00").getTime()) /
+              86400000,
+          ) + 1;
+        const rangeDailyTotals = Array.from({ length: dayCount }, (_, i) => {
+          const dayKey = shiftDay(nav.dateRange.from, i);
+          return {
+            day: i + 1,
+            total: rangeTickets
+              .filter((t) => t.createdAt.slice(0, 10) === dayKey)
+              .reduce((s, t) => s + t.total, 0),
+          };
+        });
+        setDailySales(rangeDailyTotals);
       }
     } finally {
       setLoading(false);
@@ -327,14 +348,13 @@ export function SalesSection() {
 
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    if (nav.period === "range") return [];
     if (nav.period === "day") {
       const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
       return Array.from({ length: 24 }, (_, i) => {
         const total = hourMap.get(i) ?? 0;
         return {
           value: total,
-          label: i % 3 === 0 ? `${i}h` : "",
+          label: `${i}h`,
           frontColor: total > 0 ? "#3b82f6" : "#555555",
           labelTextStyle: { fontSize: 10, color: "#888" },
         };
@@ -354,10 +374,21 @@ export function SalesSection() {
       const dataMap = new Map(dailySales.map((d) => [d.day, d.total]));
       return Array.from({ length: days }, (_, i) => ({
         value: dataMap.get(i + 1) ?? 0,
-        label:
-          i === 0 || (i + 1) % 5 === 0 || i === days - 1 ? String(i + 1) : "",
+        label: String(i + 1),
         frontColor: (dataMap.get(i + 1) ?? 0) > 0 ? "#3b82f6" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
+      }));
+    }
+    if (nav.period === "range") {
+      const dayCount = dailySales.length;
+      if (dayCount === 0) return [];
+      return dailySales.map((d, i) => ({
+        value: d.total,
+        label: shortDayLabel(shiftDay(nav.dateRange.from, i))
+          .replace(/\sde\s/g, " ")
+          .slice(0, 6),
+        frontColor: d.total > 0 ? "#3b82f6" : "#555555",
+        labelTextStyle: { fontSize: 9, color: "#888" },
       }));
     }
     return Array.from({ length: 12 }, (_, i) => {
@@ -370,24 +401,28 @@ export function SalesSection() {
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nav.period, hourlySales, dailySales, yearlySales, nav.selectedMonth]);
+  }, [
+    nav.period,
+    hourlySales,
+    dailySales,
+    yearlySales,
+    nav.selectedMonth,
+    nav.dateRange,
+  ]);
 
   const barWidth = useMemo(() => {
-    if (nav.period === "day") return 8;
     if (nav.period === "week") return 30;
-    if (nav.period === "year") return 16;
-    const days = daysInMonth(nav.selectedMonth);
-    const chartW = SCREEN_W - 80;
-    return Math.max(3, Math.min(14, chartW / days / 1.6));
-  }, [nav.period, nav.selectedMonth]);
+    if (nav.period === "year") return 20;
+    return 22;
+  }, [nav.period]);
 
   const barSpacing = useMemo(() => {
-    if (nav.period === "day") return 2;
-    if (nav.period === "week") return 10;
-    if (nav.period === "year") return 6;
-    const days = daysInMonth(nav.selectedMonth);
-    return Math.max(1, Math.min(4, (SCREEN_W - 80) / days / 4));
-  }, [nav.period, nav.selectedMonth]);
+    if (nav.period === "week") return 12;
+    if (nav.period === "year") return 8;
+    return 8;
+  }, [nav.period]);
+
+  const isScrollable = nav.period !== "week" && nav.period !== "year";
 
   const paymentPieData = useMemo(() => {
     if (paymentBreakdown.length === 0) return [];
@@ -442,10 +477,12 @@ export function SalesSection() {
               {nav.period === "day"
                 ? "Ventas por hora"
                 : nav.period === "week"
-                  ? "Ventas de la semana"
-                  : nav.period === "month"
-                    ? "Ventas diarias"
-                    : "Ventas mensuales"}
+                ? "Ventas de la semana"
+                : nav.period === "month"
+                ? "Ventas diarias"
+                : nav.period === "range"
+                ? "Ventas del período"
+                : "Ventas mensuales"}
             </Text>
             <BarChart
               data={chartData}
@@ -458,9 +495,36 @@ export function SalesSection() {
               formatYLabel={fmtYLabel}
               yAxisThickness={0}
               xAxisThickness={0}
+              xAxisLabelTextStyle={{ fontSize: 10, color: "#888" }}
+              labelsExtraHeight={20}
               isAnimated
               animationDuration={400}
-              barBorderRadius={3}
+              barBorderRadius={4}
+              scrollable={isScrollable}
+              showScrollIndicator={isScrollable}
+              initialSpacing={10}
+              endSpacing={10}
+              renderTooltip={(item: { value: number; label?: string }) => (
+                <View
+                  style={{
+                    backgroundColor: "#333",
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 6,
+                    marginBottom: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: "600",
+                    }}
+                  >
+                    ${fmtMoney(item.value)}
+                  </Text>
+                </View>
+              )}
             />
           </YStack>
         </Card>
