@@ -191,6 +191,62 @@ export class TicketRepository extends BaseRepository<
     );
   }
 
+  /** Top selling products by revenue for a date range [from, to] inclusive. */
+  async topProductsByRange(
+    from: string,
+    to: string,
+    limit = 5,
+    workerId?: number | null,
+  ): Promise<
+    {
+      productId: number;
+      productName: string;
+      totalQty: number;
+      totalRevenue: number;
+    }[]
+  > {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [from, to];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    params.push(limit);
+    return this.db.getAllAsync(
+      `SELECT ti.productId, ti.productName,
+              SUM(ti.quantity) as totalQty,
+              SUM(ti.subtotal) as totalRevenue
+       FROM ticket_items ti
+       JOIN tickets t ON ti.ticketId = t.id
+       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}
+       GROUP BY ti.productId, ti.productName
+       ORDER BY totalRevenue DESC
+       LIMIT ?`,
+      params,
+    );
+  }
+
+  /** Payment method breakdown for a date range [from, to] inclusive. */
+  async paymentMethodBreakdownByRange(
+    from: string,
+    to: string,
+    workerId?: number | null,
+  ): Promise<{ method: string; total: number; count: number }[]> {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [from, to];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    return this.db.getAllAsync(
+      `SELECT t.paymentMethod as method,
+              COALESCE(SUM(t.total), 0) as total,
+              COUNT(*) as count
+       FROM tickets t
+       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}
+       GROUP BY t.paymentMethod`,
+      params,
+    );
+  }
+
   /** Tickets in a date range [from, to] inclusive (YYYY-MM-DD). */
   findByDateRange(
     from: string,

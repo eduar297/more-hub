@@ -6,16 +6,17 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-  daysInMonth,
-  fmtMoney,
-  MONTH_NAMES_SHORT,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  BarChart3,
-  DollarSign,
-  Package,
-  TrendingUp,
+    BarChart3,
+    DollarSign,
+    Package,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -48,9 +49,6 @@ export function OverviewSection() {
   >([]);
   const [hourlySales, setHourlySales] = useState<
     { hour: number; total: number; tickets: number }[]
-  >([]);
-  const [weeklySales, setWeeklySales] = useState<
-    { week: number; total: number; tickets: number }[]
   >([]);
   const [yearlySales, setYearlySales] = useState<
     { month: number; total: number; tickets: number }[]
@@ -88,11 +86,17 @@ export function OverviewSection() {
         setTicketCount(wkTickets.length);
         setPurchasesTotal(wkPurch.totalSpent);
         setExpensesTotal(wkExp);
-        // weekly sales chart still uses the month view
-        const weekly = await ticketRepo.weeklySales(
-          nav.selectedWeekStart.slice(0, 7),
-        );
-        setWeeklySales(weekly);
+        // Build 7-day daily totals for the week chart
+        const weekDailyTotals = Array.from({ length: 7 }, (_, i) => {
+          const dayKey = shiftDay(nav.selectedWeekStart, i);
+          return {
+            day: i + 1,
+            total: wkTickets
+              .filter((t) => t.createdAt.slice(0, 10) === dayKey)
+              .reduce((s, t) => s + t.total, 0),
+          };
+        });
+        setDailySalesData(weekDailyTotals);
       } else if (nav.period === "month") {
         const [monthSumm, daily, monthP, monthE] = await Promise.all([
           ticketRepo.monthlySummary(nav.selectedMonth),
@@ -151,21 +155,33 @@ export function OverviewSection() {
   );
 
   // Chart data
+  const fmtYLabel = useCallback((v: string) => {
+    const n = Number(v);
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return v;
+  }, []);
+
   const chartData = useMemo(() => {
     if (nav.period === "range") return [];
     if (nav.period === "day") {
-      return hourlySales.map((h) => ({
-        value: h.total,
-        label: `${h.hour}h`,
-        frontColor: h.total > 0 ? "#22c55e" : "#555555",
-        labelTextStyle: { fontSize: 8, color: "#888" },
-      }));
+      const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
+      return Array.from({ length: 24 }, (_, i) => {
+        const total = hourMap.get(i) ?? 0;
+        return {
+          value: total,
+          label: i % 3 === 0 ? `${i}h` : "",
+          frontColor: total > 0 ? "#22c55e" : "#555555",
+          labelTextStyle: { fontSize: 10, color: "#888" },
+        };
+      });
     }
     if (nav.period === "week") {
-      return weeklySales.map((w) => ({
-        value: w.total,
-        label: `S${w.week}`,
-        frontColor: "#22c55e",
+      const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+      return dailySalesData.map((d, i) => ({
+        value: d.total,
+        label: DAY_LABELS[i] ?? String(i + 1),
+        frontColor: d.total > 0 ? "#22c55e" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
       }));
     }
@@ -177,7 +193,7 @@ export function OverviewSection() {
         label:
           i === 0 || (i + 1) % 5 === 0 || i === days - 1 ? String(i + 1) : "",
         frontColor: (dataMap.get(i + 1) ?? 0) > 0 ? "#22c55e" : "#555555",
-        labelTextStyle: { fontSize: 8, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       }));
     }
     return Array.from({ length: 12 }, (_, i) => {
@@ -186,21 +202,14 @@ export function OverviewSection() {
         value: entry?.total ?? 0,
         label: MONTH_NAMES_SHORT[i],
         frontColor: (entry?.total ?? 0) > 0 ? "#22c55e" : "#555555",
-        labelTextStyle: { fontSize: 8, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       };
     });
-  }, [
-    nav.period,
-    hourlySales,
-    weeklySales,
-    dailySalesData,
-    yearlySales,
-    nav.selectedMonth,
-  ]);
+  }, [nav.period, hourlySales, dailySalesData, yearlySales, nav.selectedMonth]);
 
   const barWidth = useMemo(() => {
-    if (nav.period === "day") return 14;
-    if (nav.period === "week") return 40;
+    if (nav.period === "day") return 8;
+    if (nav.period === "week") return 30;
     if (nav.period === "year") return 16;
     const days = daysInMonth(nav.selectedMonth);
     const chartW = SCREEN_W - 80;
@@ -208,8 +217,8 @@ export function OverviewSection() {
   }, [nav.period, nav.selectedMonth]);
 
   const barSpacing = useMemo(() => {
-    if (nav.period === "day") return 4;
-    if (nav.period === "week") return 12;
+    if (nav.period === "day") return 2;
+    if (nav.period === "week") return 10;
     if (nav.period === "year") return 6;
     const days = daysInMonth(nav.selectedMonth);
     return Math.max(1, Math.min(4, (SCREEN_W - 80) / days / 4));
@@ -236,7 +245,7 @@ export function OverviewSection() {
     nav.period === "day"
       ? "Ventas por hora"
       : nav.period === "week"
-        ? "Ventas por semana"
+        ? "Ventas de la semana"
         : nav.period === "month"
           ? "Ventas diarias"
           : "Ventas mensuales";
@@ -322,7 +331,8 @@ export function OverviewSection() {
                   spacing={barSpacing}
                   noOfSections={3}
                   hideRules
-                  yAxisTextStyle={{ fontSize: 9, color: "#888" }}
+                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                  formatYLabel={fmtYLabel}
                   yAxisThickness={0}
                   xAxisThickness={0}
                   isAnimated

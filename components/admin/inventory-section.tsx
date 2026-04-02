@@ -213,10 +213,17 @@ export function InventorySection() {
         value: p.stockValue,
         label: p.name.slice(0, 6),
         frontColor: "#3b82f6",
-        labelTextStyle: { fontSize: 7, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       })),
     [topValueProducts],
   );
+
+  const fmtYLabel = useCallback((v: string) => {
+    const n = Number(v);
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return v;
+  }, []);
 
   if (loading) {
     return (
@@ -422,7 +429,8 @@ export function InventorySection() {
                     spacing={8}
                     noOfSections={3}
                     hideRules
-                    yAxisTextStyle={{ fontSize: 9, color: "#888" }}
+                    yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                    formatYLabel={fmtYLabel}
                     yAxisThickness={0}
                     xAxisThickness={0}
                     isAnimated

@@ -89,10 +89,13 @@ export function FinanceSection() {
         setExpenseTotal(monthE);
         setExpensesByCategory(expByCat);
       } else if (nav.period === "year") {
-        const [ySales, yPurch, yExp] = await Promise.all([
+        const yearStart = `${nav.selectedYear}-01-01`;
+        const yearEnd = `${nav.selectedYear}-12-31`;
+        const [ySales, yPurch, yExp, yExpCat] = await Promise.all([
           ticketRepo.monthlySalesForYear(nav.selectedYear),
           purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
           expenseRepo.monthlyTotalsForYear(nav.selectedYear),
+          expenseRepo.rangeSummaryByCategory(yearStart, yearEnd),
         ]);
         setYearSalesTrend(ySales);
         setYearPurchaseTrend(yPurch);
@@ -102,7 +105,7 @@ export function FinanceSection() {
         setPurchTotal(yPurch.reduce((s, y) => s + y.total, 0));
         setPurchTransport(yPurch.reduce((s, y) => s + y.transport, 0));
         setExpenseTotal(yExp.reduce((s, y) => s + y.total, 0));
-        setExpensesByCategory([]);
+        setExpensesByCategory(yExpCat);
       } else {
         // range
         const [rangeTickets, rangePurch, rangeExp, rangeExpCat] =
@@ -123,12 +126,9 @@ export function FinanceSection() {
         setExpensesByCategory(rangeExpCat);
       }
 
-      // Load yearly trends for month and week views
-      if (nav.period === "month" || nav.period === "week") {
-        const yr =
-          nav.period === "week"
-            ? new Date(nav.selectedWeekStart + "T12:00:00").getFullYear()
-            : parseInt(nav.selectedMonth.slice(0, 4), 10);
+      // Load yearly trends for month view
+      if (nav.period === "month") {
+        const yr = parseInt(nav.selectedMonth.slice(0, 4), 10);
         const [ySales, yPurch, yExp] = await Promise.all([
           ticketRepo.monthlySalesForYear(String(yr)),
           purchaseRepo.monthlyTotalsForYear(String(yr)),
@@ -160,6 +160,13 @@ export function FinanceSection() {
   );
 
   // Derived
+  const fmtYLabel = useCallback((v: string) => {
+    const n = Number(v);
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return v;
+  }, []);
+
   const purchaseMerchandise = purchTotal - purchTransport;
   const totalEgresos = purchTotal + expenseTotal;
   const profit = salesTotal - totalEgresos;
@@ -219,7 +226,7 @@ export function FinanceSection() {
         label: MONTH_NAMES_SHORT[item.month - 1],
         frontColor: "#22c55e",
         spacing: 2,
-        labelTextStyle: { fontSize: 7, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       });
       data.push({
         value: item.outflow,
@@ -236,7 +243,7 @@ export function FinanceSection() {
         value: item.income - item.outflow,
         label: MONTH_NAMES_SHORT[item.month - 1],
         frontColor: item.income - item.outflow >= 0 ? "#22c55e" : "#ef4444",
-        labelTextStyle: { fontSize: 7, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       })),
     [yearlyTrendData],
   );
@@ -489,8 +496,8 @@ export function FinanceSection() {
             </Card>
           )}
 
-          {/* Yearly trends — show for month, week, year */}
-          {nav.period !== "day" && nav.period !== "range" && (
+          {/* Yearly trends — show for month and year */}
+          {(nav.period === "month" || nav.period === "year") && (
             <>
               <Text fontSize="$5" fontWeight="bold" color="$color" mt="$2">
                 Tendencias{" "}
@@ -552,7 +559,8 @@ export function FinanceSection() {
                       )}
                       spacing={2}
                       noOfSections={3}
-                      yAxisTextStyle={{ fontSize: 9, color: "#888" }}
+                      yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                      formatYLabel={fmtYLabel}
                       yAxisThickness={0}
                       xAxisThickness={0}
                       isAnimated
@@ -595,7 +603,8 @@ export function FinanceSection() {
                       )}
                       noOfSections={3}
                       noOfSectionsBelowXAxis={hasNegativeProfit ? 2 : 0}
-                      yAxisTextStyle={{ fontSize: 9, color: "#888" }}
+                      yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+                      formatYLabel={fmtYLabel}
                       yAxisThickness={0}
                       xAxisThickness={1}
                       xAxisColor="#555"

@@ -140,9 +140,6 @@ export function SalesSection() {
   const [dailySales, setDailySales] = useState<
     { day: number; total: number }[]
   >([]);
-  const [weeklySales, setWeeklySales] = useState<
-    { week: number; total: number; tickets: number }[]
-  >([]);
   const [yearlySales, setYearlySales] = useState<
     { month: number; total: number; tickets: number }[]
   >([]);
@@ -193,21 +190,35 @@ export function SalesSection() {
     setLoading(true);
     try {
       if (nav.period === "day") {
-        const [summary, hourly, dayTickets] = await Promise.all([
+        const [summary, hourly, dayTickets, top, payment] = await Promise.all([
           ticketRepo.daySummary(nav.selectedDay, wId),
           ticketRepo.hourlySales(nav.selectedDay, wId),
           ticketRepo.findByDateRange(nav.selectedDay, nav.selectedDay, wId),
+          ticketRepo.topProductsByRange(
+            nav.selectedDay,
+            nav.selectedDay,
+            10,
+            wId,
+          ),
+          ticketRepo.paymentMethodBreakdownByRange(
+            nav.selectedDay,
+            nav.selectedDay,
+            wId,
+          ),
         ]);
         setDaySummary(summary);
         setHourlySales(hourly);
         setTickets(dayTickets);
+        setTopProducts(top);
+        setPaymentBreakdown(payment);
       } else if (nav.period === "week") {
         const weekEnd = weekEndISO(nav.selectedWeekStart);
         const [weekTickets, top, payment] = await Promise.all([
           ticketRepo.findByDateRange(nav.selectedWeekStart, weekEnd, wId),
-          ticketRepo.topProducts(nav.selectedWeekStart.slice(0, 7), 5, wId),
-          ticketRepo.paymentMethodBreakdown(
-            nav.selectedWeekStart.slice(0, 7),
+          ticketRepo.topProductsByRange(nav.selectedWeekStart, weekEnd, 5, wId),
+          ticketRepo.paymentMethodBreakdownByRange(
+            nav.selectedWeekStart,
+            weekEnd,
             wId,
           ),
         ]);
@@ -248,24 +259,39 @@ export function SalesSection() {
         setPaymentBreakdown(payment);
         setTickets(monthTickets);
       } else if (nav.period === "year") {
-        const [yearly, top] = await Promise.all([
+        const yearStart = `${nav.selectedYear}-01-01`;
+        const yearEnd = `${nav.selectedYear}-12-31`;
+        const [yearly, top, payment] = await Promise.all([
           ticketRepo.monthlySalesForYear(nav.selectedYear, wId),
-          ticketRepo.topProducts(undefined, 10, wId),
+          ticketRepo.topProductsByRange(yearStart, yearEnd, 10, wId),
+          ticketRepo.paymentMethodBreakdownByRange(yearStart, yearEnd, wId),
         ]);
         setYearlySales(yearly);
         setTopProducts(top);
+        setPaymentBreakdown(payment);
         setMonthlySummary({
           totalSales: yearly.reduce((s, y) => s + y.total, 0),
           ticketCount: yearly.reduce((s, y) => s + y.tickets, 0),
         });
       } else {
         // range
-        const rangeTickets = await ticketRepo.findByDateRange(
-          nav.dateRange.from,
-          nav.dateRange.to,
-          wId,
-        );
+        const [rangeTickets, top, payment] = await Promise.all([
+          ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to, wId),
+          ticketRepo.topProductsByRange(
+            nav.dateRange.from,
+            nav.dateRange.to,
+            10,
+            wId,
+          ),
+          ticketRepo.paymentMethodBreakdownByRange(
+            nav.dateRange.from,
+            nav.dateRange.to,
+            wId,
+          ),
+        ]);
         setTickets(rangeTickets);
+        setTopProducts(top);
+        setPaymentBreakdown(payment);
         setMonthlySummary({
           totalSales: rangeTickets.reduce((s, t) => s + t.total, 0),
           ticketCount: rangeTickets.length,
@@ -291,16 +317,28 @@ export function SalesSection() {
     }, [loadData]),
   );
 
+  // ── Chart helpers ─────────────────────────────────────────────────────────
+  const fmtYLabel = useCallback((v: string) => {
+    const n = Number(v);
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+    return v;
+  }, []);
+
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
     if (nav.period === "range") return [];
     if (nav.period === "day") {
-      return hourlySales.map((h) => ({
-        value: h.total,
-        label: `${h.hour}h`,
-        frontColor: h.total > 0 ? "#3b82f6" : "#555555",
-        labelTextStyle: { fontSize: 8, color: "#888" },
-      }));
+      const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
+      return Array.from({ length: 24 }, (_, i) => {
+        const total = hourMap.get(i) ?? 0;
+        return {
+          value: total,
+          label: i % 3 === 0 ? `${i}h` : "",
+          frontColor: total > 0 ? "#3b82f6" : "#555555",
+          labelTextStyle: { fontSize: 10, color: "#888" },
+        };
+      });
     }
     if (nav.period === "week") {
       const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -319,7 +357,7 @@ export function SalesSection() {
         label:
           i === 0 || (i + 1) % 5 === 0 || i === days - 1 ? String(i + 1) : "",
         frontColor: (dataMap.get(i + 1) ?? 0) > 0 ? "#3b82f6" : "#555555",
-        labelTextStyle: { fontSize: 8, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       }));
     }
     return Array.from({ length: 12 }, (_, i) => {
@@ -328,22 +366,15 @@ export function SalesSection() {
         value: entry?.total ?? 0,
         label: MONTH_NAMES_SHORT[i],
         frontColor: (entry?.total ?? 0) > 0 ? "#3b82f6" : "#555555",
-        labelTextStyle: { fontSize: 8, color: "#888" },
+        labelTextStyle: { fontSize: 10, color: "#888" },
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    nav.period,
-    hourlySales,
-    weeklySales,
-    dailySales,
-    yearlySales,
-    nav.selectedMonth,
-  ]);
+  }, [nav.period, hourlySales, dailySales, yearlySales, nav.selectedMonth]);
 
   const barWidth = useMemo(() => {
-    if (nav.period === "day") return 14;
-    if (nav.period === "week") return 40;
+    if (nav.period === "day") return 8;
+    if (nav.period === "week") return 30;
     if (nav.period === "year") return 16;
     const days = daysInMonth(nav.selectedMonth);
     const chartW = SCREEN_W - 80;
@@ -351,8 +382,8 @@ export function SalesSection() {
   }, [nav.period, nav.selectedMonth]);
 
   const barSpacing = useMemo(() => {
-    if (nav.period === "day") return 4;
-    if (nav.period === "week") return 12;
+    if (nav.period === "day") return 2;
+    if (nav.period === "week") return 10;
     if (nav.period === "year") return 6;
     const days = daysInMonth(nav.selectedMonth);
     return Math.max(1, Math.min(4, (SCREEN_W - 80) / days / 4));
@@ -411,7 +442,7 @@ export function SalesSection() {
               {nav.period === "day"
                 ? "Ventas por hora"
                 : nav.period === "week"
-                  ? "Ventas por semana"
+                  ? "Ventas de la semana"
                   : nav.period === "month"
                     ? "Ventas diarias"
                     : "Ventas mensuales"}
@@ -423,7 +454,8 @@ export function SalesSection() {
               spacing={barSpacing}
               noOfSections={3}
               hideRules
-              yAxisTextStyle={{ fontSize: 9, color: "#888" }}
+              yAxisTextStyle={{ fontSize: 11, color: "#888" }}
+              formatYLabel={fmtYLabel}
               yAxisThickness={0}
               xAxisThickness={0}
               isAnimated
@@ -435,60 +467,59 @@ export function SalesSection() {
       )}
 
       {/* Payment breakdown */}
-      {(nav.period === "month" || nav.period === "week") &&
-        paymentPieData.length > 0 && (
-          <Card
-            bg="$color1"
-            borderWidth={1}
-            borderColor="$borderColor"
-            style={{ borderRadius: 14 }}
-            p="$4"
-          >
-            <YStack gap="$3">
-              <XStack gap="$2" style={{ alignItems: "center" }}>
-                <CreditCard size={16} color="$purple10" />
-                <Text fontSize="$3" fontWeight="600" color="$color10">
-                  Métodos de pago
-                </Text>
-              </XStack>
-              <XStack style={{ alignItems: "center" }} gap="$4">
-                <PieChart
-                  data={paymentPieData}
-                  donut
-                  radius={50}
-                  innerRadius={30}
-                  isAnimated
-                  animationDuration={400}
-                />
-                <YStack gap="$2" flex={1}>
-                  {paymentBreakdown.map((p) => (
-                    <XStack
-                      key={p.method}
-                      style={{ alignItems: "center" }}
-                      gap="$2"
-                    >
-                      <YStack
-                        width={10}
-                        height={10}
-                        style={{
-                          borderRadius: 5,
-                          backgroundColor:
-                            p.method === "CASH" ? "#22c55e" : "#a855f7",
-                        }}
-                      />
-                      <Text flex={1} fontSize="$3" color="$color10">
-                        {p.method === "CASH" ? "Efectivo" : "Tarjeta"}
-                      </Text>
-                      <Text fontSize="$3" fontWeight="600" color="$color">
-                        ${fmtMoney(p.total)}
-                      </Text>
-                    </XStack>
-                  ))}
-                </YStack>
-              </XStack>
-            </YStack>
-          </Card>
-        )}
+      {paymentPieData.length > 0 && (
+        <Card
+          bg="$color1"
+          borderWidth={1}
+          borderColor="$borderColor"
+          style={{ borderRadius: 14 }}
+          p="$4"
+        >
+          <YStack gap="$3">
+            <XStack gap="$2" style={{ alignItems: "center" }}>
+              <CreditCard size={16} color="$purple10" />
+              <Text fontSize="$3" fontWeight="600" color="$color10">
+                Métodos de pago
+              </Text>
+            </XStack>
+            <XStack style={{ alignItems: "center" }} gap="$4">
+              <PieChart
+                data={paymentPieData}
+                donut
+                radius={50}
+                innerRadius={30}
+                isAnimated
+                animationDuration={400}
+              />
+              <YStack gap="$2" flex={1}>
+                {paymentBreakdown.map((p) => (
+                  <XStack
+                    key={p.method}
+                    style={{ alignItems: "center" }}
+                    gap="$2"
+                  >
+                    <YStack
+                      width={10}
+                      height={10}
+                      style={{
+                        borderRadius: 5,
+                        backgroundColor:
+                          p.method === "CASH" ? "#22c55e" : "#a855f7",
+                      }}
+                    />
+                    <Text flex={1} fontSize="$3" color="$color10">
+                      {p.method === "CASH" ? "Efectivo" : "Tarjeta"}
+                    </Text>
+                    <Text fontSize="$3" fontWeight="600" color="$color">
+                      ${fmtMoney(p.total)}
+                    </Text>
+                  </XStack>
+                ))}
+              </YStack>
+            </XStack>
+          </YStack>
+        </Card>
+      )}
 
       {/* Top products */}
       {topProducts.length > 0 && (
