@@ -2,6 +2,9 @@ import type { CreateTicketInput, Ticket, TicketItem } from "@/models/ticket";
 import { BaseRepository } from "@/repositories/base.repository";
 import type { SQLiteBindValue, SQLiteDatabase } from "expo-sqlite";
 
+/** Active-only filter appended to most queries. */
+const ACTIVE = " AND status = 'ACTIVE'";
+
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -65,6 +68,49 @@ export class TicketRepository extends BaseRepository<
     return ticket;
   }
 
+  /**
+   * Void (annul) a ticket: mark as VOIDED and restore stock for each item.
+   * Runs inside an exclusive transaction to guarantee atomicity.
+   */
+  async voidTicket(
+    ticketId: number,
+    userId: number,
+    reason: string,
+  ): Promise<void> {
+    await this.db.withExclusiveTransactionAsync(async (tx) => {
+      // Verify ticket is active
+      const ticket = await tx.getFirstAsync<{ status: string }>(
+        `SELECT status FROM tickets WHERE id = ?`,
+        [ticketId],
+      );
+      if (!ticket) throw new Error("Ticket no encontrado");
+      if (ticket.status === "VOIDED") throw new Error("Ticket ya anulado");
+
+      // Mark as voided
+      await tx.runAsync(
+        `UPDATE tickets SET status = 'VOIDED', voidedAt = datetime('now','localtime'), voidedBy = ?, voidReason = ? WHERE id = ?`,
+        userId,
+        reason,
+        ticketId,
+      );
+
+      // Restore stock for each item
+      const items = await tx.getAllAsync<{
+        productId: number;
+        quantity: number;
+      }>(`SELECT productId, quantity FROM ticket_items WHERE ticketId = ?`, [
+        ticketId,
+      ]);
+      for (const item of items) {
+        await tx.runAsync(
+          `UPDATE products SET stockBaseQty = stockBaseQty + ? WHERE id = ?`,
+          item.quantity,
+          item.productId,
+        );
+      }
+    });
+  }
+
   /** Get all tickets, newest first. */
   override findAll(): Promise<Ticket[]> {
     return super.findAll("createdAt DESC");
@@ -79,7 +125,7 @@ export class TicketRepository extends BaseRepository<
       `SELECT t.*, u.photoUri AS workerPhotoUri
        FROM tickets t
        LEFT JOIN users u ON u.id = t.workerId
-       WHERE date(t.createdAt) = date('now','localtime')${sFilter}
+       WHERE date(t.createdAt) = date('now','localtime')${ACTIVE}${sFilter}
        ORDER BY t.createdAt DESC`,
       params,
     );
@@ -106,7 +152,7 @@ export class TicketRepository extends BaseRepository<
       ticketCount: number;
     }>(
       `SELECT COALESCE(SUM(total), 0) as totalSales, COUNT(*) as ticketCount
-       FROM tickets WHERE date(createdAt) = date('now','localtime')${sFilter}`,
+       FROM tickets WHERE date(createdAt) = date('now','localtime')${ACTIVE}${sFilter}`,
       params,
     );
     return row ?? { totalSales: 0, ticketCount: 0 };
@@ -129,7 +175,7 @@ export class TicketRepository extends BaseRepository<
     }>(
       `SELECT COALESCE(SUM(total), 0) as totalSales, COUNT(*) as ticketCount
        FROM tickets
-       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}`,
+       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}${ACTIVE}`,
       params,
     );
     return row ?? { totalSales: 0, ticketCount: 0 };
@@ -150,7 +196,7 @@ export class TicketRepository extends BaseRepository<
       `SELECT CAST(strftime('%d', createdAt) AS INTEGER) as day,
               COALESCE(SUM(total), 0) as total
        FROM tickets
-       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}
+       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY day
        ORDER BY day`,
       params,
@@ -183,7 +229,7 @@ export class TicketRepository extends BaseRepository<
               SUM(ti.subtotal) as totalRevenue
        FROM ticket_items ti
        JOIN tickets t ON ti.ticketId = t.id
-       WHERE strftime('%Y-%m', t.createdAt) = ?${wFilter}${sFilter}
+       WHERE strftime('%Y-%m', t.createdAt) = ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY ti.productId, ti.productName
        ORDER BY totalRevenue DESC
        LIMIT ?`,
@@ -217,7 +263,7 @@ export class TicketRepository extends BaseRepository<
               SUM(ti.subtotal) as totalRevenue
        FROM ticket_items ti
        JOIN tickets t ON ti.ticketId = t.id
-       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}
+       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY ti.productId, ti.productName
        ORDER BY totalRevenue DESC
        LIMIT ?`,
@@ -241,7 +287,7 @@ export class TicketRepository extends BaseRepository<
               COALESCE(SUM(t.total), 0) as total,
               COUNT(*) as count
        FROM tickets t
-       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}
+       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY t.paymentMethod`,
       params,
     );
@@ -262,7 +308,7 @@ export class TicketRepository extends BaseRepository<
       `SELECT t.*, u.photoUri AS workerPhotoUri
        FROM tickets t
        LEFT JOIN users u ON u.id = t.workerId
-       WHERE date(t.createdAt) >= ? AND date(t.createdAt) <= ?${wFilter}${sFilter}
+       WHERE date(t.createdAt) >= ? AND date(t.createdAt) <= ?${wFilter}${sFilter}${ACTIVE}
        ORDER BY t.createdAt DESC`,
       params,
     );
@@ -284,7 +330,7 @@ export class TicketRepository extends BaseRepository<
               COALESCE(SUM(total), 0) as total,
               COUNT(*) as tickets
        FROM tickets
-       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}
+       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY week
        ORDER BY week`,
       params,
@@ -307,7 +353,7 @@ export class TicketRepository extends BaseRepository<
               COALESCE(SUM(total), 0) as total,
               COUNT(*) as tickets
        FROM tickets
-       WHERE strftime('%Y', createdAt) = ?${wFilter}${sFilter}
+       WHERE strftime('%Y', createdAt) = ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY month
        ORDER BY month`,
       params,
@@ -330,7 +376,7 @@ export class TicketRepository extends BaseRepository<
               COALESCE(SUM(total), 0) as total,
               COUNT(*) as count
        FROM tickets
-       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}
+       WHERE strftime('%Y-%m', createdAt) = ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY paymentMethod`,
       params,
     );
@@ -355,7 +401,7 @@ export class TicketRepository extends BaseRepository<
               COUNT(*) as ticketCount,
               COALESCE(AVG(total), 0) as avgTicket
        FROM tickets
-       WHERE date(createdAt) = ?${wFilter}${sFilter}`,
+       WHERE date(createdAt) = ?${wFilter}${sFilter}${ACTIVE}`,
       params,
     );
     return row ?? { totalSales: 0, ticketCount: 0, avgTicket: 0 };
@@ -376,7 +422,7 @@ export class TicketRepository extends BaseRepository<
               COALESCE(SUM(total), 0) as total,
               COUNT(*) as tickets
        FROM tickets
-       WHERE date(createdAt) = ?${wFilter}${sFilter}
+       WHERE date(createdAt) = ?${wFilter}${sFilter}${ACTIVE}
        GROUP BY hour
        ORDER BY hour`,
       params,
@@ -398,7 +444,7 @@ export class TicketRepository extends BaseRepository<
       `SELECT t.*, u.photoUri AS workerPhotoUri
        FROM tickets t
        LEFT JOIN users u ON u.id = t.workerId
-       WHERE t.workerId = ? AND date(t.createdAt) >= ? AND date(t.createdAt) <= ?${sFilter}
+       WHERE t.workerId = ? AND date(t.createdAt) >= ? AND date(t.createdAt) <= ?${sFilter}${ACTIVE}
        ORDER BY t.createdAt DESC`,
       params,
     );
@@ -419,9 +465,41 @@ export class TicketRepository extends BaseRepository<
     }>(
       `SELECT COALESCE(SUM(total), 0) as totalSales, COUNT(*) as ticketCount
        FROM tickets
-       WHERE workerId = ? AND date(createdAt) >= ? AND date(createdAt) <= ?${sFilter}`,
+       WHERE workerId = ? AND date(createdAt) >= ? AND date(createdAt) <= ?${sFilter}${ACTIVE}`,
       params,
     );
     return row ?? { totalSales: 0, ticketCount: 0 };
+  }
+
+  /** Leaderboard: workers ranked by total sales in a date range. */
+  async workerLeaderboard(
+    from: string,
+    to: string,
+  ): Promise<
+    {
+      workerId: number;
+      workerName: string;
+      workerPhotoUri: string | null;
+      totalSales: number;
+      ticketCount: number;
+      avgTicket: number;
+    }[]
+  > {
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [from, to];
+    if (this.storeId !== undefined) params.push(this.storeId);
+    return this.db.getAllAsync(
+      `SELECT t.workerId, t.workerName, u.photoUri AS workerPhotoUri,
+              COALESCE(SUM(t.total), 0) AS totalSales,
+              COUNT(*) AS ticketCount,
+              COALESCE(AVG(t.total), 0) AS avgTicket
+       FROM tickets t
+       LEFT JOIN users u ON u.id = t.workerId
+       WHERE t.workerId IS NOT NULL
+         AND date(t.createdAt) >= ? AND date(t.createdAt) <= ?${sFilter}${ACTIVE}
+       GROUP BY t.workerId, t.workerName
+       ORDER BY totalSales DESC`,
+      params,
+    );
   }
 }

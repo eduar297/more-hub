@@ -5,6 +5,7 @@ import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
+import { exportFinancePDF } from "@/utils/export";
 import {
   daysInMonth,
   fmtMoney,
@@ -16,12 +17,25 @@ import {
   shortDayLabel,
   weekEndISO,
 } from "@/utils/format";
-import { ShoppingBag, TrendingDown, TrendingUp } from "@tamagui/lucide-icons";
+import {
+  Download,
+  ShoppingBag,
+  TrendingDown,
+  TrendingUp,
+} from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollView } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
-import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
+import {
+  Button,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
+} from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
 
@@ -928,6 +942,34 @@ export function FinanceSection() {
               )}
             </YStack>
           </Card>
+
+          {/* Export PDF button */}
+          <Button
+            size="$3"
+            bg="$blue3"
+            borderWidth={1}
+            borderColor="$blue6"
+            style={{ borderRadius: 12 }}
+            icon={<Download size={16} color="$blue10" />}
+            onPress={() =>
+              exportFinancePDF({
+                periodLabel: nav.periodLabel,
+                totalIncome: salesTotal,
+                totalPurchases: purchTotal,
+                totalExpenses: expenseTotal,
+                profit,
+                expensesByCategory: expensesByCategory.map((ec) => ({
+                  category: EXPENSE_CATEGORIES[ec.category],
+                  amount: ec.total,
+                })),
+                topProducts: [],
+              })
+            }
+          >
+            <Text fontSize="$3" fontWeight="600" color="$blue10">
+              Exportar reporte PDF
+            </Text>
+          </Button>
 
           {/* Expense breakdown pie */}
           {pieData.length > 0 && (

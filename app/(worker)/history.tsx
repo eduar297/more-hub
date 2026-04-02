@@ -6,12 +6,12 @@ import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
 import { fmtMoney, weekEndISO } from "@/utils/format";
 import {
-  Banknote,
-  ClipboardList,
-  CreditCard,
-  Package,
-  Receipt,
-  TrendingUp,
+    Banknote,
+    ClipboardList,
+    CreditCard,
+    Package,
+    Receipt,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -40,6 +40,7 @@ function TicketRow({
   onPress: () => void;
 }) {
   const PayIcon = ticket.paymentMethod === "CARD" ? CreditCard : Banknote;
+  const voided = ticket.status === "VOIDED";
   return (
     <XStack
       px="$4"
@@ -48,6 +49,7 @@ function TicketRow({
       gap="$3"
       pressStyle={{ bg: "$color2" }}
       onPress={onPress}
+      opacity={voided ? 0.5 : 1}
     >
       <YStack
         width={36}
@@ -66,9 +68,18 @@ function TicketRow({
         />
       </YStack>
       <YStack flex={1}>
-        <Text fontSize="$4" fontWeight="bold" color="$color">
-          Ticket #{ticket.id}
-        </Text>
+        <XStack style={{ alignItems: "center" }} gap="$2">
+          <Text fontSize="$4" fontWeight="bold" color="$color">
+            Ticket #{ticket.id}
+          </Text>
+          {voided && (
+            <YStack bg="$red3" px="$1.5" py="$0.5" style={{ borderRadius: 4 }}>
+              <Text fontSize={9} fontWeight="700" color="$red10">
+                ANULADO
+              </Text>
+            </YStack>
+          )}
+        </XStack>
         <XStack style={{ alignItems: "center" }} gap="$2">
           <Text fontSize="$2" color="$color10">
             {ticket.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} ·{" "}
@@ -77,7 +88,12 @@ function TicketRow({
         </XStack>
       </YStack>
       <YStack style={{ alignItems: "flex-end" }}>
-        <Text fontSize="$4" fontWeight="600" color="$green10">
+        <Text
+          fontSize="$4"
+          fontWeight="600"
+          color={voided ? "$red10" : "$green10"}
+          style={voided ? { textDecorationLine: "line-through" } : undefined}
+        >
           ${fmtMoney(ticket.total)}
         </Text>
         <Text fontSize="$2" color="$color10">

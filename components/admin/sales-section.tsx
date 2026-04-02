@@ -1,10 +1,12 @@
 import { StatCard } from "@/components/admin/stat-card";
+import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
+import { exportTicketsCSV } from "@/utils/export";
 import {
   daysInMonth,
   fmtMoney,
@@ -18,9 +20,11 @@ import {
   weekEndISO,
 } from "@/utils/format";
 import {
+  Ban,
   ChevronRight,
   CreditCard,
   DollarSign,
+  Download,
   Receipt,
   ShoppingCart,
   TrendingUp,
@@ -30,7 +34,13 @@ import {
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, ScrollView } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView
+} from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
   Button,
@@ -54,13 +64,28 @@ function TicketRow({
   ticket: Ticket;
   onPress: () => void;
 }) {
+  const voided = ticket.status === "VOIDED";
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} style={voided ? { opacity: 0.5 } : undefined}>
       <XStack px="$4" py="$3" style={{ alignItems: "center" }} gap="$3">
         <YStack flex={1}>
-          <Text fontSize="$3" fontWeight="600" color="$color">
-            Ticket #{ticket.id}
-          </Text>
+          <XStack style={{ alignItems: "center" }} gap="$2">
+            <Text fontSize="$3" fontWeight="600" color="$color">
+              Ticket #{ticket.id}
+            </Text>
+            {voided && (
+              <YStack
+                bg="$red3"
+                px="$1.5"
+                py="$0.5"
+                style={{ borderRadius: 4 }}
+              >
+                <Text fontSize={9} fontWeight="700" color="$red10">
+                  ANULADO
+                </Text>
+              </YStack>
+            )}
+          </XStack>
           <XStack gap="$2" style={{ alignItems: "center" }}>
             <Text fontSize="$2" color="$color10">
               {fmtTime(ticket.createdAt)}
@@ -103,7 +128,12 @@ function TicketRow({
           ) : null}
         </YStack>
         <XStack style={{ alignItems: "center" }} gap="$2">
-          <Text fontSize="$4" fontWeight="bold" color="$green10">
+          <Text
+            fontSize="$4"
+            fontWeight="bold"
+            color={voided ? "$red10" : "$green10"}
+            style={voided ? { textDecorationLine: "line-through" } : undefined}
+          >
             ${fmtMoney(ticket.total)}
           </Text>
           <ChevronRight size={14} color="$color8" />
@@ -118,6 +148,7 @@ function TicketRow({
 export function SalesSection() {
   const ticketRepo = useTicketRepository();
   const userRepo = useUserRepository();
+  const { user } = useAuth();
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
 
@@ -389,6 +420,43 @@ export function SalesSection() {
     ]),
   );
 
+  // ── Void ticket handler ─────────────────────────────────────────────────
+  const handleVoidTicket = useCallback(
+    (ticket: Ticket) => {
+      if (!user) return;
+      Alert.prompt(
+        "Anular venta",
+        `¿Seguro que quieres anular el Ticket #${ticket.id} por $${fmtMoney(
+          ticket.total,
+        )}?\n\nEl stock será restaurado. Escribe la razón:`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Anular",
+            style: "destructive",
+            onPress: async (reason) => {
+              if (!reason?.trim()) {
+                Alert.alert("Error", "Debes escribir una razón");
+                return;
+              }
+              try {
+                await ticketRepo.voidTicket(ticket.id, user.id, reason.trim());
+                setSheetTicket(null);
+                loadData();
+              } catch (e: any) {
+                Alert.alert("Error", e.message ?? "No se pudo anular");
+              }
+            },
+          },
+        ],
+        "plain-text",
+        "",
+        "default",
+      );
+    },
+    [ticketRepo, user, loadData],
+  );
+
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
     if (nav.period === "day") {
@@ -641,11 +709,22 @@ export function SalesSection() {
 
       {/* Tickets header */}
       {nav.period !== "year" && tickets.length > 0 && (
-        <XStack gap="$2" style={{ alignItems: "center" }} mt="$2">
-          <Receipt size={18} color="$blue10" />
-          <Text fontSize="$4" fontWeight="bold" color="$color">
-            Tickets ({tickets.length})
-          </Text>
+        <XStack
+          style={{ alignItems: "center", justifyContent: "space-between" }}
+          mt="$2"
+        >
+          <XStack gap="$2" style={{ alignItems: "center" }}>
+            <Receipt size={18} color="$blue10" />
+            <Text fontSize="$4" fontWeight="bold" color="$color">
+              Tickets ({tickets.length})
+            </Text>
+          </XStack>
+          <Button
+            size="$2"
+            chromeless
+            icon={<Download size={16} color="$blue10" />}
+            onPress={() => exportTicketsCSV(tickets, nav.periodLabel)}
+          />
         </XStack>
       )}
     </YStack>
@@ -965,10 +1044,59 @@ export function SalesSection() {
                   <Text fontSize="$5" fontWeight="bold" color="$color">
                     Total
                   </Text>
-                  <Text fontSize="$7" fontWeight="bold" color="$green10">
+                  <Text
+                    fontSize="$7"
+                    fontWeight="bold"
+                    color={
+                      sheetTicket.status === "VOIDED" ? "$red10" : "$green10"
+                    }
+                    style={
+                      sheetTicket.status === "VOIDED"
+                        ? { textDecorationLine: "line-through" }
+                        : undefined
+                    }
+                  >
                     ${fmtMoney(sheetTicket.total)}
                   </Text>
                 </XStack>
+
+                {/* Void info or void button */}
+                {sheetTicket.status === "VOIDED" ? (
+                  <Card
+                    bg="$red2"
+                    borderWidth={1}
+                    borderColor="$red6"
+                    style={{ borderRadius: 12 }}
+                    p="$3"
+                  >
+                    <XStack style={{ alignItems: "center" }} gap="$2" mb="$1">
+                      <Ban size={16} color="$red10" />
+                      <Text fontSize="$4" fontWeight="bold" color="$red10">
+                        Ticket anulado
+                      </Text>
+                    </XStack>
+                    {sheetTicket.voidReason && (
+                      <Text fontSize="$2" color="$color10">
+                        Razón: {sheetTicket.voidReason}
+                      </Text>
+                    )}
+                    {sheetTicket.voidedAt && (
+                      <Text fontSize="$2" color="$color10">
+                        Fecha: {fmtTime(sheetTicket.voidedAt)}
+                      </Text>
+                    )}
+                  </Card>
+                ) : (
+                  <Button
+                    bg="$red3"
+                    icon={<Ban size={16} color="$red10" />}
+                    onPress={() => handleVoidTicket(sheetTicket)}
+                  >
+                    <Text color="$red10" fontWeight="600">
+                      Anular venta
+                    </Text>
+                  </Button>
+                )}
               </YStack>
             )}
           </ScrollView>

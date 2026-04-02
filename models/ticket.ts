@@ -1,4 +1,5 @@
 export type PaymentMethod = "CASH" | "CARD";
+export type TicketStatus = "ACTIVE" | "VOIDED";
 
 export interface Ticket {
   id: number;
@@ -10,6 +11,10 @@ export interface Ticket {
   workerName: string | null;
   workerPhotoUri: string | null;
   storeId: number;
+  status: TicketStatus;
+  voidedAt: string | null;
+  voidedBy: number | null;
+  voidReason: string | null;
 }
 
 export interface TicketItem {

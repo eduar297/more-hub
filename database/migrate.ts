@@ -57,6 +57,10 @@ async function ensureTables(db: SQLiteDatabase) {
       workerId INTEGER,
       workerName TEXT,
       storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+      status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','VOIDED')),
+      voidedAt TEXT,
+      voidedBy INTEGER REFERENCES users(id),
+      voidReason TEXT,
       FOREIGN KEY (workerId) REFERENCES users(id)
     );
 
@@ -145,7 +149,7 @@ async function ensureTables(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 14;
+  const DATABASE_VERSION = 15;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -399,6 +403,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       );
     `);
     currentVersion = 14;
+  }
+
+  if (currentVersion === 14) {
+    await db.execAsync(`
+      ALTER TABLE tickets ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','VOIDED'));
+      ALTER TABLE tickets ADD COLUMN voidedAt TEXT;
+      ALTER TABLE tickets ADD COLUMN voidedBy INTEGER REFERENCES users(id);
+      ALTER TABLE tickets ADD COLUMN voidReason TEXT;
+    `);
+    currentVersion = 15;
   }
 
   await seedUnits(db);
