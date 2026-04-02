@@ -833,16 +833,14 @@ export async function seedSimulation(
       Crypto.CryptoDigestAlgorithm.SHA256,
       w.pin,
     );
-    await db.runAsync(
+    const result = await db.runAsync(
       `INSERT INTO users (name, role, pinHash, storeId, createdAt) VALUES (?, 'WORKER', ?, ?, ?)`,
       w.name,
       pinHash,
       storeId,
       fmtDatetime(startDate),
     );
-    // Para SQLite via expo-sqlite, runAsync devuelve un objeto con lastInsertRowId
-    const result = await db.runAsync("SELECT last_insert_rowid() as id");
-    workerIds.push((result as any).id || 1); // fallback, mejor usar la devolución directa si la librería lo permite
+    workerIds.push(result.lastInsertRowId);
   }
   const workerNames = WORKERS.map((w) => w.name);
 
@@ -905,7 +903,8 @@ export async function seedSimulation(
   const cursor = new Date(startDate);
   while (cursor <= now) {
     const dow = cursor.getDay();
-    if (dow >= 1 && dow <= 5) {
+    // Lunes (1) a Sábado (6), domingo (0) no se trabaja
+    if (dow >= 1 && dow <= 6) {
       workingDays.push(new Date(cursor));
     }
     cursor.setDate(cursor.getDate() + 1);
@@ -935,12 +934,12 @@ export async function seedSimulation(
     dayCount++;
     purchaseDayCounter++;
 
-    const weekNum = Math.floor(dayCount / 5);
+    const weekNum = Math.floor(dayCount / 6);
     const teamA = [0, 1];
     const teamB = [2, 3];
     const todayTeam = weekNum % 2 === 0 ? teamA : teamB;
 
-    if (purchaseDayCounter >= 18) {
+    if (purchaseDayCounter >= 5) {
       purchaseDayCounter = 0;
       const purchaseHour = 8 + randInt(0, 1);
       const purchaseTime = new Date(day);
@@ -968,14 +967,17 @@ export async function seedSimulation(
       let hour: number;
       let minute: number;
       if (t < morningTickets) {
-        hour = 9 + Math.floor((t / morningTickets) * 3);
+        // Mañana: 8:00 – 11:59
+        hour = 8 + Math.floor((t / morningTickets) * 4);
         minute = randInt(0, 59);
       } else if (t < morningTickets + afternoonTickets) {
-        hour = 12 + Math.floor(((t - morningTickets) / afternoonTickets) * 5);
+        // Tarde: 12:00 – 14:59
+        hour = 12 + Math.floor(((t - morningTickets) / afternoonTickets) * 3);
         minute = randInt(0, 59);
       } else {
+        // Última franja: 15:00 – 17:59
         hour =
-          17 +
+          15 +
           Math.floor(
             ((t - morningTickets - afternoonTickets) / eveningTickets) * 3,
           );
@@ -1068,6 +1070,16 @@ export async function seedSimulation(
     if (dayCount % 20 === 0) {
       onProgress?.(`Día ${dayCount}/${workingDays.length}...`);
     }
+  }
+
+  // ── 6b. Sync in-memory stock to DB ─────────────────────────────────────────
+  onProgress?.("Actualizando stock en base de datos...");
+  for (let i = 0; i < productIds.length; i++) {
+    await db.runAsync(
+      `UPDATE products SET stockBaseQty = ? WHERE id = ?`,
+      Math.max(0, stock[i]),
+      productIds[i],
+    );
   }
 
   onProgress?.("Creando gastos mensuales...");
@@ -1183,7 +1195,7 @@ async function insertPurchaseBatch(
   }
 
   for (const [sIdx, pIdxs] of supplierProducts.entries()) {
-    if (!initial && rand() < 0.3) continue;
+    if (!initial && rand() < 0.1) continue;
 
     const items: {
       productId: number;
@@ -1194,12 +1206,20 @@ async function insertPurchaseBatch(
 
     const toRestock = initial
       ? pIdxs
-      : pIdxs.filter((i) => PROFILES[i].restock && stock[i] < 10);
+      : pIdxs.filter((i) => PROFILES[i].restock && stock[i] < 40);
 
     for (const pIdx of toRestock) {
       const costPct = PROFILES[pIdx].costPct + (rand() - 0.5) * 0.04;
       const unitCost = Math.round(productPrices[pIdx] * costPct * 100) / 100;
-      const qty = initial ? randInt(30, 60) : randInt(8, 25);
+      // Scale restock quantity with product popularity
+      const pop = PROFILES[pIdx].pop;
+      const qty = initial
+        ? randInt(50, 100)
+        : pop >= 1.5
+        ? randInt(40, 80)
+        : pop >= 1.0
+        ? randInt(25, 50)
+        : randInt(15, 35);
 
       items.push({
         productId: productIds[pIdx],
