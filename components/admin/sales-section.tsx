@@ -6,49 +6,41 @@ import { useUserRepository } from "@/hooks/use-user-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtTime,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shortDayLabel,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtTime,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shortDayLabel,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    ChevronRight,
-    CreditCard,
-    DollarSign,
-    Receipt,
-    ShoppingCart,
-    TrendingUp,
-    User,
-    Users,
-    X,
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  Receipt,
+  ShoppingCart,
+  TrendingUp,
+  User,
+  Users,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, Image, Pressable, ScrollView } from "react-native";
+import { PieChart } from "react-native-gifted-charts";
 import {
-    Dimensions,
-    FlatList,
-    Image,
-    Pressable,
-    ScrollView,
-    View,
-} from "react-native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
-import {
-    Button,
-    Card,
-    Separator,
-    Sheet,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Separator,
+  Sheet,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
+import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
-
-const SCREEN_W = Dimensions.get("window").width;
 
 // ── TicketRow ─────────────────────────────────────────────────────────────────
 
@@ -338,14 +330,6 @@ export function SalesSection() {
     }, [loadData]),
   );
 
-  // ── Chart helpers ─────────────────────────────────────────────────────────
-  const fmtYLabel = useCallback((v: string) => {
-    const n = Number(v);
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return v;
-  }, []);
-
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
     if (nav.period === "day") {
@@ -398,9 +382,9 @@ export function SalesSection() {
         label: MONTH_NAMES_SHORT[i],
         frontColor: (entry?.total ?? 0) > 0 ? "#3b82f6" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
+        labelWidth: 28,
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     nav.period,
     hourlySales,
@@ -409,20 +393,6 @@ export function SalesSection() {
     nav.selectedMonth,
     nav.dateRange,
   ]);
-
-  const barWidth = useMemo(() => {
-    if (nav.period === "week") return 30;
-    if (nav.period === "year") return 20;
-    return 22;
-  }, [nav.period]);
-
-  const barSpacing = useMemo(() => {
-    if (nav.period === "week") return 12;
-    if (nav.period === "year") return 8;
-    return 8;
-  }, [nav.period]);
-
-  const isScrollable = nav.period !== "week" && nav.period !== "year";
 
   const paymentPieData = useMemo(() => {
     if (paymentBreakdown.length === 0) return [];
@@ -484,48 +454,7 @@ export function SalesSection() {
                 ? "Ventas del período"
                 : "Ventas mensuales"}
             </Text>
-            <BarChart
-              data={chartData}
-              height={130}
-              barWidth={barWidth}
-              spacing={barSpacing}
-              noOfSections={3}
-              hideRules
-              yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-              formatYLabel={fmtYLabel}
-              yAxisThickness={0}
-              xAxisThickness={0}
-              xAxisLabelTextStyle={{ fontSize: 10, color: "#888" }}
-              labelsExtraHeight={20}
-              isAnimated
-              animationDuration={400}
-              barBorderRadius={4}
-              scrollable={isScrollable}
-              showScrollIndicator={isScrollable}
-              initialSpacing={10}
-              endSpacing={10}
-              renderTooltip={(item: { value: number; label?: string }) => (
-                <View
-                  style={{
-                    backgroundColor: "#333",
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 6,
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#fff",
-                      fontSize: 12,
-                      fontWeight: "600",
-                    }}
-                  >
-                    ${fmtMoney(item.value)}
-                  </Text>
-                </View>
-              )}
-            />
+            <AdminBarChart data={chartData} lineColor="#60a5fa" />
           </YStack>
         </Card>
       )}

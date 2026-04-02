@@ -6,21 +6,20 @@ import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
 import {
-    fmtMoney,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shortDayLabel,
-    weekEndISO,
+  fmtMoney,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shortDayLabel,
+  weekEndISO,
 } from "@/utils/format";
 import { ShoppingBag, TrendingDown, TrendingUp } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Dimensions, ScrollView, View } from "react-native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
+import { ScrollView } from "react-native";
+import { PieChart } from "react-native-gifted-charts";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
+import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
-
-const SCREEN_W = Dimensions.get("window").width;
 
 export function FinanceSection() {
   const ticketRepo = useTicketRepository();
@@ -210,14 +209,6 @@ export function FinanceSection() {
     }, [loadData]),
   );
 
-  // Derived
-  const fmtYLabel = useCallback((v: string) => {
-    const n = Number(v);
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return v;
-  }, []);
-
   const purchaseMerchandise = purchTotal - purchTransport;
   const totalEgresos = purchTotal + expenseTotal;
   const profit = salesTotal - totalEgresos;
@@ -270,6 +261,7 @@ export function FinanceSection() {
       frontColor: string;
       spacing?: number;
       labelTextStyle?: object;
+      labelWidth?: number;
     }[] = [];
     for (const item of yearlyTrendData) {
       data.push({
@@ -278,11 +270,12 @@ export function FinanceSection() {
         frontColor: "#22c55e",
         spacing: 2,
         labelTextStyle: { fontSize: 10, color: "#888" },
+        labelWidth: 30,
       });
       data.push({
         value: item.outflow,
         frontColor: "#ef4444",
-        spacing: 10,
+        spacing: 14,
       });
     }
     return data;
@@ -295,6 +288,7 @@ export function FinanceSection() {
         label: MONTH_NAMES_SHORT[item.month - 1],
         frontColor: item.income - item.outflow >= 0 ? "#22c55e" : "#ef4444",
         labelTextStyle: { fontSize: 10, color: "#888" },
+        labelWidth: 28,
       })),
     [yearlyTrendData],
   );
@@ -336,10 +330,6 @@ export function FinanceSection() {
     }));
   }, [nav.period, rangeDailyData]);
 
-  const rangeBarWidth = 22;
-  const rangeBarSpacing = 8;
-  const isRangeScrollable = rangeDailyData.length > 7;
-
   const hasNegativeProfit = profitTrendData.some((d) => d.value < 0);
   const hasPositiveProfit = profitTrendData.some((d) => d.value > 0);
   const profitAbsMax =
@@ -352,12 +342,6 @@ export function FinanceSection() {
   const profitStep = profitAbsMax > 0 ? Math.ceil(profitAbsMax / 3) : 1;
   const profitSectionsAbove = hasPositiveProfit ? 3 : 1;
   const profitSectionsBelow = hasNegativeProfit ? 3 : 0;
-  const profitChartHeight =
-    hasNegativeProfit && hasPositiveProfit
-      ? 200
-      : hasNegativeProfit
-      ? 160
-      : 130;
 
   if (loading) {
     return (
@@ -523,7 +507,7 @@ export function FinanceSection() {
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   flex={1}
-                  textAlign="right"
+                  text="right"
                   ml="$2"
                 >
                   {profit >= 0 ? "+" : "-"}${fmtMoney(Math.abs(profit))}
@@ -623,47 +607,7 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos por hora
                 </Text>
-                <BarChart
-                  data={hourlyChartData}
-                  height={130}
-                  barWidth={22}
-                  spacing={8}
-                  noOfSections={3}
-                  hideRules
-                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                  formatYLabel={fmtYLabel}
-                  yAxisThickness={0}
-                  xAxisThickness={0}
-                  labelsExtraHeight={20}
-                  isAnimated
-                  animationDuration={400}
-                  barBorderRadius={4}
-                  scrollable
-                  showScrollIndicator
-                  initialSpacing={10}
-                  endSpacing={10}
-                  renderTooltip={(item: { value: number }) => (
-                    <View
-                      style={{
-                        backgroundColor: "#333",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        marginBottom: 4,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "600",
-                        }}
-                      >
-                        ${fmtMoney(item.value)}
-                      </Text>
-                    </View>
-                  )}
-                />
+                <AdminBarChart data={hourlyChartData} />
               </YStack>
             </Card>
           )}
@@ -681,45 +625,7 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos de la semana
                 </Text>
-                <BarChart
-                  data={weekChartData}
-                  height={130}
-                  barWidth={30}
-                  spacing={12}
-                  noOfSections={3}
-                  hideRules
-                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                  formatYLabel={fmtYLabel}
-                  yAxisThickness={0}
-                  xAxisThickness={0}
-                  labelsExtraHeight={20}
-                  isAnimated
-                  animationDuration={400}
-                  barBorderRadius={4}
-                  initialSpacing={10}
-                  endSpacing={10}
-                  renderTooltip={(item: { value: number }) => (
-                    <View
-                      style={{
-                        backgroundColor: "#333",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        marginBottom: 4,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "600",
-                        }}
-                      >
-                        ${fmtMoney(item.value)}
-                      </Text>
-                    </View>
-                  )}
-                />
+                <AdminBarChart data={weekChartData} />
               </YStack>
             </Card>
           )}
@@ -737,47 +643,7 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos del período
                 </Text>
-                <BarChart
-                  data={rangeChartData}
-                  height={130}
-                  barWidth={rangeBarWidth}
-                  spacing={rangeBarSpacing}
-                  noOfSections={3}
-                  hideRules
-                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                  formatYLabel={fmtYLabel}
-                  yAxisThickness={0}
-                  xAxisThickness={0}
-                  labelsExtraHeight={20}
-                  isAnimated
-                  animationDuration={400}
-                  barBorderRadius={4}
-                  scrollable={isRangeScrollable}
-                  showScrollIndicator={isRangeScrollable}
-                  initialSpacing={10}
-                  endSpacing={10}
-                  renderTooltip={(item: { value: number }) => (
-                    <View
-                      style={{
-                        backgroundColor: "#333",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        marginBottom: 4,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "600",
-                        }}
-                      >
-                        ${fmtMoney(item.value)}
-                      </Text>
-                    </View>
-                  )}
-                />
+                <AdminBarChart data={rangeChartData} />
               </YStack>
             </Card>
           )}
@@ -832,27 +698,7 @@ export function FinanceSection() {
                         </Text>
                       </XStack>
                     </XStack>
-                    <BarChart
-                      data={groupedBarData}
-                      height={140}
-                      barWidth={Math.max(
-                        8,
-                        Math.min(
-                          16,
-                          (SCREEN_W - 100) / yearlyTrendData.length / 3,
-                        ),
-                      )}
-                      spacing={2}
-                      noOfSections={3}
-                      yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                      formatYLabel={fmtYLabel}
-                      yAxisThickness={0}
-                      xAxisThickness={0}
-                      labelsExtraHeight={20}
-                      isAnimated
-                      animationDuration={400}
-                      barBorderRadius={2}
-                    />
+                    <AdminBarChart data={groupedBarData} showLine={false} />
                   </YStack>
                 </Card>
               )}
@@ -870,23 +716,8 @@ export function FinanceSection() {
                     <Text fontSize="$3" fontWeight="600" color="$color10">
                       Ganancia/Pérdida por mes
                     </Text>
-                    <BarChart
+                    <AdminBarChart
                       data={profitTrendData}
-                      height={profitChartHeight}
-                      barWidth={Math.max(
-                        12,
-                        Math.min(
-                          28,
-                          (SCREEN_W - 100) / profitTrendData.length / 1.5,
-                        ),
-                      )}
-                      spacing={Math.max(
-                        4,
-                        Math.min(
-                          10,
-                          (SCREEN_W - 100) / profitTrendData.length / 3,
-                        ),
-                      )}
                       stepValue={profitStep}
                       noOfSections={profitSectionsAbove}
                       noOfSectionsBelowXAxis={profitSectionsBelow}
@@ -896,15 +727,8 @@ export function FinanceSection() {
                           ? -(profitStep * profitSectionsBelow)
                           : undefined
                       }
-                      yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                      formatYLabel={fmtYLabel}
-                      yAxisThickness={0}
                       xAxisThickness={1}
                       xAxisColor="#555"
-                      labelsExtraHeight={20}
-                      isAnimated
-                      animationDuration={400}
-                      barBorderRadius={3}
                     />
                   </YStack>
                 </Card>
@@ -1046,7 +870,7 @@ export function FinanceSection() {
                 </YStack>
                 <XStack px="$4" py="$2" bg="$color2">
                   <Text
-                    flex={1}
+                    width={35}
                     fontSize="$2"
                     fontWeight="600"
                     color="$color10"
@@ -1054,26 +878,29 @@ export function FinanceSection() {
                     Mes
                   </Text>
                   <Text
+                    flex={1}
                     fontSize="$2"
                     fontWeight="600"
                     color="$green10"
-                    style={{ width: 70, textAlign: "right" }}
+                    style={{ textAlign: "right" }}
                   >
                     Ingreso
                   </Text>
                   <Text
+                    flex={1}
                     fontSize="$2"
                     fontWeight="600"
                     color="$red10"
-                    style={{ width: 70, textAlign: "right" }}
+                    style={{ textAlign: "right" }}
                   >
                     Egreso
                   </Text>
                   <Text
+                    flex={1}
                     fontSize="$2"
                     fontWeight="600"
                     color="$color"
-                    style={{ width: 80, textAlign: "right" }}
+                    style={{ textAlign: "right" }}
                   >
                     Resultado
                   </Text>
@@ -1085,30 +912,33 @@ export function FinanceSection() {
                     <YStack key={idx}>
                       <Separator />
                       <XStack px="$4" py="$2" style={{ alignItems: "center" }}>
-                        <Text flex={1} fontSize="$3" color="$color">
+                        <Text width={35} fontSize="$3" color="$color">
                           {MONTH_NAMES_SHORT[item.month - 1]}
                         </Text>
                         <Text
+                          flex={1}
                           fontSize="$3"
                           color="$green10"
-                          style={{ width: 70, textAlign: "right" }}
+                          style={{ textAlign: "right" }}
                           numberOfLines={1}
                         >
                           ${fmtMoney(item.income)}
                         </Text>
                         <Text
+                          flex={1}
                           fontSize="$3"
                           color="$red10"
-                          style={{ width: 70, textAlign: "right" }}
+                          style={{ textAlign: "right" }}
                           numberOfLines={1}
                         >
                           ${fmtMoney(item.outflow)}
                         </Text>
                         <Text
+                          flex={1}
                           fontSize="$3"
                           fontWeight="bold"
                           color={netResult >= 0 ? "$green10" : "$red10"}
-                          style={{ width: 80, textAlign: "right" }}
+                          style={{ textAlign: "right" }}
                           numberOfLines={1}
                           adjustsFontSizeToFit
                         >

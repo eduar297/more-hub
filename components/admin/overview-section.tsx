@@ -6,26 +6,24 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-    daysInMonth,
-    fmtMoney,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shortDayLabel,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shortDayLabel,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    BarChart3,
-    DollarSign,
-    Package,
-    TrendingUp,
+  BarChart3,
+  DollarSign,
+  Package,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Dimensions, ScrollView, View } from "react-native";
-import { BarChart } from "react-native-gifted-charts";
+import { ScrollView } from "react-native";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
-
-const SCREEN_W = Dimensions.get("window").width;
+import { AdminBarChart } from "./admin-bar-chart";
 
 export function OverviewSection() {
   const ticketRepo = useTicketRepository();
@@ -173,13 +171,6 @@ export function OverviewSection() {
   );
 
   // Chart data
-  const fmtYLabel = useCallback((v: string) => {
-    const n = Number(v);
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return v;
-  }, []);
-
   const chartData = useMemo(() => {
     if (nav.period === "day") {
       const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
@@ -231,6 +222,7 @@ export function OverviewSection() {
         label: MONTH_NAMES_SHORT[i],
         frontColor: (entry?.total ?? 0) > 0 ? "#22c55e" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
+        labelWidth: 28,
       };
     });
   }, [
@@ -241,21 +233,6 @@ export function OverviewSection() {
     nav.selectedMonth,
     nav.dateRange,
   ]);
-
-  const barWidth = useMemo(() => {
-    if (nav.period === "week") return 30;
-    if (nav.period === "year") return 20;
-    // day (24), month (28-31), range — all scrollable with wide bars
-    return 22;
-  }, [nav.period]);
-
-  const barSpacing = useMemo(() => {
-    if (nav.period === "week") return 12;
-    if (nav.period === "year") return 8;
-    return 8;
-  }, [nav.period]);
-
-  const isScrollable = nav.period !== "week" && nav.period !== "year";
 
   const totalEgresos = purchasesTotal + expensesTotal;
   const profit = salesTotal - totalEgresos;
@@ -357,48 +334,7 @@ export function OverviewSection() {
                     {chartTitle}
                   </Text>
                 </XStack>
-                <BarChart
-                  data={chartData}
-                  height={130}
-                  barWidth={barWidth}
-                  spacing={barSpacing}
-                  noOfSections={3}
-                  hideRules
-                  yAxisTextStyle={{ fontSize: 11, color: "#888" }}
-                  formatYLabel={fmtYLabel}
-                  yAxisThickness={0}
-                  xAxisThickness={0}
-                  xAxisLabelTextStyle={{ fontSize: 10, color: "#888" }}
-                  labelsExtraHeight={20}
-                  isAnimated
-                  animationDuration={400}
-                  barBorderRadius={4}
-                  scrollable={isScrollable}
-                  showScrollIndicator={isScrollable}
-                  initialSpacing={10}
-                  endSpacing={10}
-                  renderTooltip={(item: { value: number; label?: string }) => (
-                    <View
-                      style={{
-                        backgroundColor: "#333",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        marginBottom: 4,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "600",
-                        }}
-                      >
-                        ${fmtMoney(item.value)}
-                      </Text>
-                    </View>
-                  )}
-                />
+                <AdminBarChart data={chartData} />
               </YStack>
             </Card>
           )}
@@ -486,7 +422,7 @@ export function OverviewSection() {
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   flex={1}
-                  textAlign="right"
+                  text="right"
                   ml="$2"
                 >
                   {profit >= 0 ? "+" : "-"}${fmtMoney(Math.abs(profit))}
