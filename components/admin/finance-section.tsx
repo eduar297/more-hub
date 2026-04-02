@@ -11,6 +11,8 @@ import {
   fmtMoneyFull,
   MONTH_NAMES_SHORT,
   shiftDay,
+  shiftMonth,
+  shiftWeek,
   shortDayLabel,
   weekEndISO,
 } from "@/utils/format";
@@ -71,6 +73,10 @@ export function FinanceSection() {
   const [dayHourlyTrend, setDayHourlyTrend] = useState<
     { hour: number; income: number; outflow: number }[]
   >([]);
+
+  // Previous period comparison
+  const [prevSales, setPrevSales] = useState(0);
+  const [prevEgresos, setPrevEgresos] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -282,6 +288,72 @@ export function FinanceSection() {
     useCallback(() => {
       loadData();
     }, [loadData]),
+  );
+
+  // Load previous period comparison data (non-blocking)
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          if (nav.period === "day") {
+            const prevDay = shiftDay(nav.selectedDay, -1);
+            const [pS, pP, pE] = await Promise.all([
+              ticketRepo.daySummary(prevDay),
+              purchaseRepo.daySummary(prevDay),
+              expenseRepo.dayTotal(prevDay),
+            ]);
+            setPrevSales(pS.totalSales);
+            setPrevEgresos(pP.totalSpent + pE);
+          } else if (nav.period === "week") {
+            const prevWk = shiftWeek(nav.selectedWeekStart, -1);
+            const prevWkEnd = weekEndISO(prevWk);
+            const [pT, pP, pE] = await Promise.all([
+              ticketRepo.findByDateRange(prevWk, prevWkEnd),
+              purchaseRepo.rangeSummary(prevWk, prevWkEnd),
+              expenseRepo.rangeTotal(prevWk, prevWkEnd),
+            ]);
+            setPrevSales(pT.reduce((s, t) => s + t.total, 0));
+            setPrevEgresos(pP.totalSpent + pE);
+          } else if (nav.period === "month") {
+            const prevMonth = shiftMonth(nav.selectedMonth, -1);
+            const [pS, pP, pE] = await Promise.all([
+              ticketRepo.monthlySummary(prevMonth),
+              purchaseRepo.monthlySummary(prevMonth),
+              expenseRepo.monthlyTotal(prevMonth),
+            ]);
+            setPrevSales(pS.totalSales);
+            setPrevEgresos(pP.totalSpent + pE);
+          } else if (nav.period === "year") {
+            const prevYear = String(Number(nav.selectedYear) - 1);
+            const [pS, pP, pE] = await Promise.all([
+              ticketRepo.monthlySalesForYear(prevYear),
+              purchaseRepo.monthlyTotalsForYear(prevYear),
+              expenseRepo.monthlyTotalsForYear(prevYear),
+            ]);
+            setPrevSales(pS.reduce((s, y) => s + y.total, 0));
+            setPrevEgresos(
+              pP.reduce((s, y) => s + y.total, 0) +
+                pE.reduce((s, y) => s + y.total, 0),
+            );
+          } else {
+            setPrevSales(0);
+            setPrevEgresos(0);
+          }
+        } catch {
+          setPrevSales(0);
+          setPrevEgresos(0);
+        }
+      })();
+    }, [
+      nav.period,
+      nav.selectedDay,
+      nav.selectedMonth,
+      nav.selectedWeekStart,
+      nav.selectedYear,
+      ticketRepo,
+      purchaseRepo,
+      expenseRepo,
+    ]),
   );
 
   const purchaseMerchandise = purchTotal - purchTransport;
@@ -768,6 +840,92 @@ export function FinanceSection() {
                   {profit >= 0 ? "+" : "-"}${fmtMoneyFull(Math.abs(profit))}
                 </Text>
               </XStack>
+
+              {/* ROI */}
+              {totalEgresos > 0 && (
+                <>
+                  <Separator />
+                  <XStack
+                    style={{
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text fontSize="$2" color="$color10">
+                      ROI (retorno sobre inversión)
+                    </Text>
+                    <Text
+                      fontSize="$3"
+                      fontWeight="bold"
+                      color={profit >= 0 ? "$green10" : "$red10"}
+                    >
+                      {((profit / totalEgresos) * 100).toFixed(1)}%
+                    </Text>
+                  </XStack>
+                </>
+              )}
+
+              {/* Previous period comparison */}
+              {nav.period !== "range" && (prevSales > 0 || prevEgresos > 0) && (
+                <>
+                  <Separator />
+                  <Text fontSize="$2" fontWeight="600" color="$color8">
+                    vs período anterior
+                  </Text>
+                  <XStack
+                    style={{
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text fontSize="$2" color="$color8">
+                      Ingresos ant.
+                    </Text>
+                    <Text fontSize="$2" color="$color8">
+                      ${fmtMoneyFull(prevSales)}
+                      {prevSales > 0
+                        ? ` (${salesTotal >= prevSales ? "+" : ""}${(
+                            ((salesTotal - prevSales) / prevSales) *
+                            100
+                          ).toFixed(0)}%)`
+                        : ""}
+                    </Text>
+                  </XStack>
+                  <XStack
+                    style={{
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text fontSize="$2" color="$color8">
+                      Egresos ant.
+                    </Text>
+                    <Text fontSize="$2" color="$color8">
+                      ${fmtMoneyFull(prevEgresos)}
+                    </Text>
+                  </XStack>
+                  <XStack
+                    style={{
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text fontSize="$2" color="$color8">
+                      Resultado ant.
+                    </Text>
+                    <Text
+                      fontSize="$2"
+                      fontWeight="600"
+                      color={
+                        prevSales - prevEgresos >= 0 ? "$green10" : "$red10"
+                      }
+                    >
+                      {prevSales - prevEgresos >= 0 ? "+" : "-"}$
+                      {fmtMoneyFull(Math.abs(prevSales - prevEgresos))}
+                    </Text>
+                  </XStack>
+                </>
+              )}
             </YStack>
           </Card>
 

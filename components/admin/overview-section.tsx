@@ -11,6 +11,8 @@ import {
   fmtMoneyFull,
   MONTH_NAMES_SHORT,
   shiftDay,
+  shiftMonth,
+  shiftWeek,
   shortDayLabel,
   weekEndISO,
 } from "@/utils/format";
@@ -43,6 +45,12 @@ export function OverviewSection() {
   const [productCount, setProductCount] = useState(0);
   const [inventoryValue, setInventoryValue] = useState(0);
 
+  // Previous period data (for delta %)
+  const [prevSales, setPrevSales] = useState(0);
+  const [prevTickets, setPrevTickets] = useState(0);
+  const [prevPurchases, setPrevPurchases] = useState(0);
+  const [prevExpenses, setPrevExpenses] = useState(0);
+
   // Chart data
   const [dailySalesData, setDailySalesData] = useState<
     { day: number; total: number }[]
@@ -64,28 +72,47 @@ export function OverviewSection() {
       );
 
       if (nav.period === "day") {
-        const [daySumm, hourly, dayPurch, dayExp] = await Promise.all([
-          ticketRepo.daySummary(nav.selectedDay),
-          ticketRepo.hourlySales(nav.selectedDay),
-          purchaseRepo.daySummary(nav.selectedDay),
-          expenseRepo.dayTotal(nav.selectedDay),
-        ]);
+        const prevDay = shiftDay(nav.selectedDay, -1);
+        const [daySumm, hourly, dayPurch, dayExp, pSales, pPurch, pExp] =
+          await Promise.all([
+            ticketRepo.daySummary(nav.selectedDay),
+            ticketRepo.hourlySales(nav.selectedDay),
+            purchaseRepo.daySummary(nav.selectedDay),
+            expenseRepo.dayTotal(nav.selectedDay),
+            ticketRepo.daySummary(prevDay),
+            purchaseRepo.daySummary(prevDay),
+            expenseRepo.dayTotal(prevDay),
+          ]);
         setSalesTotal(daySumm.totalSales);
         setTicketCount(daySumm.ticketCount);
         setHourlySales(hourly);
         setPurchasesTotal(dayPurch.totalSpent);
         setExpensesTotal(dayExp);
+        setPrevSales(pSales.totalSales);
+        setPrevTickets(pSales.ticketCount);
+        setPrevPurchases(pPurch.totalSpent);
+        setPrevExpenses(pExp);
       } else if (nav.period === "week") {
         const wkEnd = weekEndISO(nav.selectedWeekStart);
-        const [wkTickets, wkPurch, wkExp] = await Promise.all([
-          ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
-          purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
-          expenseRepo.rangeTotal(nav.selectedWeekStart, wkEnd),
-        ]);
+        const prevWkStart = shiftWeek(nav.selectedWeekStart, -1);
+        const prevWkEnd = weekEndISO(prevWkStart);
+        const [wkTickets, wkPurch, wkExp, pTickets, pPurch, pExp] =
+          await Promise.all([
+            ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
+            purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
+            expenseRepo.rangeTotal(nav.selectedWeekStart, wkEnd),
+            ticketRepo.findByDateRange(prevWkStart, prevWkEnd),
+            purchaseRepo.rangeSummary(prevWkStart, prevWkEnd),
+            expenseRepo.rangeTotal(prevWkStart, prevWkEnd),
+          ]);
         setSalesTotal(wkTickets.reduce((s, t) => s + t.total, 0));
         setTicketCount(wkTickets.length);
         setPurchasesTotal(wkPurch.totalSpent);
         setExpensesTotal(wkExp);
+        setPrevSales(pTickets.reduce((s, t) => s + t.total, 0));
+        setPrevTickets(pTickets.length);
+        setPrevPurchases(pPurch.totalSpent);
+        setPrevExpenses(pExp);
         // Build 7-day daily totals for the week chart
         const weekDailyTotals = Array.from({ length: 7 }, (_, i) => {
           const dayKey = shiftDay(nav.selectedWeekStart, i);
@@ -98,28 +125,46 @@ export function OverviewSection() {
         });
         setDailySalesData(weekDailyTotals);
       } else if (nav.period === "month") {
-        const [monthSumm, daily, monthP, monthE] = await Promise.all([
-          ticketRepo.monthlySummary(nav.selectedMonth),
-          ticketRepo.dailySales(nav.selectedMonth),
-          purchaseRepo.monthlySummary(nav.selectedMonth),
-          expenseRepo.monthlyTotal(nav.selectedMonth),
-        ]);
+        const prevMonth = shiftMonth(nav.selectedMonth, -1);
+        const [monthSumm, daily, monthP, monthE, pSumm, pP, pE] =
+          await Promise.all([
+            ticketRepo.monthlySummary(nav.selectedMonth),
+            ticketRepo.dailySales(nav.selectedMonth),
+            purchaseRepo.monthlySummary(nav.selectedMonth),
+            expenseRepo.monthlyTotal(nav.selectedMonth),
+            ticketRepo.monthlySummary(prevMonth),
+            purchaseRepo.monthlySummary(prevMonth),
+            expenseRepo.monthlyTotal(prevMonth),
+          ]);
         setSalesTotal(monthSumm.totalSales);
         setTicketCount(monthSumm.ticketCount);
         setDailySalesData(daily);
         setPurchasesTotal(monthP.totalSpent);
         setExpensesTotal(monthE);
+        setPrevSales(pSumm.totalSales);
+        setPrevTickets(pSumm.ticketCount);
+        setPrevPurchases(pP.totalSpent);
+        setPrevExpenses(pE);
       } else if (nav.period === "year") {
-        const [yearSales, yearPurch, yearExp] = await Promise.all([
-          ticketRepo.monthlySalesForYear(nav.selectedYear),
-          purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
-          expenseRepo.monthlyTotalsForYear(nav.selectedYear),
-        ]);
+        const prevYear = String(Number(nav.selectedYear) - 1);
+        const [yearSales, yearPurch, yearExp, pSales, pPurch, pExp] =
+          await Promise.all([
+            ticketRepo.monthlySalesForYear(nav.selectedYear),
+            purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
+            expenseRepo.monthlyTotalsForYear(nav.selectedYear),
+            ticketRepo.monthlySalesForYear(prevYear),
+            purchaseRepo.monthlyTotalsForYear(prevYear),
+            expenseRepo.monthlyTotalsForYear(prevYear),
+          ]);
         setYearlySales(yearSales);
         setSalesTotal(yearSales.reduce((s, y) => s + y.total, 0));
         setTicketCount(yearSales.reduce((s, y) => s + y.tickets, 0));
         setPurchasesTotal(yearPurch.reduce((s, y) => s + y.total, 0));
         setExpensesTotal(yearExp.reduce((s, y) => s + y.total, 0));
+        setPrevSales(pSales.reduce((s, y) => s + y.total, 0));
+        setPrevTickets(pSales.reduce((s, y) => s + y.tickets, 0));
+        setPrevPurchases(pPurch.reduce((s, y) => s + y.total, 0));
+        setPrevExpenses(pExp.reduce((s, y) => s + y.total, 0));
       } else {
         // range
         const [rangeTickets, rangePurch, rangeExp] = await Promise.all([
@@ -131,6 +176,10 @@ export function OverviewSection() {
         setTicketCount(rangeTickets.length);
         setPurchasesTotal(rangePurch.totalSpent);
         setExpensesTotal(rangeExp);
+        setPrevSales(0);
+        setPrevTickets(0);
+        setPrevPurchases(0);
+        setPrevExpenses(0);
         // Build daily totals for range chart
         const dayCount =
           Math.round(
@@ -239,6 +288,89 @@ export function OverviewSection() {
   const profit = salesTotal - totalEgresos;
   const avgTicket = ticketCount > 0 ? salesTotal / ticketCount : 0;
 
+  // Delta % vs previous period
+  const pctDelta = (curr: number, prev: number) =>
+    prev > 0 ? ((curr - prev) / prev) * 100 : curr > 0 ? 100 : 0;
+  const showDelta = nav.period !== "range";
+  const salesDelta = showDelta ? pctDelta(salesTotal, prevSales) : undefined;
+  const ticketsDelta = showDelta
+    ? pctDelta(ticketCount, prevTickets)
+    : undefined;
+  const prevAvg = prevTickets > 0 ? prevSales / prevTickets : 0;
+  const avgDelta = showDelta ? pctDelta(avgTicket, prevAvg) : undefined;
+
+  // Best/worst day and peak hour insights
+  const insights = useMemo(() => {
+    const result: { label: string; value: string; color: string }[] = [];
+    if (nav.period === "day" && hourlySales.length > 0) {
+      const active = hourlySales.filter((h) => h.total > 0);
+      if (active.length > 0) {
+        const best = active.reduce((a, b) => (b.total > a.total ? b : a));
+        result.push({
+          label: "Hora pico",
+          value: `${best.hour}:00 · $${fmtMoney(best.total)}`,
+          color: "$green10",
+        });
+      }
+    }
+    if (
+      (nav.period === "week" || nav.period === "month") &&
+      dailySalesData.length > 0
+    ) {
+      const active = dailySalesData.filter((d) => d.total > 0);
+      if (active.length >= 2) {
+        const best = active.reduce((a, b) => (b.total > a.total ? b : a));
+        const worst = active.reduce((a, b) => (b.total < a.total ? b : a));
+        if (nav.period === "week") {
+          const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+          result.push({
+            label: "Mejor día",
+            value: `${DAY_LABELS[best.day - 1]} · $${fmtMoney(best.total)}`,
+            color: "$green10",
+          });
+          result.push({
+            label: "Peor día",
+            value: `${DAY_LABELS[worst.day - 1]} · $${fmtMoney(worst.total)}`,
+            color: "$red10",
+          });
+        } else {
+          result.push({
+            label: "Mejor día",
+            value: `Día ${best.day} · $${fmtMoney(best.total)}`,
+            color: "$green10",
+          });
+          result.push({
+            label: "Peor día",
+            value: `Día ${worst.day} · $${fmtMoney(worst.total)}`,
+            color: "$red10",
+          });
+        }
+      }
+    }
+    if (nav.period === "year" && yearlySales.length > 0) {
+      const active = yearlySales.filter((m) => m.total > 0);
+      if (active.length >= 2) {
+        const best = active.reduce((a, b) => (b.total > a.total ? b : a));
+        const worst = active.reduce((a, b) => (b.total < a.total ? b : a));
+        result.push({
+          label: "Mejor mes",
+          value: `${MONTH_NAMES_SHORT[best.month - 1]} · $${fmtMoney(
+            best.total,
+          )}`,
+          color: "$green10",
+        });
+        result.push({
+          label: "Peor mes",
+          value: `${MONTH_NAMES_SHORT[worst.month - 1]} · $${fmtMoney(
+            worst.total,
+          )}`,
+          color: "$red10",
+        });
+      }
+    }
+    return result;
+  }, [nav.period, hourlySales, dailySalesData, yearlySales]);
+
   if (loading) {
     return (
       <YStack
@@ -290,12 +422,14 @@ export function OverviewSection() {
               detail={`$${fmtMoneyFull(salesTotal)}`}
               color="$green10"
               icon={<DollarSign size={16} color="$green10" />}
+              delta={salesDelta}
             />
             <StatCard
               label="Tickets"
               value={ticketCount}
               color="$blue10"
               icon={<BarChart3 size={16} color="$blue10" />}
+              delta={ticketsDelta}
             />
             <StatCard
               label="Promedio"
@@ -303,6 +437,7 @@ export function OverviewSection() {
               detail={`$${fmtMoneyFull(avgTicket)}`}
               color="$purple10"
               icon={<TrendingUp size={16} color="$purple10" />}
+              delta={avgDelta}
             />
           </XStack>
 
@@ -341,6 +476,35 @@ export function OverviewSection() {
                 <AdminBarChart data={chartData} />
               </YStack>
             </Card>
+          )}
+
+          {/* Insights */}
+          {insights.length > 0 && (
+            <XStack gap="$3" flexWrap="wrap">
+              {insights.map((ins) => (
+                <Card
+                  key={ins.label}
+                  flex={1}
+                  minWidth="45%"
+                  bg="$color1"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  style={{ borderRadius: 12 }}
+                  p="$3"
+                >
+                  <Text fontSize="$1" color="$color10">
+                    {ins.label}
+                  </Text>
+                  <Text
+                    fontSize="$3"
+                    fontWeight="bold"
+                    color={ins.color as any}
+                  >
+                    {ins.value}
+                  </Text>
+                </Card>
+              ))}
+            </XStack>
           )}
 
           {/* Balance card */}
