@@ -27,7 +27,6 @@ type AdminBarChartProps = {
   lineColor?: string;
   noOfSections?: number;
   stepValue?: number;
-  maxValue?: number;
   mostNegativeValue?: number;
   xAxisThickness?: number;
   xAxisColor?: string;
@@ -39,7 +38,6 @@ export function AdminBarChart({
   lineColor = "#888",
   noOfSections = 3,
   stepValue,
-  maxValue,
   mostNegativeValue,
   xAxisThickness = 0,
   xAxisColor,
@@ -47,6 +45,7 @@ export function AdminBarChart({
   return (
     <BarChart
       data={data}
+      showVerticalLines={true}
       barBorderRadius={4}
       showScrollIndicator={true}
       noOfSections={noOfSections}
@@ -61,12 +60,11 @@ export function AdminBarChart({
       showLine={showLine}
       lineConfig={{
         color: lineColor,
-        dataPointsColor: lineColor,
-        curved: true,
+        hideDataPoints: true,
       }}
       stepValue={stepValue}
-      maxValue={maxValue}
       mostNegativeValue={mostNegativeValue}
+      yAxisExtraHeight={25}
       renderTooltip={(item: BarDataItem) => (
         <View
           style={{
@@ -74,7 +72,8 @@ export function AdminBarChart({
             paddingHorizontal: 8,
             paddingVertical: 4,
             borderRadius: 6,
-            marginBottom: 4,
+            marginBottom: 0,
+            marginLeft: -6,
           }}
         >
           <Text

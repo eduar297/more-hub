@@ -720,8 +720,6 @@ export function FinanceSection() {
                       data={profitTrendData}
                       stepValue={profitStep}
                       noOfSections={profitSectionsAbove}
-                      noOfSectionsBelowXAxis={profitSectionsBelow}
-                      maxValue={profitStep * profitSectionsAbove}
                       mostNegativeValue={
                         hasNegativeProfit
                           ? -(profitStep * profitSectionsBelow)
