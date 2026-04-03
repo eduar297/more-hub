@@ -10,7 +10,7 @@ function assertSafeIdentifier(name: string): void {
 }
 
 export abstract class BaseRepository<
-  T extends { id: number },
+  T extends { id: number | string },
   CreateInput,
   UpdateInput extends Partial<Omit<T, "id">>,
 > {
@@ -22,7 +22,7 @@ export abstract class BaseRepository<
     assertSafeIdentifier(table);
   }
 
-  findById(id: number): Promise<T | null> {
+  findById(id: number | string): Promise<T | null> {
     return this.db.getFirstAsync<T>(
       `SELECT * FROM ${this.table} WHERE id = ?`,
       [id],
@@ -49,7 +49,7 @@ export abstract class BaseRepository<
 
   abstract create(input: CreateInput): Promise<T>;
 
-  async update(id: number, input: UpdateInput): Promise<T> {
+  async update(id: number | string, input: UpdateInput): Promise<T> {
     const fields = (Object.keys(input) as (keyof UpdateInput)[]).filter(
       (f) => input[f] !== undefined,
     );
@@ -70,7 +70,7 @@ export abstract class BaseRepository<
     return updated;
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: number | string): Promise<void> {
     await this.db.runAsync(`DELETE FROM ${this.table} WHERE id = ?`, [id]);
   }
 }

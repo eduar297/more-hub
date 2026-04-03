@@ -49,7 +49,7 @@ async function ensureTables(db: SQLiteDatabase) {
     );
 
     CREATE TABLE IF NOT EXISTS tickets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT PRIMARY KEY,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       paymentMethod TEXT CHECK (paymentMethod IN ('CASH','CARD')) NOT NULL,
       total REAL NOT NULL,
@@ -66,7 +66,7 @@ async function ensureTables(db: SQLiteDatabase) {
 
     CREATE TABLE IF NOT EXISTS ticket_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ticketId INTEGER NOT NULL,
+      ticketId TEXT NOT NULL,
       productId INTEGER NOT NULL,
       productName TEXT NOT NULL,
       quantity REAL NOT NULL,
@@ -145,11 +145,19 @@ async function ensureTables(db: SQLiteDatabase) {
       lastConnected TEXT,
       storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id)
     );
+
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      last_sync_at TEXT,
+      admin_device_id TEXT
+    );
+
+    INSERT OR IGNORE INTO sync_metadata (id) VALUES (1);
   `);
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 15;
+  const DATABASE_VERSION = 17;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -413,6 +421,67 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE tickets ADD COLUMN voidReason TEXT;
     `);
     currentVersion = 15;
+  }
+
+  if (currentVersion === 15) {
+    await db.execAsync(`
+      ALTER TABLE tickets ADD COLUMN workerOriginId INTEGER;
+
+      CREATE TABLE IF NOT EXISTS sync_metadata (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        last_sync_at TEXT,
+        admin_device_id TEXT
+      );
+
+      INSERT OR IGNORE INTO sync_metadata (id) VALUES (1);
+    `);
+    currentVersion = 16;
+  }
+
+  if (currentVersion === 16) {
+    // Migrate tickets from INTEGER id to TEXT (UUID) and remove workerOriginId
+    await db.execAsync(`
+      CREATE TABLE tickets_new (
+        id TEXT PRIMARY KEY,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        paymentMethod TEXT CHECK (paymentMethod IN ('CASH','CARD')) NOT NULL,
+        total REAL NOT NULL,
+        itemCount INTEGER NOT NULL,
+        workerId INTEGER,
+        workerName TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','VOIDED')),
+        voidedAt TEXT,
+        voidedBy INTEGER REFERENCES users(id),
+        voidReason TEXT,
+        FOREIGN KEY (workerId) REFERENCES users(id)
+      );
+
+      INSERT INTO tickets_new (id, createdAt, paymentMethod, total, itemCount, workerId, workerName, storeId, status, voidedAt, voidedBy, voidReason)
+        SELECT CAST(id AS TEXT), createdAt, paymentMethod, total, itemCount, workerId, workerName, storeId, status, voidedAt, voidedBy, voidReason FROM tickets;
+
+      CREATE TABLE ticket_items_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticketId TEXT NOT NULL,
+        productId INTEGER NOT NULL,
+        productName TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unitPrice REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        FOREIGN KEY (ticketId) REFERENCES tickets_new(id),
+        FOREIGN KEY (productId) REFERENCES products(id)
+      );
+
+      INSERT INTO ticket_items_new (id, ticketId, productId, productName, quantity, unitPrice, subtotal)
+        SELECT id, CAST(ticketId AS TEXT), productId, productName, quantity, unitPrice, subtotal FROM ticket_items;
+
+      DROP TABLE ticket_items;
+      DROP TABLE tickets;
+
+      ALTER TABLE tickets_new RENAME TO tickets;
+      ALTER TABLE ticket_items_new RENAME TO ticket_items;
+    `);
+    currentVersion = 17;
   }
 
   await seedUnits(db);

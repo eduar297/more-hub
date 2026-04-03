@@ -1038,9 +1038,11 @@ export async function seedSimulation(
       const paymentMethod = rand() < 0.65 ? "CASH" : "CARD";
 
       // Insertamos el Ticket con su storeId
-      const ticketResult = await db.runAsync(
-        `INSERT INTO tickets (createdAt, paymentMethod, total, itemCount, workerId, workerName, storeId)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      const ticketId = Crypto.randomUUID();
+      await db.runAsync(
+        `INSERT INTO tickets (id, createdAt, paymentMethod, total, itemCount, workerId, workerName, storeId)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ticketId,
         fmtDatetime(ticketTime),
         paymentMethod,
         ticketTotal,
@@ -1049,7 +1051,6 @@ export async function seedSimulation(
         wName,
         storeId, // <--- Pasamos el storeId
       );
-      const ticketId = ticketResult.lastInsertRowId;
 
       for (const it of items) {
         const subtotal = it.qty * it.price;

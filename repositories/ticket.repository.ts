@@ -1,5 +1,6 @@
 import type { CreateTicketInput, Ticket, TicketItem } from "@/models/ticket";
 import { BaseRepository } from "@/repositories/base.repository";
+import * as Crypto from "expo-crypto";
 import type { SQLiteBindValue, SQLiteDatabase } from "expo-sqlite";
 
 /** Active-only filter appended to most queries. */
@@ -26,11 +27,12 @@ export class TicketRepository extends BaseRepository<
       0,
     );
 
-    let ticketId = 0;
+    const ticketId = Crypto.randomUUID();
 
     await this.db.withExclusiveTransactionAsync(async (tx) => {
-      const ticketResult = await tx.runAsync(
-        `INSERT INTO tickets (paymentMethod, total, itemCount, workerId, workerName, storeId) VALUES (?, ?, ?, ?, ?, ?)`,
+      await tx.runAsync(
+        `INSERT INTO tickets (id, paymentMethod, total, itemCount, workerId, workerName, storeId) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ticketId,
         input.paymentMethod,
         total,
         input.items.length,
@@ -38,8 +40,6 @@ export class TicketRepository extends BaseRepository<
         input.workerName ?? null,
         this.storeId ?? 1,
       );
-
-      ticketId = ticketResult.lastInsertRowId;
 
       for (const item of input.items) {
         const subtotal = item.quantity * item.unitPrice;
@@ -73,7 +73,7 @@ export class TicketRepository extends BaseRepository<
    * Runs inside an exclusive transaction to guarantee atomicity.
    */
   async voidTicket(
-    ticketId: number,
+    ticketId: string,
     userId: number,
     reason: string,
   ): Promise<void> {
@@ -132,7 +132,7 @@ export class TicketRepository extends BaseRepository<
   }
 
   /** Get items for a specific ticket (with product info). */
-  findItemsByTicketId(ticketId: number): Promise<TicketItem[]> {
+  findItemsByTicketId(ticketId: string): Promise<TicketItem[]> {
     return this.db.getAllAsync<TicketItem>(
       `SELECT ti.*, p.barcode, p.photoUri, p.salePrice AS originalPrice
        FROM ticket_items ti

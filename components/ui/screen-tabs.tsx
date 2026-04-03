@@ -23,6 +23,7 @@ export function ScreenTabs<T extends string>({
   accentColor,
 }: ScreenTabsProps<T>) {
   const theme = useTheme();
+  const isCompact = tabs.length > 4;
 
   const accent = accentColor ?? theme.blue10?.val;
   const railBg = theme.color2?.val;
@@ -56,10 +57,10 @@ export function ScreenTabs<T extends string>({
             }}
             style={{
               flex: 1,
-              paddingVertical: 9,
-              paddingHorizontal: 4,
+              paddingVertical: isCompact ? 7 : 9,
+              paddingHorizontal: isCompact ? 2 : 4,
               alignItems: "center",
-              gap: 4,
+              gap: isCompact ? 2 : 4,
               borderRadius: 11,
               borderWidth: 1,
               borderColor: isActive ? accent : "transparent",
@@ -71,10 +72,14 @@ export function ScreenTabs<T extends string>({
               elevation: isActive ? 2 : 0,
             }}
           >
-            <tab.Icon size={17} color={isActive ? accent : inactiveText} />
+            <tab.Icon
+              size={isCompact ? 15 : 17}
+              color={isActive ? accent : inactiveText}
+            />
             <Text
-              fontSize={11}
+              fontSize={isCompact ? 9 : 11}
               fontWeight={isActive ? "700" : "400"}
+              numberOfLines={1}
               style={{
                 color: isActive ? accent : inactiveText,
                 letterSpacing: isActive ? 0.1 : 0,

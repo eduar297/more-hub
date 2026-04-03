@@ -8,43 +8,43 @@ import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import { exportTicketsPDF } from "@/utils/export";
 import {
-  daysInMonth,
-  fmtMoney,
-  fmtMoneyFull,
-  fmtTime,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  shiftMonth,
-  shiftWeek,
-  shortDayLabel,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    fmtMoneyFull,
+    fmtTime,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shiftMonth,
+    shiftWeek,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  Ban,
-  ChevronRight,
-  CreditCard,
-  DollarSign,
-  Printer,
-  Receipt,
-  ShoppingCart,
-  TrendingUp,
-  User,
-  Users,
-  X,
+    Ban,
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    Printer,
+    Receipt,
+    ShoppingCart,
+    TrendingUp,
+    User,
+    Users,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Image, Pressable, ScrollView } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
-  Button,
-  Card,
-  Separator,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Separator,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
@@ -65,7 +65,7 @@ function TicketRow({
         <YStack flex={1}>
           <XStack style={{ alignItems: "center" }} gap="$2">
             <Text fontSize="$3" fontWeight="600" color="$color">
-              Ticket #{ticket.id}
+              Ticket #{String(ticket.id).slice(0, 8)}
             </Text>
             {voided && (
               <YStack
@@ -423,7 +423,10 @@ export function SalesSection() {
       if (!user) return;
       Alert.prompt(
         "Anular venta",
-        `¿Seguro que quieres anular el Ticket #${ticket.id} por $${fmtMoney(
+        `¿Seguro que quieres anular el Ticket #${String(ticket.id).slice(
+          0,
+          8,
+        )} por $${fmtMoney(
           ticket.total,
         )}?\n\nEl stock será restaurado. Escribe la razón:`,
         [
@@ -898,7 +901,7 @@ export function SalesSection() {
                   }}
                 >
                   <Text fontSize="$6" fontWeight="bold" color="$color">
-                    Ticket #{sheetTicket.id}
+                    Ticket #{String(sheetTicket.id).slice(0, 8)}
                   </Text>
                   <Button
                     size="$3"

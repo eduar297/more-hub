@@ -3,6 +3,7 @@ import TcpSocket from "react-native-tcp-socket";
 import Zeroconf from "react-native-zeroconf";
 
 import {
+    type ClientRole,
     type LanMessage,
     HEARTBEAT_INTERVAL,
     HEARTBEAT_TIMEOUT,
@@ -19,6 +20,7 @@ export interface ConnectedClient {
   id: string;
   deviceId: string | null;
   paired: boolean;
+  role: ClientRole;
   socket: ReturnType<typeof TcpSocket.createConnection>;
 }
 
@@ -30,6 +32,8 @@ export interface LanServerCallbacks {
   isDevicePaired?: (deviceId: string) => Promise<boolean>;
   /** Persist a newly paired device */
   onDevicePaired?: (deviceId: string) => Promise<void>;
+  /** Called when an Admin sends a sync message to the Worker server */
+  onSyncMessage?: (clientId: string, msg: LanMessage) => void;
 }
 
 // ── LanServer ────────────────────────────────────────────────────────────────
@@ -62,6 +66,14 @@ export class LanServer {
   }
   get pairedClients(): ConnectedClient[] {
     return this.connectedClients.filter((c) => c.paired);
+  }
+  get displayClients(): ConnectedClient[] {
+    return this.connectedClients.filter(
+      (c) => c.paired && c.role === "DISPLAY",
+    );
+  }
+  get adminClients(): ConnectedClient[] {
+    return this.connectedClients.filter((c) => c.paired && c.role === "ADMIN");
   }
 
   setCallbacks(cb: LanServerCallbacks) {
@@ -111,13 +123,24 @@ export class LanServer {
   broadcast(msg: LanMessage): void {
     const data = serialize(msg);
     for (const client of this.clients.values()) {
-      if (client.paired) {
+      if (client.paired && client.role === "DISPLAY") {
         try {
           client.socket.write(data);
         } catch {
           // will be cleaned up by heartbeat
         }
       }
+    }
+  }
+
+  /** Send a message to a specific paired client (e.g. Admin sync responses) */
+  sendToClient(clientId: string, msg: LanMessage): void {
+    const client = this.clients.get(clientId);
+    if (!client?.paired) return;
+    try {
+      client.socket.write(serialize(msg));
+    } catch {
+      // will be cleaned up by heartbeat
     }
   }
 
@@ -185,6 +208,7 @@ export class LanServer {
       id: clientId,
       deviceId: null,
       paired: false,
+      role: "DISPLAY",
       socket,
     };
     this.clients.set(clientId, client);
@@ -216,8 +240,9 @@ export class LanServer {
 
     switch (msg.type) {
       case "pair_request": {
-        const { code, deviceId } = msg;
+        const { code, deviceId, role } = msg;
         client.deviceId = deviceId;
+        client.role = role ?? "DISPLAY";
 
         // Check if already paired device
         const knownDevice = await this.callbacks.isDevicePaired?.(deviceId);
@@ -245,8 +270,17 @@ export class LanServer {
         }
         break;
       }
+      // ── Sync messages from Admin clients ──
+      case "sync_catalog":
+      case "sync_tickets_request":
+      case "sync_tickets_ack":
+      case "sync_complete": {
+        if (client.paired && client.role === "ADMIN") {
+          this.callbacks.onSyncMessage?.(clientId, msg);
+        }
+        break;
+      }
       default:
-        // Clients should only send pair_request and pong
         break;
     }
   }

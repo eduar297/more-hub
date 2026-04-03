@@ -134,7 +134,7 @@ export async function exportFinancePDF(data: FinanceReportData): Promise<void> {
 interface TicketsReportData {
   periodLabel: string;
   tickets: Ticket[];
-  itemsByTicket: Map<number, TicketItem[]>;
+  itemsByTicket: Map<string, TicketItem[]>;
   totalSales: number;
   ticketCount: number;
   avgTicket: number;
@@ -168,7 +168,7 @@ function buildTicketsHTML(data: TicketsReportData): string {
 
       return `<div class="ticket${voidedClass}">
         <div class="ticket-header">
-          <div class="ticket-id">#${t.id} ${badge}</div>
+          <div class="ticket-id">#${String(t.id).slice(0, 8)} ${badge}</div>
           <div class="ticket-total">$${fmtMoneyFull(t.total)}</div>
         </div>
         <div class="ticket-meta">${date} · ${worker} · ${method}</div>
@@ -259,7 +259,7 @@ ${
 export async function exportTicketsPDF(
   tickets: Ticket[],
   periodLabel: string,
-  loadItems: (ticketId: number) => Promise<TicketItem[]>,
+  loadItems: (ticketId: string) => Promise<TicketItem[]>,
 ): Promise<void> {
   // Load items for every ticket in parallel
   const entries = await Promise.all(
@@ -268,7 +268,7 @@ export async function exportTicketsPDF(
       return [t.id, items] as const;
     }),
   );
-  const itemsByTicket = new Map<number, TicketItem[]>(entries);
+  const itemsByTicket = new Map<string, TicketItem[]>(entries);
 
   const active = tickets.filter((t) => t.status === "ACTIVE");
   const totalSales = active.reduce((s, t) => s + t.total, 0);

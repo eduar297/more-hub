@@ -1,20 +1,31 @@
 import { CartMirror } from "@/components/lan/cart-mirror";
 import { DisplayConnect } from "@/components/lan/display-connect";
+import { useDevice } from "@/contexts/device-context";
 import { useLan } from "@/contexts/lan-context";
-import { useStore } from "@/contexts/store-context";
 import { Monitor, Play } from "@tamagui/lucide-icons";
-import { useState } from "react";
-import { StatusBar } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert, StatusBar } from "react-native";
 import { Button, Text, YStack } from "tamagui";
 
 export default function DisplayScreen() {
   const [started, setStarted] = useState(false);
   const { connectionStatus, cartMirror } = useLan();
-  const { currentStore } = useStore();
+  const { resetDevice } = useDevice();
 
   const handleStart = () => {
     setStarted(true);
   };
+
+  const handleReset = useCallback(() => {
+    Alert.alert(
+      "Cambiar rol",
+      "Esto borrará el rol de este dispositivo y volverás a la pantalla de selección. ¿Continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Cambiar", style: "destructive", onPress: () => resetDevice() },
+      ],
+    );
+  }, [resetDevice]);
 
   // Pre-start: show activation button
   if (!started) {
@@ -39,6 +50,15 @@ export default function DisplayScreen() {
         <Button size="$6" theme="purple" icon={Play} onPress={handleStart}>
           Iniciar display
         </Button>
+        <Text
+          fontSize="$3"
+          color="$color8"
+          mt="$4"
+          onPress={handleReset}
+          pressStyle={{ opacity: 0.6 }}
+        >
+          Cambiar rol del dispositivo
+        </Text>
       </YStack>
     );
   }
@@ -50,10 +70,7 @@ export default function DisplayScreen() {
     <YStack flex={1} bg="$background">
       <StatusBar hidden />
       {isConnected ? (
-        <CartMirror
-          state={cartMirror}
-          storeName={currentStore?.name ?? "Tienda"}
-        />
+        <CartMirror state={cartMirror} storeName="Tienda" />
       ) : (
         <DisplayConnect />
       )}

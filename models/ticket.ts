@@ -2,7 +2,7 @@ export type PaymentMethod = "CASH" | "CARD";
 export type TicketStatus = "ACTIVE" | "VOIDED";
 
 export interface Ticket {
-  id: number;
+  id: string;
   createdAt: string;
   paymentMethod: PaymentMethod;
   total: number;
@@ -19,7 +19,7 @@ export interface Ticket {
 
 export interface TicketItem {
   id: number;
-  ticketId: number;
+  ticketId: string;
   productId: number;
   productName: string;
   quantity: number;

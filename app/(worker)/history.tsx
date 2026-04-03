@@ -70,7 +70,7 @@ function TicketRow({
       <YStack flex={1}>
         <XStack style={{ alignItems: "center" }} gap="$2">
           <Text fontSize="$4" fontWeight="bold" color="$color">
-            Ticket #{ticket.id}
+            Ticket #{String(ticket.id).slice(0, 8)}
           </Text>
           {voided && (
             <YStack bg="$red3" px="$1.5" py="$0.5" style={{ borderRadius: 4 }}>
@@ -305,7 +305,7 @@ export default function HistoryScreen() {
             {selectedTicket && (
               <YStack gap="$4">
                 <Text fontSize="$6" fontWeight="bold" color="$color">
-                  Ticket #{selectedTicket.id}
+                  Ticket #{String(selectedTicket.id).slice(0, 8)}
                 </Text>
                 <XStack
                   style={{

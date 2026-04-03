@@ -1,18 +1,19 @@
-import { LoginSheet } from "@/components/auth/login-sheet";
-import { useAuth } from "@/contexts/auth-context";
+import { ActivationGate } from "@/components/auth/activation-gate";
+import { useDevice } from "@/contexts/device-context";
 import type { UserRole } from "@/models/user";
+import type { DeviceRole } from "@/utils/device";
 import {
-  ChevronRight,
-  LayoutDashboard,
-  Monitor,
-  Package,
-  Receipt,
-  ScanLine,
-  ShieldCheck,
-  TrendingUp,
+    ChevronRight,
+    LayoutDashboard,
+    Monitor,
+    Package,
+    Receipt,
+    ScanLine,
+    ShieldCheck,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dimensions, FlatList } from "react-native";
 import { ScrollView, Text, useTheme, View, XStack, YStack } from "tamagui";
 
@@ -68,36 +69,51 @@ const SLIDES = [
 ];
 
 // ── Role definitions ─────────────────────────────────────────────────────────
-const ROLES = [
+interface RoleDef {
+  icon: typeof ShieldCheck;
+  label: string;
+  desc: string;
+  deviceRole: DeviceRole;
+  path: string;
+  color: string;
+  bg: string;
+  darkBg: string;
+  requiresActivation: boolean;
+}
+
+const ROLES: RoleDef[] = [
   {
     icon: ShieldCheck,
     label: "Administrador",
     desc: "Gestión completa del negocio",
-    role: "ADMIN" as UserRole,
-    path: "/(admin)" as const,
+    deviceRole: "ADMIN",
+    path: "/(admin)",
     color: "#3b82f6",
     bg: "#dbeafe",
     darkBg: "#1e3a5f",
+    requiresActivation: true,
   },
   {
     icon: Receipt,
     label: "Vendedor",
     desc: "Panel de ventas y cobros",
-    role: "WORKER" as UserRole,
-    path: "/(worker)" as const,
+    deviceRole: "WORKER",
+    path: "/(worker)",
     color: "#22c55e",
     bg: "#dcfce7",
     darkBg: "#14532d",
+    requiresActivation: false,
   },
   {
     icon: Monitor,
     label: "Pantalla",
     desc: "Visualización en mostrador",
-    role: null as UserRole | null,
-    path: "/(display)" as const,
+    deviceRole: "DISPLAY",
+    path: "/(display)",
     color: "#a855f7",
     bg: "#f3e8ff",
     darkBg: "#3b0764",
+    requiresActivation: false,
   },
 ];
 
@@ -148,19 +164,51 @@ function Slide({
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { logout } = useAuth();
+  const { deviceRole, selectRole, resetDevice } = useDevice();
   const isDark =
     (theme.background?.val ?? "").startsWith("#0") ||
     (theme.background?.val ?? "").startsWith("#1");
 
-  // Clear user every time this screen gets focus (back from admin/worker)
-  useFocusEffect(
-    useCallback(() => {
-      logout();
-    }, [logout]),
-  );
+  // ── Secret reset: tap 5 times quickly to reset device role ────────────
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSecretTap = useCallback(() => {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      // Confirm reset
+      const { Alert } = require("react-native");
+      Alert.alert(
+        "Resetear dispositivo",
+        "Esto borrará el rol asignado y la activación. ¿Continuar?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Resetear",
+            style: "destructive",
+            onPress: () => resetDevice(),
+          },
+        ],
+      );
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+    }, 2000);
+  }, [resetDevice]);
+
+  // If device already has a role, redirect to the corresponding panel
+  useEffect(() => {
+    if (deviceRole === "ADMIN") router.replace("/(admin)" as any);
+    else if (deviceRole === "WORKER") router.replace("/(worker)" as any);
+    else if (deviceRole === "DISPLAY") router.replace("/(display)" as any);
+  }, [deviceRole, router]);
 
   const [activeSlide, setActiveSlide] = useState(0);
+  const [showActivation, setShowActivation] = useState(false);
+  // Login modal state (for Admin/Worker after role is assigned)
   const [loginRole, setLoginRole] = useState<UserRole | null>(null);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const flatRef = useRef<FlatList>(null);
@@ -175,31 +223,41 @@ export default function HomeScreen() {
   );
 
   const handleRolePress = useCallback(
-    (role: UserRole | null, path: string) => {
-      if (role === "ADMIN" || role === "WORKER") {
-        logout();
-        setLoginRole(role);
-        setPendingPath(path);
+    (roleDef: RoleDef) => {
+      if (roleDef.requiresActivation) {
+        // Admin requires activation code first
+        setShowActivation(true);
       } else {
-        router.push(path as any);
+        // Worker and Display: save role immediately and navigate
+        selectRole(roleDef.deviceRole);
+        // The layout will re-mount with proper providers, then redirect via useEffect
       }
     },
-    [router, logout],
+    [selectRole],
   );
 
-  const handleLoginSuccess = useCallback(() => {
-    setLoginRole(null);
-    if (pendingPath) {
-      router.push(pendingPath as any);
-      setPendingPath(null);
-    }
-  }, [pendingPath, router]);
+  const handleActivationSuccess = useCallback(() => {
+    // activateAdmin already saved role + businessId via device context
+    setShowActivation(false);
+    // The layout will re-mount with AdminProviders, then redirect
+  }, []);
 
-  const handleLoginClose = useCallback(() => {
-    setLoginRole(null);
-    setPendingPath(null);
-    logout();
-  }, [logout]);
+  const handleActivationClose = useCallback(() => {
+    setShowActivation(false);
+  }, []);
+
+  // Don't render full UI if already has a role (will redirect)
+  // But show a tappable area for secret reset (5 quick taps)
+  if (deviceRole)
+    return (
+      <YStack
+        flex={1}
+        bg="$background"
+        items="center"
+        justify="center"
+        onPress={handleSecretTap}
+      />
+    );
 
   return (
     <YStack flex={1} bg="$background">
@@ -248,7 +306,7 @@ export default function HomeScreen() {
           </XStack>
         </YStack>
 
-        {/* ── Roles ── */}
+        {/* ── Role selection (one-time) ── */}
         <YStack gap="$3">
           <Text
             fontSize={12}
@@ -258,13 +316,22 @@ export default function HomeScreen() {
             px="$0.5"
             color="$color8"
           >
-            Selecciona tu modo
+            Configura este dispositivo
+          </Text>
+          <Text
+            fontSize={13}
+            color="$color8"
+            px="$0.5"
+            style={{ lineHeight: 18 }}
+          >
+            Esta elección es permanente. Cada dispositivo cumple un rol fijo.
           </Text>
           <YStack gap="$2.5">
-            {ROLES.map(
-              ({ icon: Icon, label, desc, role, path, color, bg, darkBg }) => (
+            {ROLES.map((roleDef) => {
+              const Icon = roleDef.icon;
+              return (
                 <XStack
-                  key={path}
+                  key={roleDef.deviceRole}
                   items="center"
                   rounded="$5"
                   borderWidth={1}
@@ -275,7 +342,7 @@ export default function HomeScreen() {
                   pressStyle={{ opacity: 0.7, scale: 0.98 }}
                   // @ts-expect-error animation works at runtime on XStack
                   animation="fast"
-                  onPress={() => handleRolePress(role, path)}
+                  onPress={() => handleRolePress(roleDef)}
                   enterStyle={{ opacity: 0, y: 10 }}
                 >
                   <View
@@ -284,33 +351,32 @@ export default function HomeScreen() {
                     rounded="$4"
                     items="center"
                     justify="center"
-                    bg={(isDark ? darkBg : bg) as any}
+                    bg={(isDark ? roleDef.darkBg : roleDef.bg) as any}
                   >
-                    <Icon size={24} color={color as any} />
+                    <Icon size={24} color={roleDef.color as any} />
                   </View>
                   <YStack grow={1} gap="$0.5">
                     <Text fontSize={16} fontWeight="700" color="$color">
-                      {label}
+                      {roleDef.label}
                     </Text>
                     <Text fontSize={13} color="$color8">
-                      {desc}
+                      {roleDef.desc}
                     </Text>
                   </YStack>
                   <ChevronRight size={18} color={theme.color8?.val as any} />
                 </XStack>
-              ),
-            )}
+              );
+            })}
           </YStack>
         </YStack>
       </ScrollView>
 
-      {/* ── Login modal ── */}
-      {loginRole && (
-        <LoginSheet
+      {/* ── Activation modal (Admin only) ── */}
+      {showActivation && (
+        <ActivationGate
           open
-          role={loginRole}
-          onClose={handleLoginClose}
-          onSuccess={handleLoginSuccess}
+          onClose={handleActivationClose}
+          onSuccess={handleActivationSuccess}
         />
       )}
     </YStack>

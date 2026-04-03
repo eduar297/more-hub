@@ -12,6 +12,25 @@ export interface CartItemWire {
 
 // ── Messages ─────────────────────────────────────────────────────────────────
 
+export type ClientRole = "ADMIN" | "DISPLAY";
+
+/** Data payload for catalog sync (Admin → Worker) */
+export interface SyncCatalogData {
+  stores: unknown[];
+  workers: unknown[];
+  products: unknown[];
+  units: unknown[];
+  unitCategories: unknown[];
+  tickets: unknown[];
+  ticketItems: unknown[];
+}
+
+/** Data payload for tickets sync (Worker → Admin) */
+export interface SyncTicketsData {
+  tickets: unknown[];
+  ticketItems: unknown[];
+}
+
 export type LanMessage =
   | { type: "cart_update"; cart: CartItemWire[]; total: number }
   | { type: "cart_clear" }
@@ -21,11 +40,19 @@ export type LanMessage =
       itemCount: number;
       paymentMethod: PaymentMethod;
     }
-  | { type: "pair_request"; code: string; deviceId: string }
+  | { type: "pair_request"; code: string; deviceId: string; role: ClientRole }
   | { type: "pair_accepted"; deviceId: string }
   | { type: "pair_rejected"; reason?: string }
   | { type: "ping" }
-  | { type: "pong" };
+  | { type: "pong" }
+  // ── Sync messages (Admin ↔ Worker) ──
+  | { type: "sync_request" }
+  | { type: "sync_catalog"; data: SyncCatalogData }
+  | { type: "sync_catalog_ack" }
+  | { type: "sync_tickets_request"; since: string | null }
+  | { type: "sync_tickets"; data: SyncTicketsData }
+  | { type: "sync_tickets_ack" }
+  | { type: "sync_complete" };
 
 // ── State exposed to Display UI ──────────────────────────────────────────────
 
