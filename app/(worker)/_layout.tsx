@@ -3,15 +3,23 @@ import { HapticTab } from "@/components/haptic-tab";
 import { useAuth } from "@/contexts/auth-context";
 import { useDevice } from "@/contexts/device-context";
 import { useLan } from "@/contexts/lan-context";
+import { useStore } from "@/contexts/store-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { SyncCatalogData } from "@/services/lan/protocol";
 import {
   applyReceivedCatalog,
   type CatalogChangeSummary,
+  deleteAllWorkerTickets,
   getLastSyncAt,
   prepareTicketsPayload,
 } from "@/services/lan/sync-service";
-import { LayoutList, ScanLine, User, Wifi } from "@tamagui/lucide-icons";
+import {
+  Download,
+  LayoutList,
+  ScanLine,
+  User,
+  Wifi,
+} from "@tamagui/lucide-icons";
 import { Tabs } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
@@ -25,38 +33,70 @@ import {
 } from "react-native";
 import { useTheme } from "tamagui";
 
+// ── Helper ──────────────────────────────────────────────────────────────────
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 // ── Waiting-for-sync screen ─────────────────────────────────────────────────
 
 function WaitingForAdmin({ onReset }: { onReset: () => void }) {
   const colorScheme = useColorScheme();
-  const { connectionStatus, syncStatus } = useLan();
+  const { connectionStatus, syncStatus, syncProgress, workerName } = useLan();
   const isDark = colorScheme === "dark";
 
-  // Show different states based on connection status
+  const progressFraction =
+    syncProgress && syncProgress.totalBytes > 0
+      ? Math.min(syncProgress.receivedBytes / syncProgress.totalBytes, 1)
+      : 0;
+
+  // Show different states based on connection/sync status
   const getStatusInfo = () => {
     if (connectionStatus === "connecting") {
       return {
         title: "Conectando...",
         subtitle: "El administrador está estableciendo conexión",
-        color: "#f59e0b", // orange
+        color: "#f59e0b",
+        showProgress: false,
+      };
+    }
+    // Admin sent sync_prepare — we know the size, waiting for data
+    if (
+      syncProgress &&
+      syncProgress.totalBytes > 0 &&
+      syncStatus !== "complete"
+    ) {
+      const pct = Math.round(progressFraction * 100);
+      return {
+        title: "Recibiendo datos",
+        subtitle: `Descargando catálogo del administrador\n${formatBytes(
+          syncProgress.receivedBytes,
+        )} / ${formatBytes(syncProgress.totalBytes)} (${pct}%)`,
+        color: "#3b82f6",
+        showProgress: true,
       };
     }
     if (connectionStatus === "paired" || syncStatus === "receiving_tickets") {
       return {
         title: "Recibiendo datos",
         subtitle: "Descargando catálogo de productos desde el administrador",
-        color: "#3b82f6", // blue
+        color: "#3b82f6",
+        showProgress: false,
       };
     }
     return {
       title: "Esperando datos",
       subtitle:
         "El administrador debe sincronizar este Worker desde su app antes de poder iniciar sesión.",
-      color: "#22c55e", // green
+      color: "#22c55e",
+      showProgress: false,
     };
   };
 
-  const { title, subtitle, color } = getStatusInfo();
+  const { title, subtitle, color, showProgress } = getStatusInfo();
 
   return (
     <View
@@ -65,7 +105,33 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
         { backgroundColor: isDark ? "#151718" : "#ffffff" },
       ]}
     >
-      <Wifi size={56} color={color as any} />
+      {/* Worker identity badge */}
+      {workerName ? (
+        <View
+          style={[
+            styles.nameBadge,
+            {
+              backgroundColor: isDark ? "#1c2a1c" : "#ecfdf5",
+              borderColor: isDark ? "#2a4a2a" : "#a7f3d0",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.nameBadgeText,
+              { color: isDark ? "#86efac" : "#059669" },
+            ]}
+          >
+            {workerName}
+          </Text>
+        </View>
+      ) : null}
+
+      {showProgress ? (
+        <Download size={56} color={color as any} />
+      ) : (
+        <Wifi size={56} color={color as any} />
+      )}
       <Text
         style={[styles.waitTitle, { color: isDark ? "#f2f2f7" : "#18181b" }]}
       >
@@ -74,11 +140,35 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
       <Text style={[styles.waitSub, { color: isDark ? "#888" : "#999" }]}>
         {subtitle}
       </Text>
-      <ActivityIndicator
-        color={color as any}
-        size="large"
-        style={{ marginTop: 16 }}
-      />
+
+      {/* Progress bar */}
+      {showProgress ? (
+        <View style={styles.progressContainer}>
+          <View
+            style={[
+              styles.progressTrack,
+              { backgroundColor: isDark ? "#2a2a2a" : "#e5e5e5" },
+            ]}
+          >
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: color,
+                  width: `${Math.round(progressFraction * 100)}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      ) : (
+        <ActivityIndicator
+          color={color as any}
+          size="large"
+          style={{ marginTop: 16 }}
+        />
+      )}
+
       <TouchableOpacity
         style={[styles.resetBtn, { borderColor: isDark ? "#333" : "#ddd" }]}
         onPress={onReset}
@@ -102,11 +192,15 @@ export default function WorkerLayout() {
   const db = useSQLiteContext();
   const { resetDevice } = useDevice();
   const { user } = useAuth();
+  const { refreshStores } = useStore();
   const {
     startServer,
     onSyncCatalogReceived,
     onSyncTicketsRequested,
+    onSyncPrepareReceived,
+    onSyncTicketsAckReceived,
     sendCatalogAck,
+    sendSyncPrepareAck,
     sendTickets,
   } = useLan();
   const [hasSynced, setHasSynced] = useState<boolean | null>(null); // null = loading
@@ -159,14 +253,6 @@ export default function WorkerLayout() {
         } nuevo${summary.newWorkers > 1 ? "s" : ""}`,
       );
     }
-    if (summary.ticketsImported > 0) {
-      lines.push(
-        `• ${summary.ticketsImported} ticket${
-          summary.ticketsImported > 1 ? "s" : ""
-        } recibido${summary.ticketsImported > 1 ? "s" : ""}`,
-      );
-    }
-
     const title = "Actualización recibida";
     const body =
       lines.length > 0
@@ -199,25 +285,42 @@ export default function WorkerLayout() {
     startServer();
   }, [startServer]);
 
+  // Handle sync_prepare from Admin — acknowledge immediately so Admin starts sending
+  useEffect(() => {
+    onSyncPrepareReceived.current = (clientId, _totalBytes) => {
+      sendSyncPrepareAck(clientId);
+    };
+    return () => {
+      onSyncPrepareReceived.current = null;
+    };
+  }, [sendSyncPrepareAck, onSyncPrepareReceived]);
+
   // Handle catalog from Admin
   useEffect(() => {
     onSyncCatalogReceived.current = async (clientId, data: SyncCatalogData) => {
       try {
+        console.log(`[Worker] Catalog received from ${clientId}, applying...`);
         const summary = await applyReceivedCatalog(db, data);
+        console.log(`[Worker] Catalog applied successfully, sending ACK`);
 
         sendCatalogAck(clientId);
+
+        // Refresh stores so LoginSheet / StoreContext picks up newly synced stores
+        await refreshStores();
 
         setHasSynced(true);
 
         // Show notification with changes
         showSyncNotification(summary);
-      } catch {}
+      } catch (err) {
+        console.error(`[Worker] applyReceivedCatalog FAILED:`, err);
+      }
     };
     return () => {
       onSyncCatalogReceived.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, sendCatalogAck, onSyncCatalogReceived]);
+  }, [db, sendCatalogAck, onSyncCatalogReceived, refreshStores]);
 
   // Handle ticket request from Admin
   useEffect(() => {
@@ -226,15 +329,37 @@ export default function WorkerLayout() {
       since: string | null,
     ) => {
       try {
+        console.log(
+          `[Worker] Tickets requested by ${clientId}, since=${since}`,
+        );
         const payload = await prepareTicketsPayload(db, since);
-
+        console.log(`[Worker] Sending tickets to ${clientId}`);
         sendTickets(clientId, payload);
-      } catch {}
+      } catch (err) {
+        console.error(`[Worker] prepareTicketsPayload FAILED:`, err);
+      }
     };
     return () => {
       onSyncTicketsRequested.current = null;
     };
   }, [db, sendTickets, onSyncTicketsRequested]);
+
+  // Admin confirmed it received our tickets → delete them locally
+  useEffect(() => {
+    onSyncTicketsAckReceived.current = async () => {
+      try {
+        const deleted = await deleteAllWorkerTickets(db);
+        console.log(
+          `[Worker] Deleted ${deleted} tickets after admin confirmed receipt`,
+        );
+      } catch (err) {
+        console.error(`[Worker] deleteAllWorkerTickets FAILED:`, err);
+      }
+    };
+    return () => {
+      onSyncTicketsAckReceived.current = null;
+    };
+  }, [db, onSyncTicketsAckReceived]);
 
   // Show loading while checking DB
   if (hasSynced === null) {
@@ -323,6 +448,18 @@ const styles = StyleSheet.create({
     padding: 32,
     gap: 16,
   },
+  nameBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  nameBadgeText: {
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
   waitTitle: {
     fontSize: 22,
     fontWeight: "700",
@@ -332,6 +469,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     lineHeight: 22,
+  },
+  progressContainer: {
+    width: "100%",
+    marginTop: 16,
+    gap: 6,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+    minWidth: 4,
   },
   resetBtn: {
     marginTop: 32,

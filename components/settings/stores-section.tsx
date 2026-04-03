@@ -205,7 +205,9 @@ export function StoresSection() {
                     onPress={() => handleSwitchStore(s)}
                     activeOpacity={0.7}
                     accessibilityRole="button"
-                    accessibilityLabel={`Seleccionar tienda ${s.name}${isActive ? ", activa" : ""}`}
+                    accessibilityLabel={`Seleccionar tienda ${s.name}${
+                      isActive ? ", activa" : ""
+                    }`}
                   >
                     <View
                       style={[
@@ -214,8 +216,8 @@ export function StoresSection() {
                           backgroundColor: s.color
                             ? `${s.color}22`
                             : isActive
-                              ? c.blueLight
-                              : c.editBg,
+                            ? c.blueLight
+                            : c.editBg,
                           overflow: "hidden",
                           borderWidth: isActive ? 2 : 0,
                           borderColor: s.color ?? c.blue,
@@ -307,7 +309,9 @@ export function StoresSection() {
       <PinPromptDialog
         open={pinDialogOpen}
         title="🔐 Confirmar identidad"
-        description={`Ingresa tu PIN de administrador para eliminar "${storeToDelete?.name ?? ""}"`}
+        description={`Ingresa tu PIN de administrador para eliminar "${
+          storeToDelete?.name ?? ""
+        }"`}
         onConfirm={handlePinConfirm}
         onCancel={() => {
           setPinDialogOpen(false);

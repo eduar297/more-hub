@@ -502,4 +502,20 @@ export class TicketRepository extends BaseRepository<
       params,
     );
   }
+
+  /** Search tickets by partial ID (UUID prefix). */
+  searchById(partialId: string): Promise<Ticket[]> {
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [`${partialId}%`];
+    if (this.storeId !== undefined) params.push(this.storeId);
+    return this.db.getAllAsync<Ticket>(
+      `SELECT t.*, u.photoUri AS workerPhotoUri
+       FROM tickets t
+       LEFT JOIN users u ON u.id = t.workerId
+       WHERE t.id LIKE ?${sFilter}
+       ORDER BY t.createdAt DESC
+       LIMIT 50`,
+      params,
+    );
+  }
 }

@@ -8,13 +8,13 @@ import { AlertCircle, Edit3, Plus, Trash2, Users } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Button, Input, Sheet, Text as TText, XStack, YStack } from "tamagui";
 import { settingStyles as styles } from "./shared";
@@ -119,7 +119,7 @@ export function WorkersSection() {
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [name, pin, pinConfirm, photoUri, editing, userRepo, load]);
 
   const handleDelete = useCallback(

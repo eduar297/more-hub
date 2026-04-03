@@ -2,6 +2,7 @@ import { useLan } from "@/contexts/lan-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import type { DiscoveredServer } from "@/services/lan/lan-client";
+import { LAN_PORT, serialize } from "@/services/lan/protocol";
 import {
   applyReceivedTickets,
   prepareCatalogPayload,
@@ -21,6 +22,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -30,6 +32,7 @@ import {
 type WorkerSyncState =
   | "idle"
   | "connecting"
+  | "preparing"
   | "sending"
   | "receiving"
   | "done"
@@ -40,7 +43,6 @@ interface CatalogSentSummary {
   stores: number;
   workers: number;
   units: number;
-  tickets: number;
 }
 
 interface WorkerSyncInfo {
@@ -49,6 +51,7 @@ interface WorkerSyncInfo {
   lastSyncAt: string | null;
   ticketsImported: number;
   catalogSent: CatalogSentSummary | null;
+  catalogBytes: number;
   error: string | null;
 }
 
@@ -66,6 +69,7 @@ export function SyncSection() {
     stopDiscovery,
     connectToServer,
     disconnectFromServer,
+    sendSyncPrepare,
     sendCatalog,
     requestTickets,
     onSyncTicketsReceived,
@@ -76,8 +80,11 @@ export function SyncSection() {
   const tint = c.green;
   const [scanning, setScanning] = useState(false);
   const [workers, setWorkers] = useState<WorkerSyncInfo[]>([]);
+  const [manualIp, setManualIp] = useState("");
   const activeWorkerRef = useRef<WorkerSyncInfo | null>(null);
   const catalogPayloadRef = useRef<any>(null);
+  const catalogBytesRef = useRef<number>(0);
+  const shouldSendPrepareRef = useRef(false);
 
   // ── Discovery ────────────────────────────────────────────────────────────
 
@@ -92,6 +99,45 @@ export function SyncSection() {
     }, 15000);
   }, [startDiscovery, stopDiscovery]);
 
+  const connectManually = useCallback(() => {
+    const ip = manualIp.trim();
+    if (!ip) return;
+
+    let host = ip;
+    let port = LAN_PORT;
+    if (ip.includes(":")) {
+      const parts = ip.split(":");
+      host = parts[0];
+      const parsed = parseInt(parts[1], 10);
+      if (!isNaN(parsed)) port = parsed;
+    }
+
+    const manualServer: DiscoveredServer = {
+      name: `Manual-${host}`,
+      host,
+      port,
+      storeName: host,
+    };
+
+    setWorkers((prev) => {
+      if (prev.find((w) => w.server.host === host)) return prev;
+      return [
+        ...prev,
+        {
+          server: manualServer,
+          state: "idle",
+          lastSyncAt: null,
+          ticketsImported: 0,
+          catalogSent: null,
+          catalogBytes: 0,
+          error: null,
+        },
+      ];
+    });
+
+    setManualIp("");
+  }, [manualIp]);
+
   // Update workers list when new servers discovered
   useEffect(() => {
     setWorkers((prev) => {
@@ -104,6 +150,7 @@ export function SyncSection() {
             lastSyncAt: null,
             ticketsImported: 0,
             catalogSent: null,
+            catalogBytes: 0,
             error: null,
           });
         }
@@ -158,24 +205,46 @@ export function SyncSection() {
   // React to syncStatus changes from lan-context
   useEffect(() => {
     const worker = activeWorkerRef.current;
+    console.log(
+      `[SyncSection] syncStatus changed: ${syncStatus}, activeWorker=${
+        worker?.server.host ?? "none"
+      }`,
+    );
     if (!worker) return;
+
+    // Worker acknowledged sync_prepare → now send the actual catalog
+    if (syncStatus === "sending_catalog" && catalogPayloadRef.current) {
+      updateWorker(worker.server.host, { state: "sending" });
+      sendCatalog(catalogPayloadRef.current);
+    }
 
     if (syncStatus === "requesting_tickets") {
       updateWorker(worker.server.host, { state: "receiving" });
       requestTickets(null); // request ALL tickets (first sync)
     }
-  }, [syncStatus, requestTickets, updateWorker]);
+  }, [syncStatus, requestTickets, sendCatalog, updateWorker]);
 
   // React to connection status
   useEffect(() => {
     const worker = activeWorkerRef.current;
+    console.log(
+      `[SyncSection] connectionStatus changed: ${connectionStatus}, activeWorker=${
+        worker?.server.host ?? "none"
+      }, hasCatalog=${!!catalogPayloadRef.current}`,
+    );
     if (!worker) return;
 
-    if (connectionStatus === "paired" && catalogPayloadRef.current) {
-      // Connected — now send catalog
-
-      updateWorker(worker.server.host, { state: "sending" });
-      sendCatalog(catalogPayloadRef.current);
+    if (
+      connectionStatus === "paired" &&
+      catalogPayloadRef.current &&
+      shouldSendPrepareRef.current
+    ) {
+      shouldSendPrepareRef.current = false;
+      console.log(
+        `[SyncSection] Paired! Sending sync_prepare (${catalogBytesRef.current} bytes)`,
+      );
+      updateWorker(worker.server.host, { state: "preparing" });
+      sendSyncPrepare(catalogBytesRef.current);
     }
 
     if (connectionStatus === "error" && worker.state !== "idle") {
@@ -183,9 +252,28 @@ export function SyncSection() {
         state: "error",
         error: "No se pudo conectar al Worker",
       });
+      catalogPayloadRef.current = null;
       activeWorkerRef.current = null;
+      shouldSendPrepareRef.current = false;
     }
-  }, [connectionStatus, sendCatalog, updateWorker]);
+
+    // If disconnected during active sync (sending/receiving), stop and show error
+    if (
+      connectionStatus === "disconnected" &&
+      (worker.state === "sending" ||
+        worker.state === "receiving" ||
+        worker.state === "preparing")
+    ) {
+      disconnectFromServer(); // stops auto-reconnect
+      updateWorker(worker.server.host, {
+        state: "error",
+        error: "Conexión perdida durante sincronización",
+      });
+      catalogPayloadRef.current = null;
+      activeWorkerRef.current = null;
+      shouldSendPrepareRef.current = false;
+    }
+  }, [connectionStatus, sendSyncPrepare, updateWorker, disconnectFromServer]);
 
   const syncWithWorker = useCallback(
     async (info: WorkerSyncInfo) => {
@@ -204,12 +292,16 @@ export function SyncSection() {
         catalogPayloadRef.current = payload;
         activeWorkerRef.current = info;
 
+        // Calculate serialized size so worker knows how much data to expect
+        const serialized = serialize({ type: "sync_catalog", data: payload });
+        const totalBytes = serialized.length;
+        catalogBytesRef.current = totalBytes;
+
         const catalogSummary: CatalogSentSummary = {
           products: (payload.products as any[]).length,
           stores: (payload.stores as any[]).length,
           workers: (payload.workers as any[]).length,
           units: (payload.units as any[]).length,
-          tickets: (payload.tickets as any[]).length,
         };
 
         updateWorker(info.server.host, {
@@ -217,9 +309,14 @@ export function SyncSection() {
           error: null,
           ticketsImported: 0,
           catalogSent: catalogSummary,
+          catalogBytes: totalBytes,
         });
 
+        shouldSendPrepareRef.current = true;
         connectToServer(info.server.host, info.server.port);
+        console.log(
+          `[SyncSection] syncWithWorker → connecting to ${info.server.host}:${info.server.port}, payload=${totalBytes} bytes`,
+        );
       } catch {
         updateWorker(info.server.host, {
           state: "error",
@@ -269,6 +366,46 @@ export function SyncSection() {
           {scanning ? "Buscando Workers..." : "Buscar Workers en la red"}
         </Text>
       </TouchableOpacity>
+
+      {/* Manual IP connection */}
+      <View style={[styles.manualBox, { borderColor }]}>
+        <Text style={[styles.manualLabel, { color: mutedText }]}>
+          ¿No aparece? Conectar por IP manualmente:
+        </Text>
+        <View style={styles.manualRow}>
+          <TextInput
+            style={[
+              styles.manualInput,
+              {
+                backgroundColor: cardBg,
+                borderColor,
+                color: c.text,
+              },
+            ]}
+            placeholder="192.168.1.x"
+            placeholderTextColor={mutedText}
+            value={manualIp}
+            onChangeText={setManualIp}
+            keyboardType="decimal-pad"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={connectManually}
+          />
+          <TouchableOpacity
+            style={[
+              styles.manualBtn,
+              {
+                backgroundColor: manualIp.trim() ? tint : "#6b7280",
+              },
+            ]}
+            onPress={connectManually}
+            disabled={!manualIp.trim()}
+          >
+            <Text style={styles.manualBtnText}>Conectar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Workers list */}
       {workers.length === 0 && !scanning && (
@@ -326,15 +463,32 @@ function WorkerCard({
   mutedText: string;
   tint: string;
 }) {
-  const { state, server, lastSyncAt, ticketsImported, catalogSent, error } =
-    info;
+  const {
+    state,
+    server,
+    lastSyncAt,
+    ticketsImported,
+    catalogSent,
+    catalogBytes,
+    error,
+  } = info;
   const busy =
-    state === "connecting" || state === "sending" || state === "receiving";
+    state === "connecting" ||
+    state === "preparing" ||
+    state === "sending" ||
+    state === "receiving";
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const statusLabel = {
     idle: "Listo para sincronizar",
     connecting: "Conectando...",
-    sending: "Enviando catálogo...",
+    preparing: `Notificando al Worker... (${formatSize(catalogBytes)})`,
+    sending: `Enviando catálogo (${formatSize(catalogBytes)})...`,
     receiving: "Recibiendo tickets...",
     done: "Sincronización completada",
     error: error ?? "Error desconocido",
@@ -343,6 +497,7 @@ function WorkerCard({
   const statusColor = {
     idle: mutedText,
     connecting: "#f59e0b",
+    preparing: "#f59e0b",
     sending: "#3b82f6",
     receiving: "#8b5cf6",
     done: "#22c55e",
@@ -354,7 +509,7 @@ function WorkerCard({
       <View style={styles.cardHeader}>
         <View style={styles.cardInfo}>
           <Text style={[styles.cardName, { color: textColor }]}>
-            {server.name}
+            {server.storeName}
           </Text>
           <Text style={[styles.cardIp, { color: mutedText }]}>
             {server.host}:{server.port}
@@ -400,6 +555,43 @@ function WorkerCard({
         </Text>
       </View>
 
+      {/* Progress bar — shown during active sync */}
+      {(state === "preparing" ||
+        state === "sending" ||
+        state === "receiving") && (
+        <View style={styles.progressContainer}>
+          <View
+            style={[
+              styles.progressTrack,
+              { backgroundColor: `${statusColor}20` },
+            ]}
+          >
+            {state === "preparing" ? (
+              <View
+                style={[
+                  styles.progressBarIndeterminate,
+                  { backgroundColor: statusColor },
+                ]}
+              />
+            ) : (
+              <View
+                style={[
+                  styles.progressBarIndeterminate,
+                  { backgroundColor: statusColor },
+                ]}
+              />
+            )}
+          </View>
+          <Text style={[styles.progressText, { color: mutedText }]}>
+            {state === "preparing"
+              ? `Preparando envío de ${formatSize(catalogBytes)}...`
+              : state === "sending"
+              ? `Enviando ${formatSize(catalogBytes)}...`
+              : "Recibiendo tickets..."}
+          </Text>
+        </View>
+      )}
+
       {/* Sync summary — shown when done or during sync */}
       {(state === "done" || catalogSent) && (
         <View style={[styles.summaryBox, { borderTopColor: borderColor }]}>
@@ -429,11 +621,6 @@ function WorkerCard({
                   label="Unidades"
                   value={catalogSent.units}
                   color="#6b7280"
-                />
-                <SummaryPill
-                  label="Tickets"
-                  value={catalogSent.tickets}
-                  color="#ec4899"
                 />
               </View>
             </View>
@@ -503,6 +690,33 @@ const styles = StyleSheet.create({
   },
   scanBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
 
+  manualBox: {
+    gap: 8,
+    paddingVertical: 8,
+  },
+  manualLabel: { fontSize: 13 },
+  manualRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  manualInput: {
+    flex: 1,
+    height: 42,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 15,
+  },
+  manualBtn: {
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  manualBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+
   emptyBox: {
     alignItems: "center",
     justifyContent: "center",
@@ -558,6 +772,26 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   statusText: { fontSize: 12 },
+
+  progressContainer: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressBarIndeterminate: {
+    height: "100%",
+    width: "30%",
+    borderRadius: 3,
+    opacity: 0.7,
+  },
+  progressText: {
+    fontSize: 11,
+  },
 
   summaryBox: {
     paddingHorizontal: 14,

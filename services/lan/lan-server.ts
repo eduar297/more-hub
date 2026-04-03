@@ -3,15 +3,15 @@ import TcpSocket from "react-native-tcp-socket";
 import Zeroconf from "react-native-zeroconf";
 
 import {
-    type ClientRole,
-    type LanMessage,
-    HEARTBEAT_INTERVAL,
-    HEARTBEAT_TIMEOUT,
-    LAN_PORT,
-    SERVICE_PROTOCOL,
-    SERVICE_TYPE,
-    parse,
-    serialize,
+  type ClientRole,
+  type LanMessage,
+  HEARTBEAT_INTERVAL,
+  HEARTBEAT_TIMEOUT,
+  LAN_PORT,
+  SERVICE_PROTOCOL,
+  SERVICE_TYPE,
+  parse,
+  serialize,
 } from "./protocol";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -34,6 +34,12 @@ export interface LanServerCallbacks {
   onDevicePaired?: (deviceId: string) => Promise<void>;
   /** Called when an Admin sends a sync message to the Worker server */
   onSyncMessage?: (clientId: string, msg: LanMessage) => void;
+  /** Called with byte-level progress while receiving catalog data */
+  onSyncProgress?: (
+    clientId: string,
+    receivedBytes: number,
+    totalBytes: number,
+  ) => void;
 }
 
 // ── LanServer ────────────────────────────────────────────────────────────────
@@ -45,6 +51,9 @@ export class LanServer {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private pongTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private buffers = new Map<string, string>();
+  private syncExpectedBytes = new Map<string, number>();
+  private syncReceivedBytes = new Map<string, number>();
+  private syncInProgress = new Set<string>();
   private _pairingCode = "";
   private _ipAddress = "";
   private _running = false;
@@ -81,7 +90,10 @@ export class LanServer {
   }
 
   async start(storeName: string): Promise<void> {
-    if (this._running) return;
+    // Stop any previous instance to avoid EADDRINUSE on hot-reload
+    if (this._running) {
+      await this.stop();
+    }
 
     this._storeName = storeName;
     this._pairingCode = generateCode();
@@ -204,6 +216,7 @@ export class LanServer {
     socket: ReturnType<typeof TcpSocket.createConnection>,
   ) {
     const clientId = `client_${++this.clientCounter}`;
+    console.log(`[LanServer] New connection: ${clientId}`);
     const client: ConnectedClient = {
       id: clientId,
       deviceId: null,
@@ -216,6 +229,24 @@ export class LanServer {
 
     socket.on("data", (data) => {
       const raw = typeof data === "string" ? data : data.toString("utf-8");
+      const byteLen =
+        typeof data === "string"
+          ? Buffer.byteLength(data, "utf-8")
+          : (data as Buffer).length;
+
+      // Track sync progress if we're expecting catalog data
+      if (this.syncExpectedBytes.has(clientId)) {
+        const prev = this.syncReceivedBytes.get(clientId) ?? 0;
+        const total = this.syncExpectedBytes.get(clientId)!;
+        const received = prev + byteLen;
+        this.syncReceivedBytes.set(clientId, received);
+        this.callbacks.onSyncProgress?.(
+          clientId,
+          Math.min(received, total),
+          total,
+        );
+      }
+
       const currentBuffer = (this.buffers.get(clientId) ?? "") + raw;
       const { messages, remainder } = parse(currentBuffer);
       this.buffers.set(clientId, remainder);
@@ -237,26 +268,38 @@ export class LanServer {
   private async handleMessage(clientId: string, msg: LanMessage) {
     const client = this.clients.get(clientId);
     if (!client) return;
+    console.log(`[LanServer] handleMessage from ${clientId}: type=${msg.type}`);
 
     switch (msg.type) {
       case "pair_request": {
         const { code, deviceId, role } = msg;
         client.deviceId = deviceId;
         client.role = role ?? "DISPLAY";
+        console.log(
+          `[LanServer] Pair request: deviceId=${deviceId}, role=${role}, code=${code}, myCode=${this._pairingCode}`,
+        );
 
         // Check if already paired device
         const knownDevice = await this.callbacks.isDevicePaired?.(deviceId);
+        console.log(
+          `[LanServer] isDevicePaired(${deviceId}) => ${knownDevice}`,
+        );
         if (knownDevice) {
           client.paired = true;
           client.socket.write(serialize({ type: "pair_accepted", deviceId }));
+          console.log(`[LanServer] Auto-accepted known device ${deviceId}`);
           this.callbacks.onClientConnected?.(client);
           return;
         }
 
         // Validate pairing code
         if (code === this._pairingCode) {
+          console.log(`[LanServer] Code match, accepting pairing`);
           this.acceptPairing(clientId);
         } else {
+          console.log(
+            `[LanServer] Code mismatch (got "${code}" expected "${this._pairingCode}"), rejecting`,
+          );
           this.rejectPairing(clientId, "Código incorrecto");
         }
         break;
@@ -271,11 +314,32 @@ export class LanServer {
         break;
       }
       // ── Sync messages from Admin clients ──
-      case "sync_catalog":
+      case "sync_prepare": {
+        if (client.paired && client.role === "ADMIN") {
+          // Start tracking bytes for progress
+          this.syncExpectedBytes.set(clientId, msg.totalBytes);
+          this.syncReceivedBytes.set(clientId, 0);
+          this.syncInProgress.add(clientId);
+          this.callbacks.onSyncMessage?.(clientId, msg);
+        }
+        break;
+      }
+      case "sync_catalog": {
+        if (client.paired && client.role === "ADMIN") {
+          // Catalog fully received — clear progress tracking
+          this.syncExpectedBytes.delete(clientId);
+          this.syncReceivedBytes.delete(clientId);
+          // Keep syncInProgress until catalog_ack is sent back
+          this.callbacks.onSyncMessage?.(clientId, msg);
+        }
+        break;
+      }
       case "sync_tickets_request":
       case "sync_tickets_ack":
       case "sync_complete": {
         if (client.paired && client.role === "ADMIN") {
+          // Sync flow is done — re-enable heartbeat
+          this.syncInProgress.delete(clientId);
           this.callbacks.onSyncMessage?.(clientId, msg);
         }
         break;
@@ -289,6 +353,9 @@ export class LanServer {
     const client = this.clients.get(clientId);
     this.clients.delete(clientId);
     this.buffers.delete(clientId);
+    this.syncExpectedBytes.delete(clientId);
+    this.syncReceivedBytes.delete(clientId);
+    this.syncInProgress.delete(clientId);
     const timer = this.pongTimers.get(clientId);
     if (timer) {
       clearTimeout(timer);
@@ -304,6 +371,11 @@ export class LanServer {
       const ping = serialize({ type: "ping" });
       for (const client of this.clients.values()) {
         if (!client.paired) continue;
+        // Skip heartbeat for ADMIN clients during active sync
+        // (applyReceivedCatalog blocks the JS thread and can't respond to pong)
+        if (client.role === "ADMIN" && this.syncInProgress.has(client.id)) {
+          continue;
+        }
         try {
           client.socket.write(ping);
           // Set pong timeout

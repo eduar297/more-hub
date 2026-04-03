@@ -17,9 +17,13 @@ import { Stack, useRouter } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, LogBox } from "react-native";
 import "react-native-reanimated";
 import { TamaguiProvider, Text, Theme, YStack } from "tamagui";
+
+LogBox.ignoreLogs([
+  "Sending `onAnimatedValueUpdate` with no listeners registered",
+]);
 
 // ── Stack navigator (same screens for all roles) ────────────────────────────
 

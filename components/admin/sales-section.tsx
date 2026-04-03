@@ -1,4 +1,5 @@
 import { StatCard } from "@/components/admin/stat-card";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
@@ -8,43 +9,44 @@ import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import { exportTicketsPDF } from "@/utils/export";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtMoneyFull,
-    fmtTime,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shiftMonth,
-    shiftWeek,
-    shortDayLabel,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtMoneyFull,
+  fmtTime,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shiftMonth,
+  shiftWeek,
+  shortDayLabel,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    Ban,
-    ChevronRight,
-    CreditCard,
-    DollarSign,
-    Printer,
-    Receipt,
-    ShoppingCart,
-    TrendingUp,
-    User,
-    Users,
-    X,
+  Ban,
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  Printer,
+  Receipt,
+  Search,
+  ShoppingCart,
+  TrendingUp,
+  User,
+  Users,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Image, Pressable, ScrollView } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
-    Button,
-    Card,
-    Separator,
-    Sheet,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Separator,
+  Sheet,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
@@ -198,6 +200,28 @@ export function SalesSection() {
   const [sheetTicket, setSheetTicket] = useState<Ticket | null>(null);
   const [sheetItems, setSheetItems] = useState<TicketItem[]>([]);
   const [sheetLoading, setSheetLoading] = useState(false);
+
+  // Ticket search by ID
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Ticket[] | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = useCallback(
+    (text: string) => {
+      setSearchQuery(text);
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setSearchResults(null);
+        return;
+      }
+      searchTimerRef.current = setTimeout(async () => {
+        const results = await ticketRepo.searchById(trimmed);
+        setSearchResults(results);
+      }, 300);
+    },
+    [ticketRepo],
+  );
 
   const openTicketSheet = useCallback(
     async (ticket: Ticket) => {
@@ -758,7 +782,9 @@ export function SalesSection() {
     );
   }
 
-  const showTickets = tickets.length > 0;
+  const isSearching = searchResults !== null;
+  const displayTickets = isSearching ? searchResults : tickets;
+  const showTickets = displayTickets.length > 0;
 
   return (
     <>
@@ -774,6 +800,13 @@ export function SalesSection() {
       >
         <YStack gap="$2">
           <PeriodSelector nav={nav} />
+
+          {/* Search by ticket ID */}
+          <SearchInput
+            value={searchQuery}
+            onChangeText={handleSearch}
+            placeholder="Buscar por ID de ticket…"
+          />
           {/* Worker filter chips */}
           {workers.length > 0 && (
             <ScrollView
@@ -844,9 +877,20 @@ export function SalesSection() {
 
       {showTickets ? (
         <FlatList
-          data={tickets}
+          data={displayTickets}
           keyExtractor={(item) => String(item.id)}
-          ListHeaderComponent={ListHeader}
+          ListHeaderComponent={
+            isSearching ? (
+              <YStack px="$4" py="$2" gap="$1">
+                <Text fontSize="$3" fontWeight="600" color="$color10">
+                  {displayTickets.length} resultado
+                  {displayTickets.length !== 1 ? "s" : ""}
+                </Text>
+              </YStack>
+            ) : (
+              ListHeader
+            )
+          }
           contentContainerStyle={{ paddingBottom: 40 }}
           ItemSeparatorComponent={() => <Separator />}
           renderItem={({ item }) => (
@@ -867,7 +911,18 @@ export function SalesSection() {
         <FlatList
           data={[]}
           keyExtractor={() => "empty"}
-          ListHeaderComponent={ListHeader}
+          ListHeaderComponent={
+            isSearching ? (
+              <YStack px="$4" py="$4" style={{ alignItems: "center" }} gap="$2">
+                <Search size={32} color="$color8" />
+                <Text fontSize="$3" color="$color10">
+                  No se encontraron tickets con ese ID
+                </Text>
+              </YStack>
+            ) : (
+              ListHeader
+            )
+          }
           contentContainerStyle={{ paddingBottom: 40 }}
           renderItem={() => null}
         />

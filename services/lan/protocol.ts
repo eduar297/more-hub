@@ -21,8 +21,6 @@ export interface SyncCatalogData {
   products: unknown[];
   units: unknown[];
   unitCategories: unknown[];
-  tickets: unknown[];
-  ticketItems: unknown[];
 }
 
 /** Data payload for tickets sync (Worker → Admin) */
@@ -47,6 +45,8 @@ export type LanMessage =
   | { type: "pong" }
   // ── Sync messages (Admin ↔ Worker) ──
   | { type: "sync_request" }
+  | { type: "sync_prepare"; totalBytes: number }
+  | { type: "sync_prepare_ack" }
   | { type: "sync_catalog"; data: SyncCatalogData }
   | { type: "sync_catalog_ack" }
   | { type: "sync_tickets_request"; since: string | null }
@@ -120,3 +120,4 @@ export const HEARTBEAT_INTERVAL = 10_000; // 10s
 export const HEARTBEAT_TIMEOUT = 5_000; // 5s
 export const RECONNECT_BASE = 1_000; // 1s
 export const RECONNECT_MAX = 30_000; // 30s
+export const CONNECT_TIMEOUT = 10_000; // 10s

@@ -2,15 +2,16 @@ import TcpSocket from "react-native-tcp-socket";
 import Zeroconf from "react-native-zeroconf";
 
 import {
-  type ClientRole,
-  type LanMessage,
-  LAN_PORT,
-  RECONNECT_BASE,
-  RECONNECT_MAX,
-  SERVICE_PROTOCOL,
-  SERVICE_TYPE,
-  parse,
-  serialize,
+    type ClientRole,
+    type LanMessage,
+    CONNECT_TIMEOUT,
+    LAN_PORT,
+    RECONNECT_BASE,
+    RECONNECT_MAX,
+    SERVICE_PROTOCOL,
+    SERVICE_TYPE,
+    parse,
+    serialize,
 } from "./protocol";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ export class LanClient {
   private _discoveredServers: DiscoveredServer[] = [];
   private callbacks: LanClientCallbacks = {};
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
   private _deviceId: string;
   private _role: ClientRole;
@@ -146,6 +148,7 @@ export class LanClient {
   disconnect(): void {
     this.shouldReconnect = false;
     this.cancelReconnect();
+    this.cancelConnectTimeout();
     if (this.socket) {
       try {
         this.socket.destroy();
@@ -161,7 +164,32 @@ export class LanClient {
   // ── Private ────────────────────────────────────────────────────────────────
 
   private doConnect(host: string, port: number, code?: string) {
+    console.log(
+      `[LanClient] doConnect(${host}:${port}, code=${code ?? "none"}, role=${
+        this._role
+      })`,
+    );
     this.setStatus("connecting");
+
+    // Start connection timeout
+    this.cancelConnectTimeout();
+    this.connectTimer = setTimeout(() => {
+      console.warn(
+        `[LanClient] Connection timeout after ${
+          CONNECT_TIMEOUT / 1000
+        }s to ${host}:${port}`,
+      );
+      if (this.socket) {
+        try {
+          this.socket.destroy();
+        } catch {
+          /* ignore */
+        }
+        this.socket = null;
+      }
+      this.buffer = "";
+      this.handleDisconnect();
+    }, CONNECT_TIMEOUT);
 
     this.socket = TcpSocket.createConnection(
       {
@@ -171,6 +199,8 @@ export class LanClient {
       },
       () => {
         // Connected — send pair request
+        console.log(`[LanClient] TCP connected to ${host}:${port}`);
+        this.cancelConnectTimeout();
 
         this.reconnectAttempt = 0;
         this.setStatus("pairing");
@@ -181,6 +211,11 @@ export class LanClient {
           deviceId: this._deviceId,
           role: this._role,
         };
+        console.log(
+          `[LanClient] Sending pair_request: code="${code ?? ""}", role=${
+            this._role
+          }`,
+        );
 
         this.socket?.write(serialize(pairMsg));
       },
@@ -199,10 +234,13 @@ export class LanClient {
     });
 
     this.socket.on("error", (err) => {
+      console.warn(`[LanClient] Socket error:`, err);
+      this.cancelConnectTimeout();
       this.handleDisconnect();
     });
 
     this.socket.on("close", () => {
+      this.cancelConnectTimeout();
       this.handleDisconnect();
     });
   }
@@ -218,14 +256,17 @@ export class LanClient {
   }
 
   private handleMessage(msg: LanMessage) {
+    console.log(`[LanClient] handleMessage: type=${msg.type}`);
     switch (msg.type) {
       case "pair_accepted":
+        console.log(`[LanClient] Pairing ACCEPTED`);
         this.setStatus("paired");
         // After accepted, future reconnects don't need the code
         this.lastCode = undefined;
         this.callbacks.onMessage?.(msg);
         break;
       case "pair_rejected":
+        console.log(`[LanClient] Pairing REJECTED`);
         this.shouldReconnect = false;
         this.setStatus("error");
         this.callbacks.onMessage?.(msg);
@@ -278,6 +319,13 @@ export class LanClient {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
+    }
+  }
+
+  private cancelConnectTimeout() {
+    if (this.connectTimer) {
+      clearTimeout(this.connectTimer);
+      this.connectTimer = null;
     }
   }
 

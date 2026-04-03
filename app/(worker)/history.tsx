@@ -1,10 +1,8 @@
-import { PeriodSelector } from "@/components/admin/period-selector";
 import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
-import { fmtMoney, weekEndISO } from "@/utils/format";
+import { fmtMoney } from "@/utils/format";
 import {
     Banknote,
     ClipboardList,
@@ -110,9 +108,6 @@ export default function HistoryScreen() {
   const themeName = colorScheme === "dark" ? "dark" : "light";
   const { user } = useAuth();
 
-  // Period state
-  const nav = usePeriodNavigation();
-
   // Data
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,33 +118,15 @@ export default function HistoryScreen() {
   const [ticketItems, setTicketItems] = useState<TicketItem[]>([]);
   const [showDetail, setShowDetail] = useState(false);
 
-  // ── Load data (worker-scoped) ───────────────────────────────────────────
+  // ── Load data (worker-scoped, today only) ───────────────────────────────
   const loadTickets = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      let from: string;
-      let to: string;
-      if (nav.period === "day") {
-        from = to = nav.selectedDay;
-      } else if (nav.period === "week") {
-        from = nav.selectedWeekStart;
-        to = weekEndISO(nav.selectedWeekStart);
-      } else if (nav.period === "month") {
-        const [y, m] = nav.selectedMonth.split("-").map(Number);
-        from = `${nav.selectedMonth}-01`;
-        const lastDay = new Date(y, m, 0).getDate();
-        to = `${nav.selectedMonth}-${String(lastDay).padStart(2, "0")}`;
-      } else if (nav.period === "year") {
-        from = `${nav.selectedYear}-01-01`;
-        to = `${nav.selectedYear}-12-31`;
-      } else {
-        from = nav.dateRange.from;
-        to = nav.dateRange.to;
-      }
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
       const [list, stats] = await Promise.all([
-        ticketRepo.findByWorkerAndDateRange(user.id, from, to),
-        ticketRepo.workerRangeSummary(user.id, from, to),
+        ticketRepo.findByWorkerAndDateRange(user.id, today, today),
+        ticketRepo.workerRangeSummary(user.id, today, today),
       ]);
       setAllTickets(list);
       setSummary(stats);
@@ -158,16 +135,7 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, [
-    ticketRepo,
-    user,
-    nav.period,
-    nav.selectedDay,
-    nav.selectedMonth,
-    nav.selectedYear,
-    nav.selectedWeekStart,
-    nav.dateRange,
-  ]);
+  }, [ticketRepo, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -192,7 +160,7 @@ export default function HistoryScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      {/* Period selector */}
+      {/* Today header */}
       <Card
         mx="$4"
         mt="$3"
@@ -203,9 +171,14 @@ export default function HistoryScreen() {
         borderColor="$borderColor"
         style={{ borderRadius: 16 }}
       >
-        <YStack gap="$2">
-          <PeriodSelector nav={nav} />
-        </YStack>
+        <Text
+          fontSize="$4"
+          fontWeight="600"
+          color="$color"
+          style={{ textAlign: "center" }}
+        >
+          Ventas de hoy
+        </Text>
       </Card>
 
       {/* Summary cards */}

@@ -1,42 +1,50 @@
 import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { AppState } from "react-native";
 
 import { useDevice } from "@/contexts/device-context";
 import {
-  LanClient,
-  type ConnectionStatus,
-  type DiscoveredServer,
+    LanClient,
+    type ConnectionStatus,
+    type DiscoveredServer,
 } from "@/services/lan/lan-client";
 import { LanServer } from "@/services/lan/lan-server";
 import {
-  EMPTY_MIRROR,
-  type CartItemWire,
-  type CartMirrorState,
-  type LanMessage,
-  type SyncCatalogData,
-  type SyncTicketsData,
+    EMPTY_MIRROR,
+    type CartItemWire,
+    type CartMirrorState,
+    type LanMessage,
+    type SyncCatalogData,
+    type SyncTicketsData,
 } from "@/services/lan/protocol";
 
 // ── Context value ────────────────────────────────────────────────────────────
 
 export type SyncStatus =
   | "idle"
+  | "preparing"
   | "sending_catalog"
   | "requesting_tickets"
   | "receiving_tickets"
   | "complete"
   | "error";
 
+export interface SyncProgress {
+  receivedBytes: number;
+  totalBytes: number;
+}
+
 interface LanContextValue {
   // Server (Worker) side — used when deviceRole === 'WORKER'
+  /** Friendly name shown as "Vendedor-XXXX" (last 4 of deviceId) */
+  workerName: string;
   startServer: () => Promise<void>;
   stopServer: () => Promise<void>;
   broadcastCart: (cart: CartItemWire[], total: number) => void;
@@ -62,7 +70,10 @@ interface LanContextValue {
 
   // Sync state — used by Admin (as client) and Worker (as server)
   syncStatus: SyncStatus;
+  syncProgress: SyncProgress | null;
   lastSyncAt: string | null;
+  /** Admin: notify worker about incoming data size, then send catalog */
+  sendSyncPrepare: (totalBytes: number) => void;
   /** Admin: send catalog to Worker */
   sendCatalog: (data: SyncCatalogData) => void;
   /** Admin: request tickets from Worker */
@@ -71,6 +82,8 @@ interface LanContextValue {
   sendTickets: (clientId: string, data: SyncTicketsData) => void;
   /** Worker: acknowledge catalog received */
   sendCatalogAck: (clientId: string) => void;
+  /** Worker: acknowledge sync prepare (ready to receive) */
+  sendSyncPrepareAck: (clientId: string) => void;
   /** Callback: set from outside to handle sync messages on Worker/Admin */
   onSyncCatalogReceived: React.MutableRefObject<
     ((clientId: string, data: SyncCatalogData) => void) | null
@@ -81,12 +94,19 @@ interface LanContextValue {
   onSyncTicketsRequested: React.MutableRefObject<
     ((clientId: string, since: string | null) => void) | null
   >;
+  /** Callback: worker receives sync_prepare from admin */
+  onSyncPrepareReceived: React.MutableRefObject<
+    ((clientId: string, totalBytes: number) => void) | null
+  >;
+  /** Callback: worker receives sync_tickets_ack — tickets confirmed received by admin */
+  onSyncTicketsAckReceived: React.MutableRefObject<(() => void) | null>;
 
   /** Worker server ref for direct access */
   serverRef: React.MutableRefObject<LanServer | null>;
 }
 
 const LanContext = createContext<LanContextValue>({
+  workerName: "",
   startServer: async () => {},
   stopServer: async () => {},
   broadcastCart: () => {},
@@ -104,16 +124,25 @@ const LanContext = createContext<LanContextValue>({
   connectionStatus: "idle",
   cartMirror: EMPTY_MIRROR,
   syncStatus: "idle",
+  syncProgress: null,
   lastSyncAt: null,
+  sendSyncPrepare: () => {},
   sendCatalog: () => {},
   requestTickets: () => {},
   sendTickets: () => {},
   sendCatalogAck: () => {},
+  sendSyncPrepareAck: () => {},
   onSyncCatalogReceived: { current: null },
   onSyncTicketsReceived: { current: null },
   onSyncTicketsRequested: { current: null },
+  onSyncPrepareReceived: { current: null },
+  onSyncTicketsAckReceived: { current: null },
   serverRef: { current: null },
 });
+
+// Module-level singleton so the server survives React hot-reloads.
+// Without this the old instance is orphaned and the TCP port stays bound.
+let _serverSingleton: LanServer | null = null;
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
@@ -130,15 +159,21 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   const onSyncTicketsRequested = useRef<
     ((clientId: string, since: string | null) => void) | null
   >(null);
+  const onSyncPrepareReceived = useRef<
+    ((clientId: string, totalBytes: number) => void) | null
+  >(null);
+  const onSyncTicketsAckReceived = useRef<(() => void) | null>(null);
 
   // ── Server state (Worker) ────────────────────────────────────────────────
 
-  const serverRef = useRef<LanServer | null>(null);
+  // Ref mirrors the module-level singleton for context consumers
+  const serverRef = useRef<LanServer | null>(_serverSingleton);
   const [pairingCode, setPairingCode] = useState("");
   const [serverIp, setServerIp] = useState("");
   const [serverRunning, setServerRunning] = useState(false);
   const [connectedDisplays, setConnectedDisplays] = useState(0);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
 
   const updateDisplayCount = useCallback(() => {
@@ -147,16 +182,27 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startServer = useCallback(async () => {
-    if (serverRef.current?.running) {
-      return;
+    // Always stop any existing server first (handles hot-reload EADDRINUSE)
+    // Check both the ref AND the module singleton (ref may be stale after reload)
+    const existing = _serverSingleton ?? serverRef.current;
+    if (existing) {
+      console.log("[LanCtx] Stopping existing server before restart");
+      await existing.stop();
+      _serverSingleton = null;
+      serverRef.current = null;
     }
 
+    console.log("[LanCtx] Creating new LanServer...");
     const server = new LanServer();
     server.setCallbacks({
-      onClientConnected: () => {
+      onClientConnected: (client) => {
+        console.log(
+          `[LanCtx:Server] Client connected: ${client.id} role=${client.role} paired=${client.paired}`,
+        );
         updateDisplayCount();
       },
-      onClientDisconnected: () => {
+      onClientDisconnected: (clientId) => {
+        console.log(`[LanCtx:Server] Client disconnected: ${clientId}`);
         updateDisplayCount();
       },
       isDevicePaired: async () => {
@@ -164,8 +210,16 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       },
       onDevicePaired: async () => {},
       onSyncMessage: (clientId, msg) => {
+        console.log(
+          `[LanCtx:Server] Sync message from ${clientId}: type=${msg.type}`,
+        );
         switch (msg.type) {
+          case "sync_prepare":
+            setSyncProgress({ receivedBytes: 0, totalBytes: msg.totalBytes });
+            onSyncPrepareReceived.current?.(clientId, msg.totalBytes);
+            break;
           case "sync_catalog":
+            setSyncProgress(null);
             onSyncCatalogReceived.current?.(clientId, msg.data);
             break;
           case "sync_tickets_request":
@@ -175,6 +229,8 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
             const now = new Date().toISOString();
             setLastSyncAt(now);
             setSyncStatus("complete");
+            // Notify worker layout so it can delete sent tickets
+            onSyncTicketsAckReceived.current?.();
             break;
           }
           case "sync_complete":
@@ -182,23 +238,35 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
             break;
         }
       },
+      onSyncProgress: (_clientId, receivedBytes, totalBytes) => {
+        setSyncProgress({ receivedBytes, totalBytes });
+      },
     });
 
-    const storeName = "Worker";
+    const shortId = deviceId.slice(-4).toUpperCase();
+    const name = `Vendedor-${shortId}`;
 
     try {
-      await server.start(storeName);
+      await server.start(name);
+      console.log(
+        `[LanCtx] Server started as "${name}" on ${server.ipAddress}:9847 code=${server.pairingCode}`,
+      );
 
+      _serverSingleton = server;
       serverRef.current = server;
       setPairingCode(server.pairingCode);
       setServerIp(server.ipAddress);
       setServerRunning(true);
-    } catch {}
-  }, [updateDisplayCount]);
+    } catch (err) {
+      console.error("[LanCtx] Server start FAILED:", err);
+    }
+  }, [deviceId, updateDisplayCount]);
 
   const stopServer = useCallback(async () => {
-    if (serverRef.current) {
-      await serverRef.current.stop();
+    const existing = _serverSingleton ?? serverRef.current;
+    if (existing) {
+      await existing.stop();
+      _serverSingleton = null;
       serverRef.current = null;
     }
     setPairingCode("");
@@ -232,6 +300,10 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     serverRef.current?.sendToClient(clientId, { type: "sync_catalog_ack" });
   }, []);
 
+  const sendSyncPrepareAck = useCallback((clientId: string) => {
+    serverRef.current?.sendToClient(clientId, { type: "sync_prepare_ack" });
+  }, []);
+
   const sendTickets = useCallback((clientId: string, data: SyncTicketsData) => {
     serverRef.current?.sendToClient(clientId, {
       type: "sync_tickets",
@@ -242,7 +314,12 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   // Cleanup server on unmount
   useEffect(() => {
     return () => {
-      serverRef.current?.stop();
+      const existing = _serverSingleton ?? serverRef.current;
+      if (existing) {
+        existing.stop();
+        _serverSingleton = null;
+        serverRef.current = null;
+      }
     };
   }, []);
 
@@ -269,14 +346,19 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     if (!clientRole) return; // Worker doesn't need a client
 
     const client = new LanClient(deviceId, clientRole);
+    console.log(
+      `[LanCtx:Client] Creating LanClient role=${clientRole} deviceId=${deviceId}`,
+    );
     client.setCallbacks({
       onStatusChange: (s) => {
+        console.log(`[LanCtx:Client] Status changed: ${s}`);
         setConnectionStatus(s);
       },
       onServersFound: (servers) => {
         setDiscoveredServers(servers);
       },
       onMessage: (msg) => {
+        console.log(`[LanCtx:Client] Message received: type=${msg.type}`);
         handleServerMessage(msg);
       },
     });
@@ -317,6 +399,9 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
         }, 5000);
         break;
       // Sync responses from Worker → Admin
+      case "sync_prepare_ack":
+        setSyncStatus("sending_catalog");
+        break;
       case "sync_catalog_ack":
         setSyncStatus("requesting_tickets");
         break;
@@ -334,13 +419,17 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Admin sync actions
+  const sendSyncPrepare = useCallback((totalBytes: number) => {
+    setSyncStatus("preparing");
+    clientRef.current?.send({ type: "sync_prepare", totalBytes });
+  }, []);
+
   const sendCatalog = useCallback((data: SyncCatalogData) => {
     setSyncStatus("sending_catalog");
     clientRef.current?.send({ type: "sync_catalog", data });
   }, []);
 
   const requestTickets = useCallback((since: string | null) => {
-    setSyncStatus("requesting_tickets");
     setSyncStatus("requesting_tickets");
     clientRef.current?.send({ type: "sync_tickets_request", since });
   }, []);
@@ -355,7 +444,15 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
 
   const connectToServer = useCallback(
     (host: string, port: number, code?: string) => {
+      console.log(
+        `[LanCtx:Client] connectToServer(${host}:${port}, code=${
+          code ?? "none"
+        })`,
+      );
       if (!clientRef.current) {
+        console.warn(
+          "[LanCtx:Client] clientRef.current is NULL! Cannot connect.",
+        );
         return;
       }
 
@@ -390,8 +487,14 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
 
   // ── Context value ────────────────────────────────────────────────────────
 
+  const workerName = useMemo(() => {
+    if (!deviceId) return "";
+    return `Vendedor-${deviceId.slice(-4).toUpperCase()}`;
+  }, [deviceId]);
+
   const value = useMemo<LanContextValue>(
     () => ({
+      workerName,
       startServer,
       stopServer,
       broadcastCart,
@@ -409,17 +512,23 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       connectionStatus,
       cartMirror,
       syncStatus,
+      syncProgress,
       lastSyncAt,
+      sendSyncPrepare,
       sendCatalog,
       requestTickets,
       sendTickets,
       sendCatalogAck,
+      sendSyncPrepareAck,
       onSyncCatalogReceived,
       onSyncTicketsReceived,
       onSyncTicketsRequested,
+      onSyncPrepareReceived,
+      onSyncTicketsAckReceived,
       serverRef,
     }),
     [
+      workerName,
       startServer,
       stopServer,
       broadcastCart,
@@ -437,11 +546,14 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       connectionStatus,
       cartMirror,
       syncStatus,
+      syncProgress,
       lastSyncAt,
+      sendSyncPrepare,
       sendCatalog,
       requestTickets,
       sendTickets,
       sendCatalogAck,
+      sendSyncPrepareAck,
     ],
   );
 

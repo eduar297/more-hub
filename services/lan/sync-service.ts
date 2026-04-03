@@ -6,15 +6,7 @@ import type { SyncCatalogData, SyncTicketsData } from "./protocol";
 export async function prepareCatalogPayload(
   db: SQLiteDatabase,
 ): Promise<SyncCatalogData> {
-  const [
-    stores,
-    workers,
-    products,
-    units,
-    unitCategories,
-    tickets,
-    ticketItems,
-  ] = await Promise.all([
+  const [stores, workers, products, units, unitCategories] = await Promise.all([
     db.getAllAsync("SELECT * FROM stores ORDER BY id"),
     db.getAllAsync(
       "SELECT id, name, role, pinHash, photoUri, storeId, createdAt FROM users WHERE role = 'WORKER' ORDER BY id",
@@ -22,8 +14,6 @@ export async function prepareCatalogPayload(
     db.getAllAsync("SELECT * FROM products ORDER BY id"),
     db.getAllAsync("SELECT * FROM units ORDER BY id"),
     db.getAllAsync("SELECT * FROM unit_categories ORDER BY id"),
-    db.getAllAsync("SELECT * FROM tickets ORDER BY id"),
-    db.getAllAsync("SELECT * FROM ticket_items ORDER BY id"),
   ]);
 
   return {
@@ -32,8 +22,6 @@ export async function prepareCatalogPayload(
     products,
     units,
     unitCategories,
-    tickets,
-    ticketItems,
   };
 }
 
@@ -89,6 +77,14 @@ export async function applyReceivedTickets(
             item.subtotal,
           ],
         );
+
+        // Decrease admin stock to reflect the worker's sale
+        if (ticket.status !== "VOIDED") {
+          await tx.runAsync(
+            `UPDATE products SET stockBaseQty = stockBaseQty - ? WHERE id = ?`,
+            [item.quantity, item.productId],
+          );
+        }
       }
       imported++;
     }
@@ -110,7 +106,6 @@ export interface CatalogChangeSummary {
   totalProducts: number;
   totalStores: number;
   totalWorkers: number;
-  ticketsImported: number;
 }
 
 export async function applyReceivedCatalog(
@@ -127,7 +122,6 @@ export async function applyReceivedCatalog(
     totalProducts: (data.products as any[]).length,
     totalStores: (data.stores as any[]).length,
     totalWorkers: (data.workers as any[]).length,
-    ticketsImported: 0,
   };
 
   await db.withExclusiveTransactionAsync(async (tx) => {
@@ -235,57 +229,6 @@ export async function applyReceivedCatalog(
     }
   });
 
-  // 6. Import tickets from admin (dedup by UUID)
-  if (data.tickets && (data.tickets as any[]).length > 0) {
-    await db.withExclusiveTransactionAsync(async (tx) => {
-      for (const ticket of data.tickets as any[]) {
-        const exists = await tx.getFirstAsync<{ cnt: number }>(
-          "SELECT COUNT(*) as cnt FROM tickets WHERE id = ?",
-          [ticket.id],
-        );
-        if (exists && exists.cnt > 0) continue;
-
-        await tx.runAsync(
-          `INSERT INTO tickets (id, total, itemCount, paymentMethod, createdAt, workerId, workerName, storeId, status, voidedAt, voidedBy, voidReason)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            ticket.id,
-            ticket.total,
-            ticket.itemCount,
-            ticket.paymentMethod,
-            ticket.createdAt,
-            ticket.workerId,
-            ticket.workerName,
-            ticket.storeId,
-            ticket.status ?? "ACTIVE",
-            ticket.voidedAt ?? null,
-            ticket.voidedBy ?? null,
-            ticket.voidReason ?? null,
-          ],
-        );
-
-        const items = (data.ticketItems as any[]).filter(
-          (ti) => String(ti.ticketId) === String(ticket.id),
-        );
-        for (const item of items) {
-          await tx.runAsync(
-            `INSERT INTO ticket_items (ticketId, productId, productName, quantity, unitPrice, subtotal)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-              ticket.id,
-              item.productId,
-              item.productName,
-              item.quantity,
-              item.unitPrice,
-              item.subtotal,
-            ],
-          );
-        }
-        summary.ticketsImported++;
-      }
-    });
-  }
-
   // Update sync metadata
   await db.runAsync(
     "UPDATE sync_metadata SET last_sync_at = datetime('now','localtime') WHERE id = 1",
@@ -335,4 +278,23 @@ export async function getLastSyncAt(
     "SELECT last_sync_at FROM sync_metadata WHERE id = 1",
   );
   return row?.last_sync_at ?? null;
+}
+
+/** Worker: delete all tickets and their items (after admin confirmed receipt) */
+export async function deleteAllWorkerTickets(
+  db: SQLiteDatabase,
+): Promise<number> {
+  const countRow = await db.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM tickets",
+  );
+  const count = countRow?.cnt ?? 0;
+
+  if (count > 0) {
+    await db.withExclusiveTransactionAsync(async (tx) => {
+      await tx.runAsync("DELETE FROM ticket_items");
+      await tx.runAsync("DELETE FROM tickets");
+    });
+  }
+
+  return count;
 }
