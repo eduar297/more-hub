@@ -1,29 +1,28 @@
 import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { AppState } from "react-native";
 
 import { useDevice } from "@/contexts/device-context";
 import {
-    LanClient,
-    type ConnectionStatus,
-    type DiscoveredServer,
+  LanClient,
+  type ConnectionStatus,
+  type DiscoveredServer,
 } from "@/services/lan/lan-client";
 import { LanServer } from "@/services/lan/lan-server";
 import {
-    EMPTY_MIRROR,
-    LAN_PORT,
-    type CartItemWire,
-    type CartMirrorState,
-    type LanMessage,
-    type SyncCatalogData,
-    type SyncTicketsData,
+  EMPTY_MIRROR,
+  type CartItemWire,
+  type CartMirrorState,
+  type LanMessage,
+  type SyncCatalogData,
+  type SyncTicketsData,
 } from "@/services/lan/protocol";
 
 // ── Context value ────────────────────────────────────────────────────────────
@@ -148,69 +147,37 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startServer = useCallback(async () => {
-    console.log("[LAN SERVER] Iniciando servidor...");
     if (serverRef.current?.running) {
-      console.log("[LAN SERVER] Servidor ya está ejecutándose");
       return;
     }
 
     const server = new LanServer();
     server.setCallbacks({
       onClientConnected: () => {
-        console.log("[LAN SERVER] Cliente conectado");
         updateDisplayCount();
       },
       onClientDisconnected: () => {
-        console.log("[LAN SERVER] Cliente desconectado");
         updateDisplayCount();
       },
       isDevicePaired: async () => {
-        console.log(
-          "[LAN SERVER] Verificando emparejamiento - Worker acepta todo",
-        );
         return true; // Worker accepts all connections
       },
-      onDevicePaired: async () => {
-        console.log("[LAN SERVER] Dispositivo emparejado");
-      },
+      onDevicePaired: async () => {},
       onSyncMessage: (clientId, msg) => {
-        console.log("[LAN SERVER] Mensaje de sync recibido:", {
-          clientId,
-          type: msg.type,
-          data:
-            msg.type === "sync_catalog"
-              ? {
-                  products: msg.data?.products?.length || 0,
-                  units: msg.data?.units?.length || 0,
-                  unitCategories: msg.data?.unitCategories?.length || 0,
-                }
-              : msg.type === "sync_tickets_request"
-              ? {
-                  since: msg.since,
-                }
-              : "other",
-        });
-
         switch (msg.type) {
           case "sync_catalog":
-            console.log("[LAN SERVER] Enviando catálogo a callback...");
             onSyncCatalogReceived.current?.(clientId, msg.data);
             break;
           case "sync_tickets_request":
-            console.log(
-              "[LAN SERVER] Enviando solicitud de tickets a callback...",
-            );
             onSyncTicketsRequested.current?.(clientId, msg.since);
             break;
           case "sync_tickets_ack": {
-            console.log("[LAN SERVER] ACK de tickets recibido");
             const now = new Date().toISOString();
             setLastSyncAt(now);
             setSyncStatus("complete");
             break;
           }
           case "sync_complete":
-            console.log("[LAN SERVER] Sync completo");
             setSyncStatus("idle");
             break;
         }
@@ -218,23 +185,15 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     });
 
     const storeName = "Worker";
-    console.log("[LAN SERVER] Iniciando servidor con nombre:", storeName);
 
     try {
       await server.start(storeName);
-      console.log("[LAN SERVER] Servidor iniciado exitosamente:", {
-        ip: server.ipAddress,
-        port: LAN_PORT,
-        pairingCode: server.pairingCode,
-      });
 
       serverRef.current = server;
       setPairingCode(server.pairingCode);
       setServerIp(server.ipAddress);
       setServerRunning(true);
-    } catch (error) {
-      console.error("[LAN SERVER] Error iniciando servidor:", error);
-    }
+    } catch {}
   }, [updateDisplayCount]);
 
   const stopServer = useCallback(async () => {
@@ -270,15 +229,10 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
 
   // Worker sync responses
   const sendCatalogAck = useCallback((clientId: string) => {
-    console.log("[LAN CONTEXT] Enviando ACK de catálogo:", { clientId });
     serverRef.current?.sendToClient(clientId, { type: "sync_catalog_ack" });
   }, []);
 
   const sendTickets = useCallback((clientId: string, data: SyncTicketsData) => {
-    console.log("[LAN CONTEXT] Enviando tickets:", {
-      clientId,
-      tickets: data.tickets?.length || 0,
-    });
     serverRef.current?.sendToClient(clientId, {
       type: "sync_tickets",
       data,
@@ -314,29 +268,21 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
         : null;
     if (!clientRole) return; // Worker doesn't need a client
 
-    console.log("[LAN CLIENT] Creando cliente:", { deviceId, clientRole });
     const client = new LanClient(deviceId, clientRole);
     client.setCallbacks({
       onStatusChange: (s) => {
-        console.log("[LAN CLIENT] Cambio de status:", s);
         setConnectionStatus(s);
       },
       onServersFound: (servers) => {
-        console.log(
-          "[LAN CLIENT] Servidores encontrados:",
-          servers.map((s) => ({ host: s.host, port: s.port, name: s.name })),
-        );
         setDiscoveredServers(servers);
       },
       onMessage: (msg) => {
-        console.log("[LAN CLIENT] Mensaje recibido:", { type: msg.type });
         handleServerMessage(msg);
       },
     });
     clientRef.current = client;
 
     return () => {
-      console.log("[LAN CLIENT] Limpiando cliente");
       client.disconnect();
       client.stopDiscovery();
     };
@@ -372,13 +318,9 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
         break;
       // Sync responses from Worker → Admin
       case "sync_catalog_ack":
-        console.log("[LAN CLIENT] ACK de catálogo recibido");
         setSyncStatus("requesting_tickets");
         break;
       case "sync_tickets": {
-        console.log("[LAN CLIENT] Tickets recibidos:", {
-          tickets: msg.data?.tickets?.length || 0,
-        });
         setSyncStatus("receiving_tickets");
         onSyncTicketsReceived.current?.(msg.data);
         break;
@@ -393,55 +335,36 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
 
   // Admin sync actions
   const sendCatalog = useCallback((data: SyncCatalogData) => {
-    console.log("[LAN CONTEXT] Enviando catálogo:", {
-      products: data.products?.length || 0,
-      units: data.units?.length || 0,
-      unitCategories: data.unitCategories?.length || 0,
-      clientConnected: clientRef.current?.status,
-    });
     setSyncStatus("sending_catalog");
     clientRef.current?.send({ type: "sync_catalog", data });
   }, []);
 
   const requestTickets = useCallback((since: string | null) => {
-    console.log("[LAN CONTEXT] Solicitando tickets:", { since });
+    setSyncStatus("requesting_tickets");
     setSyncStatus("requesting_tickets");
     clientRef.current?.send({ type: "sync_tickets_request", since });
   }, []);
 
   const startDiscovery = useCallback(() => {
-    console.log("[LAN CLIENT] Iniciando discovery de servidores");
     clientRef.current?.startDiscovery();
   }, []);
 
   const stopDiscovery = useCallback(() => {
-    console.log("[LAN CLIENT] Deteniendo discovery de servidores");
     clientRef.current?.stopDiscovery();
   }, []);
 
   const connectToServer = useCallback(
     (host: string, port: number, code?: string) => {
-      console.log("[LAN CONTEXT] Conectando a servidor:", { host, port, code });
-      console.log("[LAN CONTEXT] Cliente disponible:", !!clientRef.current);
-      console.log(
-        "[LAN CONTEXT] Estado cliente actual:",
-        clientRef.current?.status,
-      );
-
       if (!clientRef.current) {
-        console.error("[LAN CONTEXT] ERROR: Cliente no inicializado");
         return;
       }
 
-      console.log("[LAN CONTEXT] Llamando cliente.connect...");
       clientRef.current.connect(host, port, code);
-      console.log("[LAN CONTEXT] cliente.connect() ejecutado");
     },
     [],
   );
 
   const disconnectFromServer = useCallback(() => {
-    console.log("[LAN CONTEXT] Desconectando del servidor");
     clientRef.current?.disconnect();
     setCartMirror(EMPTY_MIRROR);
   }, []);

@@ -3,26 +3,26 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import type { DiscoveredServer } from "@/services/lan/lan-client";
 import {
-    applyReceivedTickets,
-    prepareCatalogPayload,
+  applyReceivedTickets,
+  prepareCatalogPayload,
 } from "@/services/lan/sync-service";
 import {
-    AlertCircle,
-    CheckCircle,
-    RefreshCw,
-    Wifi,
-    WifiOff,
-    Zap,
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Zap,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -69,6 +69,7 @@ export function SyncSection() {
     sendCatalog,
     requestTickets,
     onSyncTicketsReceived,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onSyncCatalogReceived: _onSyncCatalogReceived,
   } = useLan();
 
@@ -140,7 +141,6 @@ export function SyncSection() {
         disconnectFromServer();
         activeWorkerRef.current = null;
       } catch (e: any) {
-        console.error("[ADMIN SYNC] Error guardando tickets:", e?.message || e);
         updateWorker(worker.server.host, {
           state: "error",
           error: `Error al guardar tickets: ${e?.message || "desconocido"}`,
@@ -160,14 +160,7 @@ export function SyncSection() {
     const worker = activeWorkerRef.current;
     if (!worker) return;
 
-    console.log("[ADMIN SYNC] Cambio de syncStatus:", {
-      status: syncStatus,
-      workerState: worker.state,
-      host: worker.server.host,
-    });
-
     if (syncStatus === "requesting_tickets") {
-      console.log("[ADMIN SYNC] Catálogo enviado, solicitando tickets...");
       updateWorker(worker.server.host, { state: "receiving" });
       requestTickets(null); // request ALL tickets (first sync)
     }
@@ -178,21 +171,14 @@ export function SyncSection() {
     const worker = activeWorkerRef.current;
     if (!worker) return;
 
-    console.log("[ADMIN SYNC] Cambio de connectionStatus:", {
-      status: connectionStatus,
-      workerState: worker.state,
-      host: worker.server.host,
-    });
-
     if (connectionStatus === "paired" && catalogPayloadRef.current) {
       // Connected — now send catalog
-      console.log("[ADMIN SYNC] Conectado! Enviando catálogo...");
+
       updateWorker(worker.server.host, { state: "sending" });
       sendCatalog(catalogPayloadRef.current);
     }
 
     if (connectionStatus === "error" && worker.state !== "idle") {
-      console.error("[ADMIN SYNC] Error de conexión con Worker");
       updateWorker(worker.server.host, {
         state: "error",
         error: "No se pudo conectar al Worker",
@@ -203,30 +189,17 @@ export function SyncSection() {
 
   const syncWithWorker = useCallback(
     async (info: WorkerSyncInfo) => {
-      console.log("[ADMIN SYNC] Iniciando sincronización con Worker:", {
-        host: info.server.host,
-        port: info.server.port,
-        currentState: info.state,
-      });
-
       if (
         info.state !== "idle" &&
         info.state !== "done" &&
         info.state !== "error"
       ) {
-        console.log("[ADMIN SYNC] Worker ocupado, cancelando:", info.state);
         return;
       }
 
       try {
-        console.log("[ADMIN SYNC] Preparando catálogo...");
         // Prepare catalog payload
         const payload = await prepareCatalogPayload(db);
-        console.log("[ADMIN SYNC] Catálogo preparado:", {
-          products: payload.products?.length || 0,
-          units: payload.units?.length || 0,
-          unitCategories: payload.unitCategories?.length || 0,
-        });
 
         catalogPayloadRef.current = payload;
         activeWorkerRef.current = info;
@@ -246,14 +219,8 @@ export function SyncSection() {
           catalogSent: catalogSummary,
         });
 
-        console.log(
-          "[ADMIN SYNC] Conectando a Worker...",
-          info.server.host,
-          info.server.port,
-        );
         connectToServer(info.server.host, info.server.port);
-      } catch (e: any) {
-        console.error("[ADMIN SYNC] Error preparando sincronización:", e);
+      } catch {
         updateWorker(info.server.host, {
           state: "error",
           error: "Error al preparar catálogo",
@@ -309,8 +276,8 @@ export function SyncSection() {
           <WifiOff size={40} color={mutedText} />
           <Text style={[styles.emptyText, { color: mutedText }]}>
             No se encontraron Workers.{"\n"}
-            Verifica que el Worker esté en modo "Esperando datos" y en la misma
-            red WiFi.
+            Verifica que el Worker esté en modo &quot;Esperando datos&quot; y en
+            la misma red WiFi.
           </Text>
           <TouchableOpacity
             style={[styles.retryBtn, { borderColor: tint as any }]}

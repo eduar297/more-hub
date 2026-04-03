@@ -6,21 +6,22 @@ import { useLan } from "@/contexts/lan-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { SyncCatalogData } from "@/services/lan/protocol";
 import {
-    applyReceivedCatalog,
-    type CatalogChangeSummary,
-    getLastSyncAt,
+  applyReceivedCatalog,
+  type CatalogChangeSummary,
+  getLastSyncAt,
+  prepareTicketsPayload,
 } from "@/services/lan/sync-service";
 import { LayoutList, ScanLine, User, Wifi } from "@tamagui/lucide-icons";
 import { Tabs } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useTheme } from "tamagui";
 
@@ -100,7 +101,7 @@ export default function WorkerLayout() {
   const tint = theme.green10?.val ?? "#22c55e";
   const db = useSQLiteContext();
   const { resetDevice } = useDevice();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const {
     startServer,
     onSyncCatalogReceived,
@@ -202,55 +203,33 @@ export default function WorkerLayout() {
   useEffect(() => {
     onSyncCatalogReceived.current = async (clientId, data: SyncCatalogData) => {
       try {
-        console.log("[WORKER SYNC] Recibiendo catálogo desde Admin:", {
-          clientId,
-          products: data.products?.length || 0,
-          units: data.units?.length || 0,
-          unitCategories: data.unitCategories?.length || 0,
-        });
-
         const summary = await applyReceivedCatalog(db, data);
-        console.log("[WORKER SYNC] Catálogo aplicado exitosamente:", summary);
 
         sendCatalogAck(clientId);
-        console.log("[WORKER SYNC] ACK enviado al Admin");
 
         setHasSynced(true);
 
         // Show notification with changes
         showSyncNotification(summary);
-      } catch (e) {
-        console.error("[WORKER SYNC] Error aplicando catálogo:", e);
-      }
+      } catch {}
     };
     return () => {
       onSyncCatalogReceived.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, sendCatalogAck, onSyncCatalogReceived]);
 
   // Handle ticket request from Admin
   useEffect(() => {
-    const { prepareTicketsPayload } = require("@/services/lan/sync-service");
     onSyncTicketsRequested.current = async (
       clientId: string,
       since: string | null,
     ) => {
       try {
-        console.log("[WORKER SYNC] Admin solicita tickets:", {
-          clientId,
-          since,
-        });
-
         const payload = await prepareTicketsPayload(db, since);
-        console.log("[WORKER SYNC] Tickets preparados:", {
-          tickets: payload.tickets?.length || 0,
-        });
 
         sendTickets(clientId, payload);
-        console.log("[WORKER SYNC] Tickets enviados al Admin");
-      } catch (e) {
-        console.error("[WORKER SYNC] Error preparando tickets:", e);
-      }
+      } catch {}
     };
     return () => {
       onSyncTicketsRequested.current = null;
