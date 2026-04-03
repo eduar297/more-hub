@@ -1,19 +1,19 @@
 import {
-    PreferencesSection,
-    ProfileSection,
-    StoresSection,
-    SyncSection,
-    WorkersSection,
+  PreferencesSection,
+  ProfileSection,
+  StoresSection,
+  SyncSection,
+  WorkersSection,
 } from "@/components/settings";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { useColors } from "@/hooks/use-colors";
 import {
-    RefreshCw,
-    Settings,
-    Store,
-    UserCog,
-    Users,
+  RefreshCw,
+  Settings,
+  Store,
+  UserCog,
+  Users,
 } from "@tamagui/lucide-icons";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -36,15 +36,27 @@ export default function SettingsScreen() {
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <ScreenTabs tabs={TABS} active={activeTab} onSelect={setActiveTab} />
 
-      {activeTab === "workers" && <WorkersSection />}
-      {activeTab === "profile" && <ProfileSection />}
-      {activeTab === "stores" && <StoresSection />}
-      {activeTab === "sync" && <SyncSection />}
-      {activeTab === "prefs" && <PreferencesSection />}
+      <View style={activeTab === "profile" ? styles.visible : styles.hidden}>
+        <ProfileSection />
+      </View>
+      <View style={activeTab === "workers" ? styles.visible : styles.hidden}>
+        <WorkersSection />
+      </View>
+      <View style={activeTab === "stores" ? styles.visible : styles.hidden}>
+        <StoresSection />
+      </View>
+      <View style={activeTab === "sync" ? styles.visible : styles.hidden}>
+        <SyncSection />
+      </View>
+      <View style={activeTab === "prefs" ? styles.visible : styles.hidden}>
+        <PreferencesSection />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  visible: { flex: 1 },
+  hidden: { display: "none" },
 });
