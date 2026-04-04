@@ -1,5 +1,4 @@
 import { useNotifications } from "@/components/ui/notification-provider";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import type {
     NotificationPrefKey,
@@ -76,7 +75,6 @@ const PREF_ITEMS: {
 
 export function NotificationCards() {
   const c = useColors();
-  const isDark = useColorScheme() === "dark";
   const {
     prefs,
     togglePref,
@@ -393,7 +391,7 @@ export function NotificationCards() {
           >
             <View
               style={{
-                backgroundColor: isDark ? "#1c1c1e" : "#ffffff",
+                backgroundColor: c.modalBg,
                 borderRadius: 20,
                 overflow: "hidden",
               }}

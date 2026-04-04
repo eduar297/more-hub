@@ -1,25 +1,26 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import { Building2, Edit3, Plus, Trash2 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Alert, FlatList } from "react-native";
 import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Sheet,
-  Spinner,
-  Text,
-  TextArea,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Label,
+    Sheet,
+    Spinner,
+    Text,
+    TextArea,
+    XStack,
+    YStack,
 } from "tamagui";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSupplierRepository } from "@/hooks/use-supplier-repository";
 import type {
-  CreateSupplierInput,
-  Supplier,
-  UpdateSupplierInput,
+    CreateSupplierInput,
+    Supplier,
+    UpdateSupplierInput,
 } from "@/models/supplier";
 
 // ── SupplierForm ─────────────────────────────────────────────────────────────
@@ -296,18 +297,11 @@ export default function SuppliersScreen() {
           <Spinner size="large" />
         </YStack>
       ) : suppliers.length === 0 ? (
-        <YStack
-          flex={1}
-          style={{ alignItems: "center", justifyContent: "center" }}
-          gap="$3"
-          px="$6"
-        >
-          <Building2 size={48} color="$color8" />
-          <Text fontSize="$5" color="$color8" style={{ textAlign: "center" }}>
-            No hay proveedores registrados.{"\n"}Toca &quot;Nuevo&quot; para
-            agregar uno.
-          </Text>
-        </YStack>
+        <EmptyState
+          icon={<Building2 size={48} color="$color8" />}
+          title="No hay proveedores registrados."
+          description='Toca "Nuevo" para agregar uno.'
+        />
       ) : (
         <FlatList
           data={suppliers}
@@ -315,7 +309,7 @@ export default function SuppliersScreen() {
           contentContainerStyle={{ padding: 16, gap: 8 }}
           renderItem={({ item }) => (
             <Card
-              pressStyle={{ opacity: 0.8 }}
+              pressStyle={{ opacity: 0.9, scale: 0.98 }}
               onPress={() => {
                 setSelectedSupplier(item);
                 setShowDetailSheet(true);

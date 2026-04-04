@@ -1,16 +1,17 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import { ChevronDown, Plus, Receipt, Trash2 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Alert, FlatList, ScrollView } from "react-native";
 import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Label,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 import { PeriodSelector } from "@/components/admin/period-selector";
@@ -97,7 +98,7 @@ function CategoryPicker({
           exitStyle={{ opacity: 0 }}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <Sheet.Frame p="$4" theme={themeName as any}>
+        <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <Text fontWeight="bold" fontSize="$5" color="$color" mb="$3">
             Categoría de gasto
@@ -378,18 +379,11 @@ export default function ExpensesScreen() {
           <Spinner size="large" />
         </YStack>
       ) : expenses.length === 0 ? (
-        <YStack
-          flex={1}
-          style={{ alignItems: "center", justifyContent: "center" }}
-          gap="$3"
-          px="$6"
-        >
-          <Receipt size={48} color="$color8" />
-          <Text fontSize="$5" color="$color8" style={{ textAlign: "center" }}>
-            No hay gastos registrados.{"\n"}Toca &quot;Nuevo&quot; para agregar
-            uno.
-          </Text>
-        </YStack>
+        <EmptyState
+          icon={<Receipt size={48} color="$color8" />}
+          title="No hay gastos registrados."
+          description='Toca "Nuevo" para agregar uno.'
+        />
       ) : (
         <FlatList
           data={expenses}

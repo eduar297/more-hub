@@ -1,6 +1,5 @@
 import { useNotifications } from "@/components/ui/notification-provider";
 import { useLan } from "@/contexts/lan-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import type { DiscoveredServer } from "@/services/lan/lan-client";
 import { LAN_PORT, serialize } from "@/services/lan/protocol";
@@ -79,7 +78,6 @@ interface WorkerSyncInfo {
 
 export function SyncSection() {
   const c = useColors();
-  const isDark = useColorScheme() === "dark";
   const db = useSQLiteContext();
   const { checkStockAlerts } = useNotifications();
   const {
@@ -368,6 +366,7 @@ export function SyncSection() {
       }, 300);
       activeWorkerRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     syncStatus,
     sendCatalog,
@@ -422,6 +421,7 @@ export function SyncSection() {
       activeWorkerRef.current = null;
       shouldSendPrepareRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionStatus, sendSyncPrepare, updateWorker, disconnectFromServer]);
 
   const syncWithWorker = useCallback(
@@ -458,9 +458,9 @@ export function SyncSection() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  const borderColor = isDark ? "#2a2a2a" : "#e5e5e5";
-  const cardBg = isDark ? "#1c1c1e" : "#f9f9f9";
-  const mutedText = isDark ? "#888" : "#999";
+  const borderColor = c.border;
+  const cardBg = c.card;
+  const mutedText = c.muted;
 
   return (
     <ScrollView
@@ -539,7 +539,7 @@ export function SyncSection() {
       {/* Workers list */}
       {workers.length === 0 && !scanning && (
         <View style={styles.emptyBox}>
-          <WifiOff size={40} color={mutedText} />
+          <WifiOff size={40} color={mutedText as any} />
           <Text style={[styles.emptyText, { color: mutedText }]}>
             No se encontraron Workers.{"\n"}
             Verifica que el Worker esté en modo &quot;Esperando datos&quot; y en

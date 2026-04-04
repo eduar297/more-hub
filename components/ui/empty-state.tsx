@@ -9,29 +9,13 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description }: EmptyStateProps) {
   return (
-    <YStack
-      flex={1}
-      style={{ justifyContent: "center", alignItems: "center" }}
-      gap="$3"
-      p="$8"
-      accessibilityRole="summary"
-    >
+    <YStack flex={1} items="center" justify="center" gap="$3" px="$6">
       {icon}
-      <Text
-        fontSize="$5"
-        fontWeight="bold"
-        color="$color"
-        style={{ textAlign: "center" }}
-      >
+      <Text fontSize="$5" fontWeight="bold" color="$color8" ta="center">
         {title}
       </Text>
       {description && (
-        <Text
-          color="$color10"
-          style={{ textAlign: "center" }}
-          fontSize="$3"
-          maxW={280}
-        >
+        <Text color="$color10" ta="center" fontSize="$3" maxW={280}>
           {description}
         </Text>
       )}

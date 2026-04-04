@@ -81,8 +81,8 @@ export const settingStyles = StyleSheet.create({
   workerMeta: { fontSize: 12 },
   rowActions: { flexDirection: "row", gap: 8 },
   iconBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",

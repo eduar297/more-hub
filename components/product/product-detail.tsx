@@ -108,7 +108,11 @@ export function ProductDetail({
           label="Margen"
           value={
             product.costPrice > 0
-              ? `${(((product.salePrice - product.costPrice) / product.salePrice) * 100).toFixed(1)}%`
+              ? `${(
+                  ((product.salePrice - product.costPrice) /
+                    product.salePrice) *
+                  100
+                ).toFixed(1)}%`
               : "—"
           }
         />
@@ -130,37 +134,50 @@ export function ProductDetail({
 
         {/* Action buttons */}
         {(onEdit || onAddStock || onDelete) && (
-          <YStack gap="$2" mt="$4">
-            <Separator mb="$2" />
+          <XStack
+            gap="$2"
+            mt="$4"
+            pt="$3"
+            borderTopWidth={1}
+            borderColor="$borderColor"
+          >
             {onAddStock && (
               <Button
+                flex={1}
                 theme="green"
-                icon={PackagePlus}
-                size="$4"
+                icon={<PackagePlus size={16} />}
+                size="$3.5"
                 onPress={onAddStock}
               >
-                Añadir stock
+                Stock
               </Button>
             )}
             {onEdit && (
-              <Button theme="blue" icon={Pencil} size="$4" onPress={onEdit}>
-                Editar producto
+              <Button
+                flex={1}
+                theme="blue"
+                icon={<Pencil size={16} />}
+                size="$3.5"
+                onPress={onEdit}
+              >
+                Editar
               </Button>
             )}
             {onDelete && (
               <Button
+                flex={1}
                 theme="red"
                 icon={
                   deleting ? <Spinner size="small" /> : <Trash2 size={16} />
                 }
-                size="$4"
+                size="$3.5"
                 onPress={onDelete}
                 disabled={deleting}
               >
-                {deleting ? "Eliminando..." : "Eliminar producto"}
+                {deleting ? "..." : "Eliminar"}
               </Button>
             )}
-          </YStack>
+          </XStack>
         )}
       </YStack>
     </Card>

@@ -103,6 +103,35 @@ export const AFFINITY_COLORS: Record<string, string> = {
   low: "#6b7280",
 };
 
+// ── Semantic status colors (sync, severity, medals) ──────────────────────────
+
+export const SEVERITY_COLORS = {
+  danger: { solid: "#ef4444", bg: "#fef2f2", darkBg: "#2d1515" },
+  warning: { solid: "#f59e0b", bg: "#fffbeb", darkBg: "#451a03" },
+  success: { solid: "#22c55e", bg: "#dcfce7", darkBg: "#14532d" },
+  info: { solid: "#3b82f6", bg: "#dbeafe", darkBg: "#1e3a5f" },
+} as const;
+
+export const SYNC_STATUS_COLORS = {
+  connecting: "#f59e0b",
+  sending: "#3b82f6",
+  receiving: "#3b82f6",
+  complete: "#22c55e",
+  error: "#ef4444",
+  idle: "#6b7280",
+} as const;
+
+export const MEDAL_COLORS = {
+  gold: "#FFD700",
+  silver: "#C0C0C0",
+  bronze: "#CD7F32",
+} as const;
+
+export const PAYMENT_COLORS = {
+  cash: { solid: "#22c55e", light: "#dcfce7" },
+  card: { solid: "#8b5cf6", light: "#dbeafe" },
+} as const;
+
 // ── Chart axis/label colors ──────────────────────────────────────────────────
 
 export const AXIS_LABEL_COLOR = "#888";

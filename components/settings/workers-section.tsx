@@ -1,6 +1,5 @@
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { useLan } from "@/contexts/lan-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import type { User } from "@/models/user";
@@ -17,12 +16,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Input, Sheet, Text as TText, XStack, YStack } from "tamagui";
+import {
+  Button,
+  Input,
+  Sheet,
+  Text as TText,
+  useThemeName,
+  XStack,
+  YStack,
+} from "tamagui";
 import { settingStyles as styles } from "./shared";
 
 export function WorkersSection() {
   const c = useColors();
-  const isDark = useColorScheme() === "dark";
+  const themeName = useThemeName();
+
   const userRepo = useUserRepository();
   const [workers, setWorkers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +44,6 @@ export function WorkersSection() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const themeName = isDark ? "dark" : "light";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,19 +237,21 @@ export function WorkersSection() {
                       style={[styles.iconBtn, { backgroundColor: c.editBg }]}
                       onPress={() => openEdit(w)}
                       activeOpacity={0.7}
+                      hitSlop={4}
                       accessibilityRole="button"
                       accessibilityLabel={`Editar ${w.name}`}
                     >
-                      <Edit3 size={15} color={c.muted as any} />
+                      <Edit3 size={17} color={c.muted as any} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.iconBtn, { backgroundColor: c.dangerBg }]}
                       onPress={() => handleDelete(w)}
                       activeOpacity={0.7}
+                      hitSlop={4}
                       accessibilityRole="button"
                       accessibilityLabel={`Eliminar ${w.name}`}
                     >
-                      <Trash2 size={15} color={c.danger as any} />
+                      <Trash2 size={17} color={c.danger as any} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -266,7 +274,7 @@ export function WorkersSection() {
           exitStyle={{ opacity: 0 }}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <Sheet.Frame theme={themeName as any} bg="$background">
+        <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <Sheet.ScrollView
             keyboardShouldPersistTaps="handled"

@@ -167,7 +167,7 @@ export function StoreBubble() {
           exitStyle={{ opacity: 0 }}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <Sheet.Frame p="$4" theme={themeName as any}>
+        <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <ScrollView>
             <YStack gap="$3" pt="$2">
@@ -202,8 +202,8 @@ export function StoreBubble() {
                             backgroundColor: s.color
                               ? `${s.color}22`
                               : isActive
-                                ? (theme.blue3?.val as string)
-                                : (theme.color3?.val as string),
+                              ? (theme.blue3?.val as string)
+                              : (theme.color3?.val as string),
                             overflow: "hidden",
                             borderWidth: isActive ? 2 : 0,
                             borderColor:

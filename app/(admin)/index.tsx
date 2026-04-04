@@ -8,7 +8,6 @@ import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { useLan } from "@/contexts/lan-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import {
   Bell,
@@ -42,7 +41,6 @@ export default function DashboardScreen() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
   const c = useColors();
-  const isDark = useColorScheme() === "dark";
   const { history, clearHistory, unseenCount, markAllSeen } =
     useNotifications();
   const { stopDiscovery, disconnectFromServer } = useLan();
@@ -132,10 +130,8 @@ export default function DashboardScreen() {
         onRequestClose={closeSync}
       >
         <SafeAreaView
-          style={[
-            indexStyles.modalRoot,
-            { backgroundColor: isDark ? "#1c1c1e" : "#ffffff" },
-          ]}
+          edges={["top"]}
+          style={[indexStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
             p="$3"
@@ -154,14 +150,7 @@ export default function DashboardScreen() {
             <TouchableOpacity
               onPress={closeSync}
               hitSlop={8}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: c.muted + "20",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              style={indexStyles.closeBtn}
             >
               <X size={18} color={c.text as any} />
             </TouchableOpacity>
@@ -178,10 +167,8 @@ export default function DashboardScreen() {
         onRequestClose={() => setHistoryOpen(false)}
       >
         <SafeAreaView
-          style={[
-            indexStyles.modalRoot,
-            { backgroundColor: isDark ? "#1c1c1e" : "#ffffff" },
-          ]}
+          edges={["top"]}
+          style={[indexStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
             p="$3"
@@ -200,14 +187,7 @@ export default function DashboardScreen() {
             <TouchableOpacity
               onPress={() => setHistoryOpen(false)}
               hitSlop={8}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: c.muted + "20",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              style={indexStyles.closeBtn}
             >
               <X size={18} color={c.text as any} />
             </TouchableOpacity>
@@ -224,4 +204,12 @@ export default function DashboardScreen() {
 
 const indexStyles = StyleSheet.create({
   modalRoot: { flex: 1 },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(128,128,128,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

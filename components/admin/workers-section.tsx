@@ -2,10 +2,10 @@ import { StatCard } from "@/components/admin/stat-card";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtMoneyFull,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtMoneyFull,
+  weekEndISO,
 } from "@/utils/format";
 import { Award, ShoppingCart, Trophy, Users } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
@@ -142,7 +142,9 @@ export function WorkersSection() {
         borderColor="$borderColor"
         style={{ borderRadius: 16 }}
       >
-        <PeriodSelector nav={nav} />
+        <YStack gap="$2">
+          <PeriodSelector nav={nav} />
+        </YStack>
       </Card>
 
       <FlatList

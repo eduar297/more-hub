@@ -41,7 +41,9 @@ export function ServerStatusBadge() {
           color={serverRunning ? "$green10" : "$color10"}
         >
           {serverRunning
-            ? `${connectedDisplays} display${connectedDisplays !== 1 ? "s" : ""}`
+            ? `${connectedDisplays} display${
+                connectedDisplays !== 1 ? "s" : ""
+              }`
             : "LAN off"}
         </Text>
       </XStack>
@@ -110,7 +112,7 @@ function ServerSheet({
         exitStyle={{ opacity: 0 }}
         backgroundColor="rgba(0,0,0,0.5)"
       />
-      <Sheet.Frame theme={themeName as any}>
+      <Sheet.Frame bg="$background" theme={themeName as any}>
         <Sheet.Handle />
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
           <YStack p="$4" gap="$4">

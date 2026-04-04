@@ -48,7 +48,9 @@ export function OverviewSection() {
   // Previous period data (for delta %)
   const [prevSales, setPrevSales] = useState(0);
   const [prevTickets, setPrevTickets] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prevPurchases, setPrevPurchases] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prevExpenses, setPrevExpenses] = useState(0);
 
   // Chart data

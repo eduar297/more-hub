@@ -1,36 +1,37 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Building2,
-  ChevronRight,
-  Package,
-  Plus,
-  ScanLine,
-  Search,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
-  X,
+    Building2,
+    ChevronRight,
+    Package,
+    Plus,
+    ScanLine,
+    Search,
+    ShoppingBag,
+    ShoppingCart,
+    Trash2,
+    X,
 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    StyleSheet,
 } from "react-native";
 import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Separator,
-  Sheet,
-  Spinner,
-  Text,
-  TextArea,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Label,
+    Separator,
+    Sheet,
+    Spinner,
+    Text,
+    TextArea,
+    XStack,
+    YStack,
 } from "tamagui";
 
 import { PeriodSelector } from "@/components/admin/period-selector";
@@ -497,22 +498,11 @@ export default function PurchasesScreen() {
               <Spinner size="large" />
             </YStack>
           ) : purchases.length === 0 ? (
-            <YStack
-              flex={1}
-              style={{ alignItems: "center", justifyContent: "center" }}
-              gap="$3"
-              px="$6"
-            >
-              <ShoppingBag size={48} color="$color8" />
-              <Text
-                fontSize="$5"
-                color="$color8"
-                style={{ textAlign: "center" }}
-              >
-                No hay compras registradas.{"\n"}Toca &quot;Nueva&quot; para
-                registrar una.
-              </Text>
-            </YStack>
+            <EmptyState
+              icon={<ShoppingBag size={48} color="$color8" />}
+              title="No hay compras registradas."
+              description='Toca "Nueva" para registrar una.'
+            />
           ) : (
             <FlatList
               data={purchases}
@@ -520,7 +510,7 @@ export default function PurchasesScreen() {
               contentContainerStyle={{ padding: 16, gap: 8 }}
               renderItem={({ item }) => (
                 <Card
-                  pressStyle={{ opacity: 0.8 }}
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
                   onPress={() => openDetail(item)}
                   bg="$color1"
                   borderWidth={1}
@@ -737,7 +727,7 @@ export default function PurchasesScreen() {
                   Proveedor
                 </Text>
                 <Card
-                  pressStyle={{ opacity: 0.8 }}
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
                   onPress={() => setShowSupplierPicker(true)}
                   bg="$color2"
                   p="$3"
@@ -940,7 +930,7 @@ export default function PurchasesScreen() {
 
               {/* "None" option */}
               <Card
-                pressStyle={{ opacity: 0.8 }}
+                pressStyle={{ opacity: 0.9, scale: 0.98 }}
                 onPress={() => {
                   setSelectedSupplier(null);
                   setShowSupplierPicker(false);
@@ -961,7 +951,7 @@ export default function PurchasesScreen() {
               {suppliers.map((s) => (
                 <Card
                   key={s.id}
-                  pressStyle={{ opacity: 0.8 }}
+                  pressStyle={{ opacity: 0.9, scale: 0.98 }}
                   onPress={() => {
                     setSelectedSupplier(s);
                     setShowSupplierPicker(false);

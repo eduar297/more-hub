@@ -874,7 +874,7 @@ export default function WorkerScreen() {
           exitStyle={{ opacity: 0 }}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <Sheet.Frame theme={themeName as any}>
+        <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <YStack p="$4" gap="$4">
             <Text fontSize="$6" fontWeight="bold" color="$color">

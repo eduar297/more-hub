@@ -1,5 +1,4 @@
 import { useDevice } from "@/contexts/device-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import { validateActivationCode } from "@/services/supabase/activation";
 import { getDeviceInfo } from "@/utils/device";
@@ -47,7 +46,6 @@ export function ActivationGate({
   onSuccess,
 }: ActivationGateProps) {
   const c = useColors();
-  const isDark = useColorScheme() === "dark";
   const { deviceId, activateAdmin } = useDevice();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -227,7 +225,7 @@ export function ActivationGate({
                     value={code}
                     onChangeText={handleCodeChange}
                     placeholder="Ej: K7M3X9PH"
-                    placeholderTextColor={isDark ? "#666" : "#aaa"}
+                    placeholderTextColor={c.muted}
                     autoCapitalize="characters"
                     autoCorrect={false}
                     maxLength={CODE_LENGTH}

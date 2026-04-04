@@ -5,34 +5,34 @@ import { useAuth } from "@/contexts/auth-context";
 import { useDevice } from "@/contexts/device-context";
 import { useLan } from "@/contexts/lan-context";
 import { useStore } from "@/contexts/store-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useColors } from "@/hooks/use-colors";
 import type { SyncCatalogData } from "@/services/lan/protocol";
 import {
-  applyReceivedCatalog,
-  checkCatalogNeeds,
-  deleteAllWorkerTickets,
-  getLastSyncAt,
-  prepareTicketsPayload,
-  saveCatalogHash,
-  type CatalogChangeSummary,
+    applyReceivedCatalog,
+    checkCatalogNeeds,
+    deleteAllWorkerTickets,
+    getLastSyncAt,
+    prepareTicketsPayload,
+    saveCatalogHash,
+    type CatalogChangeSummary,
 } from "@/services/lan/sync-service";
 import {
-  Download,
-  LayoutList,
-  ScanLine,
-  User,
-  Wifi,
+    Download,
+    LayoutList,
+    ScanLine,
+    User,
+    Wifi,
 } from "@tamagui/lucide-icons";
 import { Tabs } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useTheme } from "tamagui";
 
@@ -47,9 +47,8 @@ function formatBytes(bytes: number) {
 // ── Waiting-for-sync screen ─────────────────────────────────────────────────
 
 function WaitingForAdmin({ onReset }: { onReset: () => void }) {
-  const colorScheme = useColorScheme();
+  const c = useColors();
   const { connectionStatus, syncStatus, syncProgress, workerName } = useLan();
-  const isDark = colorScheme === "dark";
 
   const progressFraction =
     syncProgress && syncProgress.totalBytes > 0
@@ -102,29 +101,19 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
   const { title, subtitle, color, showProgress } = getStatusInfo();
 
   return (
-    <View
-      style={[
-        styles.waitRoot,
-        { backgroundColor: isDark ? "#151718" : "#ffffff" },
-      ]}
-    >
+    <View style={[styles.waitRoot, { backgroundColor: c.bg }]}>
       {/* Worker identity badge */}
       {workerName ? (
         <View
           style={[
             styles.nameBadge,
             {
-              backgroundColor: isDark ? "#1c2a1c" : "#ecfdf5",
-              borderColor: isDark ? "#2a4a2a" : "#a7f3d0",
+              backgroundColor: c.successBg,
+              borderColor: c.greenLight,
             },
           ]}
         >
-          <Text
-            style={[
-              styles.nameBadgeText,
-              { color: isDark ? "#86efac" : "#059669" },
-            ]}
-          >
+          <Text style={[styles.nameBadgeText, { color: c.green }]}>
             {workerName}
           </Text>
         </View>
@@ -135,24 +124,13 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
       ) : (
         <Wifi size={56} color={color as any} />
       )}
-      <Text
-        style={[styles.waitTitle, { color: isDark ? "#f2f2f7" : "#18181b" }]}
-      >
-        {title}
-      </Text>
-      <Text style={[styles.waitSub, { color: isDark ? "#888" : "#999" }]}>
-        {subtitle}
-      </Text>
+      <Text style={[styles.waitTitle, { color: c.text }]}>{title}</Text>
+      <Text style={[styles.waitSub, { color: c.muted }]}>{subtitle}</Text>
 
       {/* Progress bar */}
       {showProgress ? (
         <View style={styles.progressContainer}>
-          <View
-            style={[
-              styles.progressTrack,
-              { backgroundColor: isDark ? "#2a2a2a" : "#e5e5e5" },
-            ]}
-          >
+          <View style={[styles.progressTrack, { backgroundColor: c.border }]}>
             <View
               style={[
                 styles.progressFill,
@@ -173,12 +151,10 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
       )}
 
       <TouchableOpacity
-        style={[styles.resetBtn, { borderColor: isDark ? "#333" : "#ddd" }]}
+        style={[styles.resetBtn, { borderColor: c.border }]}
         onPress={onReset}
       >
-        <Text
-          style={[styles.resetBtnText, { color: isDark ? "#888" : "#999" }]}
-        >
+        <Text style={[styles.resetBtnText, { color: c.muted }]}>
           Cambiar rol
         </Text>
       </TouchableOpacity>
@@ -189,7 +165,7 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
 // ── Layout ──────────────────────────────────────────────────────────────────
 
 export default function WorkerLayout() {
-  const colorScheme = useColorScheme();
+  const c = useColors();
   const theme = useTheme();
   const tint = theme.green10?.val ?? "#22c55e";
   const db = useSQLiteContext();
@@ -446,13 +422,8 @@ export default function WorkerLayout() {
   // Show loading while checking DB
   if (hasSynced === null) {
     return (
-      <View
-        style={[
-          styles.waitRoot,
-          { backgroundColor: colorScheme === "dark" ? "#151718" : "#fff" },
-        ]}
-      >
-        <ActivityIndicator color="#22c55e" size="large" />
+      <View style={[styles.waitRoot, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.green} size="large" />
       </View>
     );
   }
@@ -479,15 +450,15 @@ export default function WorkerLayout() {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: colorScheme === "dark" ? "#151718" : "#ffffff",
+          backgroundColor: c.headerBg,
         },
-        headerTintColor: colorScheme === "dark" ? "#f2f2f7" : "#18181b",
+        headerTintColor: c.headerText,
         headerShadowVisible: false,
         tabBarActiveTintColor: tint,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: colorScheme === "dark" ? "#151718" : "#ffffff",
-          borderTopColor: colorScheme === "dark" ? "#2a2a2a" : "#e5e5e5",
+          backgroundColor: c.tabBarBg,
+          borderTopColor: c.tabBarBorder,
         },
       }}
     >

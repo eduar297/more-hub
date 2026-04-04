@@ -1,6 +1,7 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
+import { useColors } from "@/hooks/use-colors";
 import type { CreateProductInput, Product, SaleMode } from "@/models/product";
 import type { Unit } from "@/models/unit";
 import { Eye, EyeOff } from "@tamagui/lucide-icons";
@@ -32,8 +33,9 @@ export function ProductForm({
   loading,
 }: ProductFormProps) {
   const uid = useId();
+  const c = useColors();
   const isEdit = product !== undefined;
-  const barcode = isEdit ? product.barcode : (barcodeProp ?? "");
+  const barcode = isEdit ? product.barcode : barcodeProp ?? "";
 
   const [name, setName] = useState(isEdit ? product.name : "");
   const [costPrice, setCostPrice] = useState(
@@ -53,7 +55,7 @@ export function ProductForm({
     isEdit ? product.saleMode : "UNIT",
   );
   const [photoUri, setPhotoUri] = useState<string | null>(
-    isEdit ? (product.photoUri ?? null) : null,
+    isEdit ? product.photoUri ?? null : null,
   );
   const [visible, setVisible] = useState(isEdit ? product.visible : true);
 
@@ -84,10 +86,6 @@ export function ProductForm({
 
   return (
     <YStack gap="$3" p="$4">
-      <Text fontSize="$6" fontWeight="bold" color="$color">
-        {isEdit ? "Editar producto" : "Nuevo producto"}
-      </Text>
-
       {/* Photo */}
       <YStack gap="$1">
         <Label color="$color10" fontSize="$3">
@@ -111,8 +109,8 @@ export function ProductForm({
           {isEdit
             ? "El código de barras no puede modificarse"
             : scanned
-              ? "Código obtenido por escaneo"
-              : "Código generado automáticamente"}
+            ? "Código obtenido por escaneo"
+            : "Código generado automáticamente"}
         </Text>
       </YStack>
 
@@ -222,7 +220,7 @@ export function ProductForm({
           <Switch
             value={visible}
             onValueChange={setVisible}
-            trackColor={{ false: "#e5e7eb", true: "#3b82f6" }}
+            trackColor={{ false: c.border, true: c.blue }}
           />
         </XStack>
       )}
@@ -238,8 +236,8 @@ export function ProductForm({
         {loading
           ? "Guardando..."
           : isEdit
-            ? "Guardar cambios"
-            : "Crear producto"}
+          ? "Guardar cambios"
+          : "Crear producto"}
       </Button>
     </YStack>
   );

@@ -1,47 +1,42 @@
 import { PricingAnalysisSection } from "@/components/admin/pricing-analysis";
 import { PurchaseSuggestionsSection } from "@/components/admin/purchase-suggestions";
 import { SalesAnalysisSection } from "@/components/admin/sales-analysis";
-import { ProductDetail } from "@/components/product/product-detail";
+import { ProductCard } from "@/components/product/product-card";
 import { ProductForm } from "@/components/product/product-form";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { SearchInput } from "@/components/ui/search-input";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useColors } from "@/hooks/use-colors";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
 import type { CreateProductInput, Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
 import {
-  ChevronDown,
-  Package,
-  Plus,
-  ScanLine,
-  ShoppingCart,
-  TrendingDown,
-  TrendingUp,
+    ChevronDown,
+    Package,
+    Pencil,
+    Plus,
+    ScanLine,
+    ShoppingCart,
+    TrendingDown,
+    TrendingUp,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
-  Image,
-  Keyboard,
-  ScrollView,
-  SectionList,
-  StyleSheet,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    SectionList,
+    StyleSheet,
+    TouchableOpacity,
 } from "react-native";
-import {
-  Button,
-  Input,
-  Label,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
-} from "tamagui";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Spinner, Text, XStack, YStack } from "tamagui";
 
 // ── Product row ──────────────────────────────────────────────────────────────
 
@@ -119,14 +114,14 @@ function ProductRow({
 
 const rowStyles = StyleSheet.create({
   thumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
   },
   thumbPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: "rgba(128,128,128,0.12)",
     alignItems: "center",
     justifyContent: "center",
@@ -198,8 +193,7 @@ const SECTIONS: TabDef<Section>[] = [
 export default function ProductsScreen() {
   const products = useProductRepository();
   const units = useUnitRepository();
-  const colorScheme = useColorScheme();
-  const themeName = colorScheme === "dark" ? "dark" : "light";
+  const c = useColors();
 
   const [section, setSection] = useState<Section>("catalog");
   const [searchQuery, setSearchQuery] = useState("");
@@ -211,11 +205,11 @@ export default function ProductsScreen() {
     () => new Set(),
   );
 
-  // Sheets
-  const [showCreateSheet, setShowCreateSheet] = useState(false);
-  const [showDetailSheet, setShowDetailSheet] = useState(false);
-  const [showEditSheet, setShowEditSheet] = useState(false);
-  const [showStockSheet, setShowStockSheet] = useState(false);
+  // Product modal
+  type ModalMode = "create" | "view";
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>("view");
+  const [detailEditing, setDetailEditing] = useState(false);
   const [createBarcode, setCreateBarcode] = useState<string>("");
   const [scannedBarcode, setScannedBarcode] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -223,22 +217,14 @@ export default function ProductsScreen() {
   const [editSaving, setEditSaving] = useState(false);
   const [addingStock, setAddingStock] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [stockQty, setStockQty] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Track keyboard so the stock sheet can grow above it
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardWillShow", () =>
-      setKeyboardVisible(true),
-    );
-    const hide = Keyboard.addListener("keyboardWillHide", () =>
-      setKeyboardVisible(false),
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    setSelectedProduct(null);
+    setCreateBarcode("");
+    setScannedBarcode(false);
+    setDetailEditing(false);
   }, []);
 
   // Barcode scanner
@@ -246,11 +232,14 @@ export default function ProductsScreen() {
     onResult(result) {
       if (result.kind === "found") {
         setSelectedProduct(result.product);
-        setShowDetailSheet(true);
+        setDetailEditing(false);
+        setModalMode("view");
+        setModalOpen(true);
       } else {
         setCreateBarcode(result.barcode);
         setScannedBarcode(true);
-        setShowCreateSheet(true);
+        setModalMode("create");
+        setModalOpen(true);
       }
     },
     onError(msg) {
@@ -348,7 +337,8 @@ export default function ProductsScreen() {
   const handleAddManual = () => {
     setCreateBarcode(generateEAN13());
     setScannedBarcode(false);
-    setShowCreateSheet(true);
+    setModalMode("create");
+    setModalOpen(true);
   };
 
   const handleCreate = async (data: CreateProductInput) => {
@@ -357,10 +347,10 @@ export default function ProductsScreen() {
     try {
       const created = await products.create(data);
       setSelectedProduct(created);
-      setShowCreateSheet(false);
       setCreateBarcode("");
       setScannedBarcode(false);
-      setShowDetailSheet(true);
+      setDetailEditing(false);
+      setModalMode("view");
       await loadData();
     } catch (e) {
       setError("Error creando producto: " + (e as Error).message);
@@ -376,8 +366,7 @@ export default function ProductsScreen() {
     try {
       const updated = await products.update(selectedProduct.id, data);
       setSelectedProduct(updated);
-      setShowEditSheet(false);
-      setShowDetailSheet(true);
+      setDetailEditing(false);
       await loadData();
     } catch (e) {
       setError("Error actualizando: " + (e as Error).message);
@@ -386,10 +375,8 @@ export default function ProductsScreen() {
     }
   };
 
-  const handleAddStock = async () => {
+  const handleAddStock = async (qty: number) => {
     if (!selectedProduct) return;
-    const qty = parseFloat(stockQty);
-    if (isNaN(qty) || qty <= 0) return;
     setAddingStock(true);
     setError(null);
     try {
@@ -397,8 +384,6 @@ export default function ProductsScreen() {
         stockBaseQty: selectedProduct.stockBaseQty + qty,
       });
       setSelectedProduct(updated);
-      setStockQty("");
-      setShowStockSheet(false);
       await loadData();
     } catch (e) {
       setError("Error añadiendo stock: " + (e as Error).message);
@@ -413,8 +398,7 @@ export default function ProductsScreen() {
     setError(null);
     try {
       await products.delete(selectedProduct.id);
-      setShowDetailSheet(false);
-      setSelectedProduct(null);
+      closeModal();
       await loadData();
     } catch (e) {
       setError("Error eliminando: " + (e as Error).message);
@@ -528,7 +512,9 @@ export default function ProductsScreen() {
                   unit={unitMap.get(p.baseUnitId)}
                   onPress={() => {
                     setSelectedProduct(p);
-                    setShowDetailSheet(true);
+                    setDetailEditing(false);
+                    setModalMode("view");
+                    setModalOpen(true);
                   }}
                 />
               )}
@@ -552,162 +538,123 @@ export default function ProductsScreen() {
         <SalesAnalysisSection onPricesUpdated={loadData} />
       )}
 
-      {/* Create product sheet */}
-      <Sheet
-        open={showCreateSheet}
-        onOpenChange={setShowCreateSheet}
-        modal
-        snapPoints={[95]}
-        dismissOnSnapToBottom
+      {/* ── Product modal ── */}
+      <Modal
+        visible={modalOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={closeModal}
       >
-        <Sheet.Overlay
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
-        />
-        <Sheet.Frame theme={themeName as any}>
-          <Sheet.Handle />
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
+        <SafeAreaView
+          edges={["top"]}
+          style={[pStyles.modalRoot, { backgroundColor: c.modalBg }]}
+        >
+          {/* ── Header ── */}
+          <XStack
+            p="$3"
+            px="$4"
+            items="center"
+            justify="space-between"
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
           >
-            <ProductForm
-              key={createBarcode}
-              barcode={createBarcode}
-              scanned={scannedBarcode}
-              units={allUnits}
-              onSubmit={handleCreate}
-              loading={creating}
-            />
-          </ScrollView>
-        </Sheet.Frame>
-      </Sheet>
+            <XStack items="center" gap="$2" flex={1}>
+              {modalMode === "create" ? (
+                <Plus size={18} color={c.blue as any} />
+              ) : (
+                <Package size={18} color={c.blue as any} />
+              )}
+              <Text
+                fontSize={16}
+                fontWeight="700"
+                color="$color"
+                numberOfLines={1}
+                style={{ flexShrink: 1 }}
+              >
+                {modalMode === "create"
+                  ? "Nuevo producto"
+                  : selectedProduct?.name ?? "Detalle"}
+              </Text>
+            </XStack>
+            <XStack items="center" gap="$3">
+              {/* Edit toggle (only in view mode) */}
+              {modalMode === "view" && selectedProduct && (
+                <TouchableOpacity
+                  onPress={() => setDetailEditing((v) => !v)}
+                  hitSlop={8}
+                  style={[
+                    pStyles.headerBtn,
+                    detailEditing && { backgroundColor: c.blue + "20" },
+                  ]}
+                >
+                  <Pencil
+                    size={18}
+                    color={detailEditing ? (c.blue as any) : (c.text as any)}
+                  />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={closeModal}
+                hitSlop={8}
+                style={pStyles.headerBtn}
+              >
+                <X size={18} color={c.text as any} />
+              </TouchableOpacity>
+            </XStack>
+          </XStack>
 
-      {/* Product detail sheet */}
-      <Sheet
-        open={showDetailSheet}
-        onOpenChange={(open) => {
-          setShowDetailSheet(open);
-          if (!open) setSelectedProduct(null);
-        }}
-        modal
-        snapPoints={[95]}
-        dismissOnSnapToBottom
-      >
-        <Sheet.Overlay
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
-        />
-        <Sheet.Frame p="$4" theme={themeName as any}>
-          <Sheet.Handle />
-          <ScrollView>
-            {selectedProduct && (
-              <ProductDetail
-                product={selectedProduct}
-                onEdit={() => setShowEditSheet(true)}
-                onAddStock={() => setShowStockSheet(true)}
-                onDelete={handleDeletePress}
-                deleting={deleting}
-              />
-            )}
-          </ScrollView>
-        </Sheet.Frame>
-      </Sheet>
-
-      {/* Edit product sheet */}
-      <Sheet
-        open={showEditSheet}
-        onOpenChange={setShowEditSheet}
-        modal
-        snapPoints={[95]}
-        dismissOnSnapToBottom
-      >
-        <Sheet.Overlay
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
-        />
-        <Sheet.Frame theme={themeName as any}>
-          <Sheet.Handle />
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-          >
-            {selectedProduct && (
+          {/* ── Create ── */}
+          {modalMode === "create" && (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+            >
               <ProductForm
-                key={selectedProduct.id}
+                key={createBarcode}
+                barcode={createBarcode}
+                scanned={scannedBarcode}
+                units={allUnits}
+                onSubmit={handleCreate}
+                loading={creating}
+              />
+            </ScrollView>
+          )}
+
+          {/* ── View / Edit (ProductCard) ── */}
+          {modalMode === "view" && selectedProduct && (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+              contentContainerStyle={{ padding: 16 }}
+            >
+              <ProductCard
                 product={selectedProduct}
                 units={allUnits}
-                onSubmit={handleEdit}
-                loading={editSaving}
+                editing={detailEditing}
+                unitSymbol={unitMap.get(selectedProduct.baseUnitId)?.symbol}
+                onSave={handleEdit}
+                onAddStock={handleAddStock}
+                onDelete={handleDeletePress}
+                saving={editSaving}
+                addingStock={addingStock}
+                deleting={deleting}
               />
-            )}
-          </ScrollView>
-        </Sheet.Frame>
-      </Sheet>
-
-      {/* Stock entry sheet */}
-      <Sheet
-        open={showStockSheet}
-        onOpenChange={setShowStockSheet}
-        modal
-        snapPoints={[keyboardVisible ? 85 : 50]}
-        dismissOnSnapToBottom
-      >
-        <Sheet.Overlay
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
-        />
-        <Sheet.Frame p="$4" theme={themeName as any}>
-          <Sheet.Handle />
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-          >
-            <YStack gap="$3">
-              <Text fontSize="$5" fontWeight="bold" color="$color">
-                Añadir stock
-              </Text>
-              {selectedProduct && (
-                <Text color="$color10" fontSize="$3">
-                  Stock actual: {selectedProduct.stockBaseQty}{" "}
-                  {unitMap.get(selectedProduct.baseUnitId)?.symbol ?? "uds"}
-                </Text>
-              )}
-              <YStack gap="$1">
-                <Label htmlFor="stock-qty-input" color="$color10" fontSize="$3">
-                  Cantidad recibida
-                </Label>
-                <Input
-                  id="stock-qty-input"
-                  placeholder="0"
-                  value={stockQty}
-                  onChangeText={setStockQty}
-                  keyboardType="numeric"
-                  returnKeyType="done"
-                  size="$4"
-                />
-              </YStack>
-              <Button
-                theme="green"
-                size="$4"
-                icon={addingStock ? <Spinner /> : undefined}
-                disabled={
-                  addingStock ||
-                  !stockQty ||
-                  isNaN(parseFloat(stockQty)) ||
-                  parseFloat(stockQty) <= 0
-                }
-                onPress={handleAddStock}
-              >
-                {addingStock ? "Guardando..." : "Confirmar entrada"}
-              </Button>
-            </YStack>
-          </ScrollView>
-        </Sheet.Frame>
-      </Sheet>
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
     </YStack>
   );
 }
+
+const pStyles = StyleSheet.create({
+  modalRoot: { flex: 1 },
+  headerBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(128,128,128,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

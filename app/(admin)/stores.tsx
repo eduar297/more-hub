@@ -1,16 +1,17 @@
+import { EmptyState } from "@/components/ui/empty-state";
 import { Edit3, Plus, Store as StoreIcon, Trash2 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Alert, FlatList } from "react-native";
 import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Label,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 import { useStore } from "@/contexts/store-context";
@@ -241,18 +242,11 @@ export default function StoresScreen() {
           <Spinner size="large" />
         </YStack>
       ) : stores.length === 0 ? (
-        <YStack
-          flex={1}
-          style={{ alignItems: "center", justifyContent: "center" }}
-          gap="$3"
-          px="$6"
-        >
-          <StoreIcon size={48} color="$color8" />
-          <Text fontSize="$5" color="$color8" style={{ textAlign: "center" }}>
-            No hay tiendas registradas.{"\n"}Toca &quot;Nueva&quot; para agregar
-            una.
-          </Text>
-        </YStack>
+        <EmptyState
+          icon={<StoreIcon size={48} color="$color8" />}
+          title="No hay tiendas registradas."
+          description='Toca "Nueva" para agregar una.'
+        />
       ) : (
         <FlatList
           data={stores}
@@ -260,7 +254,7 @@ export default function StoresScreen() {
           contentContainerStyle={{ padding: 16, gap: 8 }}
           renderItem={({ item }) => (
             <Card
-              pressStyle={{ opacity: 0.8 }}
+              pressStyle={{ opacity: 0.9, scale: 0.98 }}
               onPress={() => {
                 setSelectedStore(item);
                 setShowDetailSheet(true);

@@ -272,7 +272,7 @@ export default function HistoryScreen() {
           exitStyle={{ opacity: 0 }}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <Sheet.Frame p="$4" theme={themeName as any}>
+        <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <ScrollView>
             {selectedTicket && (

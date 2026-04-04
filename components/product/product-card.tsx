@@ -1,0 +1,410 @@
+import { BarcodeDisplay } from "@/components/product/barcode-display";
+import { PhotoPicker } from "@/components/ui/photo-picker";
+import { UnitPicker } from "@/components/ui/unit-picker";
+import { useColors } from "@/hooks/use-colors";
+import type { CreateProductInput, Product, SaleMode } from "@/models/product";
+import type { Unit } from "@/models/unit";
+import {
+    Eye,
+    EyeOff,
+    Package,
+    PackagePlus,
+    Trash2,
+} from "@tamagui/lucide-icons";
+import { useEffect, useId, useState } from "react";
+import { Image, Switch } from "react-native";
+import {
+    Button,
+    Input,
+    Label,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
+} from "tamagui";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface ProductCardProps {
+  product: Product;
+  units: Unit[];
+  editing: boolean;
+  unitSymbol?: string;
+  onSave: (data: CreateProductInput) => void;
+  onAddStock: (qty: number) => void;
+  onDelete: () => void;
+  saving?: boolean;
+  addingStock?: boolean;
+  deleting?: boolean;
+}
+
+// ── Detail row (read-only) ───────────────────────────────────────────────────
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <XStack
+      py="$2.5"
+      style={{ justifyContent: "space-between", alignItems: "center" }}
+    >
+      <Text color="$color10" fontSize="$3">
+        {label}
+      </Text>
+      <Text color="$color" fontSize="$4" fontWeight="500">
+        {value}
+      </Text>
+    </XStack>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export function ProductCard({
+  product,
+  units,
+  editing,
+  unitSymbol,
+  onSave,
+  onAddStock,
+  onDelete,
+  saving,
+  addingStock,
+  deleting,
+}: ProductCardProps) {
+  const uid = useId();
+  const c = useColors();
+
+  // Edit state — reset when product changes or editing toggles off
+  const [name, setName] = useState(product.name);
+  const [costPrice, setCostPrice] = useState(String(product.costPrice));
+  const [salePrice, setSalePrice] = useState(String(product.salePrice));
+  const [unitId, setUnitId] = useState(String(product.baseUnitId));
+  const [saleMode, setSaleMode] = useState<SaleMode>(product.saleMode);
+  const [photoUri, setPhotoUri] = useState<string | null>(
+    product.photoUri ?? null,
+  );
+  const [visible, setVisible] = useState(product.visible);
+  const [stockQty, setStockQty] = useState("");
+
+  // Reset form fields when switching into edit mode or product changes
+  useEffect(() => {
+    setName(product.name);
+    setCostPrice(String(product.costPrice));
+    setSalePrice(String(product.salePrice));
+    setUnitId(String(product.baseUnitId));
+    setSaleMode(product.saleMode);
+    setPhotoUri(product.photoUri ?? null);
+    setVisible(product.visible);
+    setStockQty("");
+  }, [product, editing]);
+
+  const parsedCost = parseFloat(costPrice);
+  const parsedSale = parseFloat(salePrice);
+  const canSave =
+    name.trim().length > 0 &&
+    !isNaN(parsedCost) &&
+    parsedCost > 0 &&
+    !isNaN(parsedSale) &&
+    parsedSale > 0 &&
+    unitId.length > 0;
+
+  const parsedStockQty = parseFloat(stockQty);
+  const canAddStock = !isNaN(parsedStockQty) && parsedStockQty > 0;
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave({
+      name: name.trim(),
+      barcode: product.barcode,
+      pricePerBaseUnit: parsedCost,
+      costPrice: parsedCost,
+      salePrice: parsedSale,
+      visible,
+      stockBaseQty: product.stockBaseQty,
+      saleMode,
+      baseUnitId: parseInt(unitId, 10),
+      photoUri,
+    });
+  };
+
+  const margin =
+    product.costPrice > 0
+      ? (
+          ((product.salePrice - product.costPrice) / product.salePrice) *
+          100
+        ).toFixed(1)
+      : null;
+
+  // ── READ-ONLY VIEW ─────────────────────────────────────────────────────────
+
+  if (!editing) {
+    return (
+      <YStack gap="$2">
+        {/* Photo */}
+        {product.photoUri && (
+          <Image
+            source={{ uri: product.photoUri }}
+            style={{
+              width: "100%",
+              height: 220,
+              borderRadius: 14,
+            }}
+            resizeMode="cover"
+          />
+        )}
+
+        {/* Barcode visual */}
+        {/^\d{13}$/.test(product.barcode) && (
+          <YStack
+            bg="$color2"
+            style={{ borderRadius: 14, alignItems: "center" }}
+            p="$3"
+            gap="$2"
+          >
+            <BarcodeDisplay
+              barcode={product.barcode}
+              width={240}
+              barHeight={50}
+            />
+            <Text fontSize="$2" color="$color10" letterSpacing={2}>
+              {product.barcode}
+            </Text>
+          </YStack>
+        )}
+
+        {/* Info rows */}
+        <YStack
+          bg="$color2"
+          style={{ borderRadius: 14, overflow: "hidden" }}
+          px="$4"
+        >
+          <InfoRow
+            label="Precio costo"
+            value={`$${product.costPrice.toFixed(2)}`}
+          />
+          <Separator />
+          <InfoRow
+            label="Precio venta"
+            value={`$${product.salePrice.toFixed(2)}`}
+          />
+          <Separator />
+          <InfoRow label="Margen" value={margin ? `${margin}%` : "—"} />
+        </YStack>
+
+        <YStack
+          bg="$color2"
+          style={{ borderRadius: 14, overflow: "hidden" }}
+          px="$4"
+        >
+          <InfoRow
+            label="Stock disponible"
+            value={`${product.stockBaseQty} ${unitSymbol ?? "uds"}`}
+          />
+          <Separator />
+          <InfoRow
+            label="Modo de venta"
+            value={product.saleMode === "UNIT" ? "Por unidad" : "Variable"}
+          />
+          <Separator />
+          <InfoRow
+            label="Visible"
+            value={product.visible ? "Sí" : "No — oculto"}
+          />
+        </YStack>
+
+        {/* Delete */}
+        <Button
+          mt="$2"
+          theme="red"
+          variant="outlined"
+          size="$3.5"
+          icon={deleting ? <Spinner size="small" /> : <Trash2 size={16} />}
+          onPress={onDelete}
+          disabled={deleting}
+        >
+          {deleting ? "Eliminando..." : "Eliminar producto"}
+        </Button>
+      </YStack>
+    );
+  }
+
+  // ── EDIT VIEW ──────────────────────────────────────────────────────────────
+
+  return (
+    <YStack gap="$3">
+      {/* Photo */}
+      <YStack gap="$1">
+        <Label color="$color10" fontSize="$3">
+          Foto
+        </Label>
+        <PhotoPicker uri={photoUri} onChange={setPhotoUri} />
+      </YStack>
+
+      {/* Barcode (read-only) */}
+      <YStack
+        bg="$color2"
+        style={{ borderRadius: 14, alignItems: "center" }}
+        p="$3"
+        gap="$1"
+      >
+        <BarcodeDisplay barcode={product.barcode} width={240} barHeight={44} />
+        <Text fontSize="$1" color="$color8">
+          {product.barcode} — no editable
+        </Text>
+      </YStack>
+
+      {/* Name */}
+      <YStack gap="$1">
+        <Label htmlFor={`${uid}-name`} color="$color10" fontSize="$3">
+          Nombre
+        </Label>
+        <Input
+          id={`${uid}-name`}
+          placeholder="Nombre del producto"
+          value={name}
+          onChangeText={setName}
+          returnKeyType="done"
+          size="$4"
+        />
+      </YStack>
+
+      {/* Prices side-by-side */}
+      <XStack gap="$3">
+        <YStack flex={1} gap="$1">
+          <Label htmlFor={`${uid}-cost`} color="$color10" fontSize="$3">
+            Precio costo
+          </Label>
+          <Input
+            id={`${uid}-cost`}
+            placeholder="0.00"
+            value={costPrice}
+            onChangeText={setCostPrice}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            size="$4"
+          />
+        </YStack>
+        <YStack flex={1} gap="$1">
+          <Label htmlFor={`${uid}-sale`} color="$color10" fontSize="$3">
+            Precio venta
+          </Label>
+          <Input
+            id={`${uid}-sale`}
+            placeholder="0.00"
+            value={salePrice}
+            onChangeText={setSalePrice}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            size="$4"
+          />
+        </YStack>
+      </XStack>
+
+      {/* Unit */}
+      <YStack gap="$1">
+        <Label color="$color10" fontSize="$3">
+          Unidad base
+        </Label>
+        <UnitPicker units={units} value={unitId} onChange={setUnitId} />
+      </YStack>
+
+      {/* Sale mode */}
+      <YStack gap="$1">
+        <Label color="$color10" fontSize="$3">
+          Modo de venta
+        </Label>
+        <XStack gap="$2">
+          <Button
+            flex={1}
+            theme={saleMode === "UNIT" ? "blue" : undefined}
+            onPress={() => setSaleMode("UNIT")}
+            size="$3.5"
+          >
+            Por unidad
+          </Button>
+          <Button
+            flex={1}
+            theme={saleMode === "VARIABLE" ? "blue" : undefined}
+            onPress={() => setSaleMode("VARIABLE")}
+            size="$3.5"
+          >
+            Variable
+          </Button>
+        </XStack>
+      </YStack>
+
+      {/* Visible toggle */}
+      <XStack
+        gap="$3"
+        style={{ alignItems: "center", justifyContent: "space-between" }}
+      >
+        <XStack gap="$2" style={{ alignItems: "center", flex: 1 }}>
+          {visible ? (
+            <Eye size={18} color="$green10" />
+          ) : (
+            <EyeOff size={18} color="$color8" />
+          )}
+          <Label
+            color="$color10"
+            fontSize="$3"
+            style={{ margin: 0, lineHeight: 18 }}
+          >
+            Visible para vendedores
+          </Label>
+        </XStack>
+        <Switch
+          value={visible}
+          onValueChange={setVisible}
+          trackColor={{ false: c.border, true: c.blue }}
+        />
+      </XStack>
+
+      {/* Save */}
+      <Button
+        size="$4"
+        theme="blue"
+        disabled={saving || !canSave}
+        onPress={handleSave}
+        icon={saving ? <Spinner /> : undefined}
+      >
+        {saving ? "Guardando..." : "Guardar cambios"}
+      </Button>
+
+      {/* ── Add stock (inline) ── */}
+      <Separator my="$1" />
+      <YStack gap="$2">
+        <XStack items="center" gap="$2">
+          <PackagePlus size={16} color="$green10" />
+          <Text fontSize="$4" fontWeight="600" color="$color">
+            Añadir stock
+          </Text>
+          <Text fontSize="$2" color="$color10" ml="auto">
+            Actual: {product.stockBaseQty} {unitSymbol ?? "uds"}
+          </Text>
+        </XStack>
+        <XStack gap="$2" items="center">
+          <Input
+            flex={1}
+            placeholder="Cantidad"
+            value={stockQty}
+            onChangeText={setStockQty}
+            keyboardType="numeric"
+            returnKeyType="done"
+            size="$4"
+          />
+          <Button
+            theme="green"
+            size="$4"
+            icon={
+              addingStock ? <Spinner size="small" /> : <Package size={16} />
+            }
+            disabled={addingStock || !canAddStock}
+            onPress={() => canAddStock && onAddStock(parsedStockQty)}
+          >
+            {addingStock ? "..." : "Añadir"}
+          </Button>
+        </XStack>
+      </YStack>
+    </YStack>
+  );
+}

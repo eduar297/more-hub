@@ -2,7 +2,6 @@ import { PhotoPicker } from "@/components/ui/photo-picker";
 import { PinPromptDialog } from "@/components/ui/pin-prompt-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useStore } from "@/contexts/store-context";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import { useStoreRepository } from "@/hooks/use-store-repository";
 import { useUserRepository } from "@/hooks/use-user-repository";
@@ -27,12 +26,21 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { Button, Input, Sheet, Text as TText, XStack, YStack } from "tamagui";
+import {
+    Button,
+    Input,
+    Sheet,
+    Text as TText,
+    useThemeName,
+    XStack,
+    YStack,
+} from "tamagui";
 import { STORE_COLORS, settingStyles as styles } from "./shared";
 
 export function StoresSection() {
   const c = useColors();
-  const isDark = useColorScheme() === "dark";
+  const themeName = useThemeName();
+
   const storeRepo = useStoreRepository();
   const { stores, refreshStores, currentStore, setCurrentStore } = useStore();
   const { user } = useAuth();
@@ -48,8 +56,6 @@ export function StoresSection() {
   const [saving, setSaving] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<StoreModel | null>(null);
-
-  const themeName = isDark ? "dark" : "light";
 
   useFocusEffect(
     useCallback(() => {
@@ -280,10 +286,11 @@ export function StoresSection() {
                         style={[styles.iconBtn, { backgroundColor: c.editBg }]}
                         onPress={() => openEdit(s)}
                         activeOpacity={0.7}
+                        hitSlop={4}
                         accessibilityRole="button"
                         accessibilityLabel={`Editar ${s.name}`}
                       >
-                        <Edit3 size={15} color={c.muted as any} />
+                        <Edit3 size={17} color={c.muted as any} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[
@@ -292,10 +299,11 @@ export function StoresSection() {
                         ]}
                         onPress={() => handleDelete(s)}
                         activeOpacity={0.7}
+                        hitSlop={4}
                         accessibilityRole="button"
                         accessibilityLabel={`Eliminar ${s.name}`}
                       >
-                        <Trash2 size={15} color={c.danger as any} />
+                        <Trash2 size={17} color={c.danger as any} />
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
@@ -332,7 +340,7 @@ export function StoresSection() {
           exitStyle={{ opacity: 0 }}
           backgroundColor="rgba(0,0,0,0.5)"
         />
-        <Sheet.Frame theme={themeName as any} bg="$background">
+        <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <Sheet.ScrollView
             keyboardShouldPersistTaps="handled"
@@ -373,7 +381,7 @@ export function StoresSection() {
                         alignItems: "center",
                         justifyContent: "center",
                         borderWidth: color === clr ? 3 : 0,
-                        borderColor: isDark ? "#fff" : "#18181b",
+                        borderColor: c.text,
                       }}
                     >
                       {color === clr && <Check size={16} color="white" />}

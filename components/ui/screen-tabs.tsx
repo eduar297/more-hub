@@ -57,9 +57,11 @@ export function ScreenTabs<T extends string>({
             }}
             style={{
               flex: 1,
+              minHeight: 40,
               paddingVertical: isCompact ? 7 : 9,
               paddingHorizontal: isCompact ? 2 : 4,
               alignItems: "center",
+              justifyContent: "center",
               gap: isCompact ? 2 : 4,
               borderRadius: 11,
               borderWidth: 1,
