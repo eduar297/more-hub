@@ -84,6 +84,8 @@ interface LanContextValue {
   sendCatalogAck: (clientId: string) => void;
   /** Worker: acknowledge sync prepare (ready to receive) */
   sendSyncPrepareAck: (clientId: string) => void;
+  /** Admin: acknowledge tickets received (so Worker can delete them) */
+  sendTicketsAck: () => void;
   /** Callback: set from outside to handle sync messages on Worker/Admin */
   onSyncCatalogReceived: React.MutableRefObject<
     ((clientId: string, data: SyncCatalogData) => void) | null
@@ -103,6 +105,10 @@ interface LanContextValue {
 
   /** Worker server ref for direct access */
   serverRef: React.MutableRefObject<LanServer | null>;
+
+  /** Monotonic counter bumped after each catalog apply — screens watch this to reload */
+  catalogVersion: number;
+  bumpCatalogVersion: () => void;
 }
 
 const LanContext = createContext<LanContextValue>({
@@ -132,12 +138,15 @@ const LanContext = createContext<LanContextValue>({
   sendTickets: () => {},
   sendCatalogAck: () => {},
   sendSyncPrepareAck: () => {},
+  sendTicketsAck: () => {},
   onSyncCatalogReceived: { current: null },
   onSyncTicketsReceived: { current: null },
   onSyncTicketsRequested: { current: null },
   onSyncPrepareReceived: { current: null },
   onSyncTicketsAckReceived: { current: null },
   serverRef: { current: null },
+  catalogVersion: 0,
+  bumpCatalogVersion: () => {},
 });
 
 // Module-level singleton so the server survives React hot-reloads.
@@ -175,6 +184,11 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  const bumpCatalogVersion = useCallback(
+    () => setCatalogVersion((v) => v + 1),
+    [],
+  );
 
   const updateDisplayCount = useCallback(() => {
     const count = serverRef.current?.displayClients.length ?? 0;
@@ -403,7 +417,7 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus("sending_catalog");
         break;
       case "sync_catalog_ack":
-        setSyncStatus("requesting_tickets");
+        setSyncStatus("complete");
         break;
       case "sync_tickets": {
         setSyncStatus("receiving_tickets");
@@ -432,6 +446,10 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   const requestTickets = useCallback((since: string | null) => {
     setSyncStatus("requesting_tickets");
     clientRef.current?.send({ type: "sync_tickets_request", since });
+  }, []);
+
+  const sendTicketsAck = useCallback(() => {
+    clientRef.current?.send({ type: "sync_tickets_ack" });
   }, []);
 
   const startDiscovery = useCallback(() => {
@@ -520,12 +538,15 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       sendTickets,
       sendCatalogAck,
       sendSyncPrepareAck,
+      sendTicketsAck,
       onSyncCatalogReceived,
       onSyncTicketsReceived,
       onSyncTicketsRequested,
       onSyncPrepareReceived,
       onSyncTicketsAckReceived,
       serverRef,
+      catalogVersion,
+      bumpCatalogVersion,
     }),
     [
       workerName,
@@ -554,6 +575,8 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       sendTickets,
       sendCatalogAck,
       sendSyncPrepareAck,
+      sendTicketsAck,
+      catalogVersion,
     ],
   );
 

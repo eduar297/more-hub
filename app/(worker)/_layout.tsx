@@ -202,6 +202,7 @@ export default function WorkerLayout() {
     sendCatalogAck,
     sendSyncPrepareAck,
     sendTickets,
+    bumpCatalogVersion,
   } = useLan();
   const [hasSynced, setHasSynced] = useState<boolean | null>(null); // null = loading
 
@@ -300,6 +301,12 @@ export default function WorkerLayout() {
     onSyncCatalogReceived.current = async (clientId, data: SyncCatalogData) => {
       try {
         console.log(`[Worker] Catalog received from ${clientId}, applying...`);
+        // Log a few product stocks for debugging
+        for (const p of (data.products as any[]).slice(0, 3)) {
+          console.log(
+            `[Worker] Incoming product "${p.name}" stock=${p.stockBaseQty}`,
+          );
+        }
         const summary = await applyReceivedCatalog(db, data);
         console.log(`[Worker] Catalog applied successfully, sending ACK`);
 
@@ -307,6 +314,9 @@ export default function WorkerLayout() {
 
         // Refresh stores so LoginSheet / StoreContext picks up newly synced stores
         await refreshStores();
+
+        // Bump catalog version so worker screens reload products, etc.
+        bumpCatalogVersion();
 
         setHasSynced(true);
 
@@ -320,7 +330,13 @@ export default function WorkerLayout() {
       onSyncCatalogReceived.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, sendCatalogAck, onSyncCatalogReceived, refreshStores]);
+  }, [
+    db,
+    sendCatalogAck,
+    onSyncCatalogReceived,
+    refreshStores,
+    bumpCatalogVersion,
+  ]);
 
   // Handle ticket request from Admin
   useEffect(() => {

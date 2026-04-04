@@ -72,6 +72,7 @@ export function SyncSection() {
     sendSyncPrepare,
     sendCatalog,
     requestTickets,
+    sendTicketsAck,
     onSyncTicketsReceived,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onSyncCatalogReceived: _onSyncCatalogReceived,
@@ -170,7 +171,7 @@ export function SyncSection() {
     [],
   );
 
-  // Wire up ticket received callback
+  // Wire up ticket received callback — tickets arrive FIRST, then we prepare+send catalog
   useEffect(() => {
     onSyncTicketsReceived.current = async (data) => {
       const worker = activeWorkerRef.current;
@@ -178,19 +179,47 @@ export function SyncSection() {
 
       try {
         const imported = await applyReceivedTickets(db, data);
-        const now = new Date().toLocaleString("es-MX");
+        console.log(
+          `[SyncSection] Tickets applied: ${imported} imported, ${
+            (data.tickets as any[]).length
+          } total received`,
+        );
+
+        // Prepare catalog AFTER tickets applied — stock is now correct
+        const payload = await prepareCatalogPayload(db);
+        // Log first 3 products' stock for debugging
+        for (const p of (payload.products as any[]).slice(0, 3)) {
+          console.log(
+            `[SyncSection] Catalog product "${p.name}" stock=${p.stockBaseQty}`,
+          );
+        }
+        catalogPayloadRef.current = payload;
+        const serialized = serialize({ type: "sync_catalog", data: payload });
+        const totalBytes = serialized.length;
+        catalogBytesRef.current = totalBytes;
+
+        const catalogSummary: CatalogSentSummary = {
+          products: (payload.products as any[]).length,
+          stores: (payload.stores as any[]).length,
+          workers: (payload.workers as any[]).length,
+          units: (payload.units as any[]).length,
+        };
+
         updateWorker(worker.server.host, {
-          state: "done",
+          state: "preparing",
           ticketsImported: imported,
-          lastSyncAt: now,
-          error: null,
+          catalogSent: catalogSummary,
+          catalogBytes: totalBytes,
         });
-        disconnectFromServer();
-        activeWorkerRef.current = null;
+
+        // Now send sync_prepare with corrected-stock catalog
+        sendSyncPrepare(catalogBytesRef.current);
       } catch (e: any) {
         updateWorker(worker.server.host, {
           state: "error",
-          error: `Error al guardar tickets: ${e?.message || "desconocido"}`,
+          error: `Error al procesar tickets/catálogo: ${
+            e?.message || "desconocido"
+          }`,
         });
         disconnectFromServer();
         activeWorkerRef.current = null;
@@ -200,7 +229,13 @@ export function SyncSection() {
     return () => {
       onSyncTicketsReceived.current = null;
     };
-  }, [db, updateWorker, disconnectFromServer, onSyncTicketsReceived]);
+  }, [
+    db,
+    updateWorker,
+    disconnectFromServer,
+    sendSyncPrepare,
+    onSyncTicketsReceived,
+  ]);
 
   // React to syncStatus changes from lan-context
   useEffect(() => {
@@ -218,11 +253,28 @@ export function SyncSection() {
       sendCatalog(catalogPayloadRef.current);
     }
 
-    if (syncStatus === "requesting_tickets") {
-      updateWorker(worker.server.host, { state: "receiving" });
-      requestTickets(null); // request ALL tickets (first sync)
+    // Worker acknowledged catalog → sync complete
+    if (syncStatus === "complete") {
+      sendTicketsAck();
+      const now = new Date().toLocaleString("es-MX");
+      updateWorker(worker.server.host, {
+        state: "done",
+        lastSyncAt: now,
+        error: null,
+      });
+      // Small delay so sync_tickets_ack reaches worker before socket is destroyed
+      setTimeout(() => {
+        disconnectFromServer();
+      }, 300);
+      activeWorkerRef.current = null;
     }
-  }, [syncStatus, requestTickets, sendCatalog, updateWorker]);
+  }, [
+    syncStatus,
+    sendCatalog,
+    sendTicketsAck,
+    updateWorker,
+    disconnectFromServer,
+  ]);
 
   // React to connection status
   useEffect(() => {
@@ -234,17 +286,11 @@ export function SyncSection() {
     );
     if (!worker) return;
 
-    if (
-      connectionStatus === "paired" &&
-      catalogPayloadRef.current &&
-      shouldSendPrepareRef.current
-    ) {
+    if (connectionStatus === "paired" && shouldSendPrepareRef.current) {
       shouldSendPrepareRef.current = false;
-      console.log(
-        `[SyncSection] Paired! Sending sync_prepare (${catalogBytesRef.current} bytes)`,
-      );
-      updateWorker(worker.server.host, { state: "preparing" });
-      sendSyncPrepare(catalogBytesRef.current);
+      console.log(`[SyncSection] Paired! Requesting tickets first`);
+      updateWorker(worker.server.host, { state: "receiving" });
+      requestTickets(null);
     }
 
     if (connectionStatus === "error" && worker.state !== "idle") {
@@ -285,46 +331,24 @@ export function SyncSection() {
         return;
       }
 
-      try {
-        // Prepare catalog payload
-        const payload = await prepareCatalogPayload(db);
+      activeWorkerRef.current = info;
+      catalogPayloadRef.current = null; // will be prepared after receiving tickets
 
-        catalogPayloadRef.current = payload;
-        activeWorkerRef.current = info;
+      updateWorker(info.server.host, {
+        state: "connecting",
+        error: null,
+        ticketsImported: 0,
+        catalogSent: null,
+        catalogBytes: 0,
+      });
 
-        // Calculate serialized size so worker knows how much data to expect
-        const serialized = serialize({ type: "sync_catalog", data: payload });
-        const totalBytes = serialized.length;
-        catalogBytesRef.current = totalBytes;
-
-        const catalogSummary: CatalogSentSummary = {
-          products: (payload.products as any[]).length,
-          stores: (payload.stores as any[]).length,
-          workers: (payload.workers as any[]).length,
-          units: (payload.units as any[]).length,
-        };
-
-        updateWorker(info.server.host, {
-          state: "connecting",
-          error: null,
-          ticketsImported: 0,
-          catalogSent: catalogSummary,
-          catalogBytes: totalBytes,
-        });
-
-        shouldSendPrepareRef.current = true;
-        connectToServer(info.server.host, info.server.port);
-        console.log(
-          `[SyncSection] syncWithWorker → connecting to ${info.server.host}:${info.server.port}, payload=${totalBytes} bytes`,
-        );
-      } catch {
-        updateWorker(info.server.host, {
-          state: "error",
-          error: "Error al preparar catálogo",
-        });
-      }
+      shouldSendPrepareRef.current = true;
+      connectToServer(info.server.host, info.server.port);
+      console.log(
+        `[SyncSection] syncWithWorker → connecting to ${info.server.host}:${info.server.port}`,
+      );
     },
-    [db, connectToServer, updateWorker],
+    [connectToServer, updateWorker],
   );
 
   // ── Render ───────────────────────────────────────────────────────────────

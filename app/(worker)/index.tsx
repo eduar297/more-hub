@@ -10,41 +10,41 @@ import type { PaymentMethod } from "@/models/ticket";
 import type { CartItemWire } from "@/services/lan/protocol";
 import { todayISO } from "@/utils/format";
 import {
-  AlertCircle,
-  Banknote,
-  CreditCard,
-  Minus,
-  Package,
-  Plus,
-  Receipt,
-  ScanLine,
-  Search,
-  ShoppingCart,
-  Trash2,
-  TrendingUp,
-  X,
+    AlertCircle,
+    Banknote,
+    CreditCard,
+    Minus,
+    Package,
+    Plus,
+    Receipt,
+    ScanLine,
+    Search,
+    ShoppingCart,
+    Trash2,
+    TrendingUp,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  Keyboard,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
 } from "react-native";
 import {
-  Button,
-  Card,
-  Input,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 // ── Cart item type ───────────────────────────────────────────────────────────
@@ -252,6 +252,7 @@ export default function WorkerScreen() {
     broadcastCheckout,
     startServer,
     serverRunning,
+    catalogVersion,
   } = useLan();
   const serverStarted = useRef(false);
 
@@ -285,6 +286,14 @@ export default function WorkerScreen() {
       productRepo.findAllVisible().then(setVisibleProducts);
     }, [loadSummary, productRepo]),
   );
+
+  // Reload products when catalog is updated via sync (more reliable than useFocusEffect alone)
+  useEffect(() => {
+    if (catalogVersion > 0) {
+      productRepo.findAllVisible().then(setVisibleProducts);
+      loadSummary();
+    }
+  }, [catalogVersion, productRepo, loadSummary]);
 
   // Barcode scanner — adds to cart
   const addToCart = useCallback((product: Product) => {
@@ -431,6 +440,8 @@ export default function WorkerScreen() {
       broadcastCheckout(cartTotal, cartItemCount, paymentMethod);
       clearCart();
       await loadSummary();
+      // Reload products so stock reflects the sale just made
+      productRepo.findAllVisible().then(setVisibleProducts);
     } catch (e) {
       setError("Error registrando venta: " + (e as Error).message);
     } finally {
