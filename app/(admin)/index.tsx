@@ -7,6 +7,7 @@ import { NotificationHistorySection, SyncSection } from "@/components/settings";
 import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
+import { useLan } from "@/contexts/lan-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import {
@@ -43,12 +44,19 @@ export default function DashboardScreen() {
   const isDark = useColorScheme() === "dark";
   const { history, clearHistory, unseenCount, markAllSeen } =
     useNotifications();
+  const { stopDiscovery, disconnectFromServer } = useLan();
   const navigation = useNavigation();
 
   const openHistory = useCallback(() => {
     setHistoryOpen(true);
     markAllSeen();
   }, [markAllSeen]);
+
+  const closeSync = useCallback(() => {
+    stopDiscovery();
+    disconnectFromServer();
+    setSyncOpen(false);
+  }, [stopDiscovery, disconnectFromServer]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -113,7 +121,7 @@ export default function DashboardScreen() {
         visible={syncOpen}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setSyncOpen(false)}
+        onRequestClose={closeSync}
       >
         <SafeAreaView
           style={[
@@ -136,7 +144,7 @@ export default function DashboardScreen() {
               </TText>
             </XStack>
             <TouchableOpacity
-              onPress={() => setSyncOpen(false)}
+              onPress={closeSync}
               hitSlop={8}
               style={{
                 width: 32,

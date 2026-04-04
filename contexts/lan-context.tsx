@@ -392,43 +392,6 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     neededPhotos: string[];
   } | null>(null);
 
-  // Create client with the correct role
-  useEffect(() => {
-    if (!deviceId) return;
-    const clientRole =
-      deviceRole === "ADMIN"
-        ? "ADMIN"
-        : deviceRole === "DISPLAY"
-        ? "DISPLAY"
-        : null;
-    if (!clientRole) return; // Worker doesn't need a client
-
-    const client = new LanClient(deviceId, clientRole);
-    console.log(
-      `[LanCtx:Client] Creating LanClient role=${clientRole} deviceId=${deviceId}`,
-    );
-    client.setCallbacks({
-      onStatusChange: (s) => {
-        console.log(`[LanCtx:Client] Status changed: ${s}`);
-        setConnectionStatus(s);
-      },
-      onServersFound: (servers) => {
-        setDiscoveredServers(servers);
-      },
-      onMessage: (msg) => {
-        console.log(`[LanCtx:Client] Message received: type=${msg.type}`);
-        handleServerMessage(msg);
-      },
-    });
-    clientRef.current = client;
-
-    return () => {
-      client.disconnect();
-      client.stopDiscovery();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId, deviceRole]);
-
   const handleServerMessage = useCallback((msg: LanMessage) => {
     switch (msg.type) {
       case "cart_update":
@@ -481,6 +444,55 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Create client with the correct role
+  // For DISPLAY: eagerly (needs cart mirror immediately)
+  // For ADMIN:  lazily (only when sync is opened)
+  const ensureClient = useCallback(() => {
+    if (clientRef.current) return clientRef.current;
+    if (!deviceId) return null;
+
+    const clientRole =
+      deviceRole === "ADMIN"
+        ? "ADMIN"
+        : deviceRole === "DISPLAY"
+        ? "DISPLAY"
+        : null;
+    if (!clientRole) return null;
+
+    const client = new LanClient(deviceId, clientRole);
+    console.log(
+      `[LanCtx:Client] Creating LanClient role=${clientRole} deviceId=${deviceId}`,
+    );
+    client.setCallbacks({
+      onStatusChange: (s) => {
+        console.log(`[LanCtx:Client] Status changed: ${s}`);
+        setConnectionStatus(s);
+      },
+      onServersFound: (servers) => {
+        setDiscoveredServers(servers);
+      },
+      onMessage: (msg) => {
+        console.log(`[LanCtx:Client] Message received: type=${msg.type}`);
+        handleServerMessage(msg);
+      },
+    });
+    clientRef.current = client;
+    return client;
+  }, [deviceId, deviceRole, handleServerMessage]);
+
+  // Auto-create for DISPLAY only (needs cart mirror on launch)
+  useEffect(() => {
+    if (deviceRole !== "DISPLAY" || !deviceId) return;
+    ensureClient();
+
+    return () => {
+      clientRef.current?.disconnect();
+      clientRef.current?.stopDiscovery();
+      clientRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId, deviceRole]);
+
   // Admin sync actions
   const sendSyncPrepare = useCallback(
     (
@@ -514,8 +526,8 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startDiscovery = useCallback(() => {
-    clientRef.current?.startDiscovery();
-  }, []);
+    ensureClient()?.startDiscovery();
+  }, [ensureClient]);
 
   const stopDiscovery = useCallback(() => {
     clientRef.current?.stopDiscovery();
@@ -528,16 +540,17 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
           code ?? "none"
         })`,
       );
-      if (!clientRef.current) {
+      const client = ensureClient();
+      if (!client) {
         console.warn(
-          "[LanCtx:Client] clientRef.current is NULL! Cannot connect.",
+          "[LanCtx:Client] Could not create client. Cannot connect.",
         );
         return;
       }
 
-      clientRef.current.connect(host, port, code);
+      client.connect(host, port, code);
     },
-    [],
+    [ensureClient],
   );
 
   const disconnectFromServer = useCallback(() => {
@@ -555,11 +568,17 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, []);
 
-  // Cleanup checkout timer
+  // Cleanup checkout timer + admin client on unmount
   useEffect(() => {
     return () => {
       if (checkoutTimerRef.current) {
         clearTimeout(checkoutTimerRef.current);
+      }
+      // Clean up lazily-created admin client
+      if (clientRef.current) {
+        clientRef.current.disconnect();
+        clientRef.current.stopDiscovery();
+        clientRef.current = null;
       }
     };
   }, []);
