@@ -5,10 +5,6 @@ export interface Store {
   phone: string | null;
   logoUri: string | null;
   color: string;
-  /** HH:mm format, e.g. "08:00" */
-  openingTime: string | null;
-  /** HH:mm format, e.g. "18:00" */
-  closingTime: string | null;
   createdAt: string;
 }
 

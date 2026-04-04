@@ -16,8 +16,6 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       phone TEXT,
       logoUri TEXT,
       color TEXT NOT NULL DEFAULT '#3b82f6',
-      openingTime TEXT,
-      closingTime TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
 

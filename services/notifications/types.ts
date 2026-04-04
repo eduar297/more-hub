@@ -36,6 +36,8 @@ export interface ScheduledReminder {
   category: NotificationCategory;
   /** Body text shown in the notification */
   body: string;
+  /** Whether the user can delete this reminder (false for built-in sync reminders) */
+  deletable?: boolean;
 }
 
 /** Keys for notification preferences stored in app_settings */
@@ -65,6 +67,7 @@ export const DEFAULT_SYNC_REMINDERS: ScheduledReminder[] = [
     enabled: true,
     category: "sync_reminder",
     body: "Es hora de sincronizar con los vendedores antes de iniciar la jornada.",
+    deletable: false,
   },
   {
     id: "sync_close",
@@ -74,5 +77,6 @@ export const DEFAULT_SYNC_REMINDERS: ScheduledReminder[] = [
     enabled: true,
     category: "sync_reminder",
     body: "Recuerda sincronizar para recoger los tickets del día.",
+    deletable: false,
   },
 ];

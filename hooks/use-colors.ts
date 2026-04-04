@@ -13,6 +13,8 @@ export function useColors() {
     blueLight: theme.blue3?.val as string,
     green: theme.green10?.val as string,
     greenLight: theme.green3?.val as string,
+    orange: theme.orange10?.val as string,
+    orangeLight: theme.orange3?.val as string,
     danger: theme.red10?.val as string,
     dangerBg: theme.red3?.val as string,
     successBg: theme.green3?.val as string,

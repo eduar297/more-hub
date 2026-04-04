@@ -1,24 +1,29 @@
 import {
-  PreferencesSection,
-  ProfileSection,
-  StoresSection,
-  SyncSection,
-  WorkersSection,
+    PreferencesSection,
+    ProfileSection,
+    StoresSection,
+    SyncSection,
+    WorkersSection,
 } from "@/components/settings";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { useColors } from "@/hooks/use-colors";
 import {
-  RefreshCw,
-  Settings,
-  Store,
-  UserCog,
-  Users,
+    RefreshCw,
+    Settings,
+    Store,
+    UserCog,
+    Users,
 } from "@tamagui/lucide-icons";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-type SettingTab = "workers" | "profile" | "stores" | "prefs" | "sync";
+type SettingTab =
+  | "workers"
+  | "profile"
+  | "stores"
+  | "prefs"
+  | "sync";
 
 const TABS: TabDef<SettingTab>[] = [
   { key: "profile", label: "Mi Perfil", Icon: UserCog },

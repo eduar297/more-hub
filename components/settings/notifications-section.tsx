@@ -1,18 +1,34 @@
 import { useNotifications } from "@/components/ui/notification-provider";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import type {
     NotificationPrefKey,
     ScheduledReminder,
 } from "@/services/notifications/types";
+import { Picker } from "@react-native-picker/picker";
 import {
     Bell,
     BellOff,
     Clock,
     Package,
+    Plus,
     RefreshCw,
+    Trash2,
+    X,
 } from "@tamagui/lucide-icons";
-import React, { useCallback } from "react";
-import { Switch, Text, TouchableOpacity, View } from "react-native";
+import * as Crypto from "expo-crypto";
+import React, { useCallback, useState } from "react";
+import {
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { Button, Input, Text as TText, XStack, YStack } from "tamagui";
 import { settingStyles as styles } from "./shared";
 
 // ── Pref display config ─────────────────────────────────────────────────────
@@ -60,29 +76,92 @@ const PREF_ITEMS: {
 
 export function NotificationCards() {
   const c = useColors();
+  const isDark = useColorScheme() === "dark";
   const {
     prefs,
     togglePref,
     reminders,
     updateReminder,
+    addReminder,
+    deleteReminder,
     hasPermission,
     notify,
   } = useNotifications();
 
-  const handleEditTime = useCallback(
-    (reminder: ScheduledReminder) => {
-      const nextHour = (reminder.hour + 1) % 24;
-      updateReminder({ ...reminder, hour: nextHour });
-    },
-    [updateReminder],
-  );
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingReminder, setEditingReminder] =
+    useState<ScheduledReminder | null>(null);
+  const [formLabel, setFormLabel] = useState("");
+  const [formBody, setFormBody] = useState("");
+  const [formHour, setFormHour] = useState(8);
+  const [formMinute, setFormMinute] = useState(0);
 
-  const handleEditTimeMinute = useCallback(
+  const openEditSheet = useCallback((reminder: ScheduledReminder) => {
+    setEditingReminder(reminder);
+    setFormLabel(reminder.label);
+    setFormBody(reminder.body);
+    setFormHour(reminder.hour);
+    setFormMinute(reminder.minute);
+    setSheetOpen(true);
+  }, []);
+
+  const openCreateSheet = useCallback(() => {
+    setEditingReminder(null);
+    setFormLabel("");
+    setFormBody("");
+    setFormHour(9);
+    setFormMinute(0);
+    setSheetOpen(true);
+  }, []);
+
+  const handleSaveReminder = useCallback(async () => {
+    const label = formLabel.trim();
+    if (!label) return;
+    const body = formBody.trim() || label;
+
+    if (editingReminder) {
+      await updateReminder({
+        ...editingReminder,
+        label,
+        body,
+        hour: formHour,
+        minute: formMinute,
+      });
+    } else {
+      await addReminder({
+        id: `custom_${Crypto.randomUUID()}`,
+        label,
+        body,
+        hour: formHour,
+        minute: formMinute,
+        enabled: true,
+        category: "general",
+        deletable: true,
+      });
+    }
+    setSheetOpen(false);
+  }, [
+    editingReminder,
+    formLabel,
+    formBody,
+    formHour,
+    formMinute,
+    updateReminder,
+    addReminder,
+  ]);
+
+  const handleDeleteReminder = useCallback(
     (reminder: ScheduledReminder) => {
-      const nextMinute = (reminder.minute + 15) % 60;
-      updateReminder({ ...reminder, minute: nextMinute });
+      Alert.alert("Eliminar recordatorio", `¿Eliminar "${reminder.label}"?`, [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => deleteReminder(reminder.id),
+        },
+      ]);
     },
-    [updateReminder],
+    [deleteReminder],
   );
 
   const handleTestNotification = useCallback(() => {
@@ -185,11 +264,29 @@ export function NotificationCards() {
           { backgroundColor: c.card, borderColor: c.border },
         ]}
       >
-        <View style={styles.cardTitleRow}>
-          <Clock size={14} color={c.blue as any} />
-          <Text style={[styles.cardTitle, { color: c.text }]}>
-            Recordatorios programados
-          </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View style={styles.cardTitleRow}>
+            <Clock size={14} color={c.blue as any} />
+            <Text style={[styles.cardTitle, { color: c.text }]}>
+              Recordatorios programados
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.addBtn,
+              { backgroundColor: c.blue, paddingVertical: 6 },
+            ]}
+            onPress={openCreateSheet}
+          >
+            <Plus size={14} color="#fff" />
+            <Text style={[styles.addBtnText, { fontSize: 12 }]}>Nuevo</Text>
+          </TouchableOpacity>
         </View>
         <Text
           style={[
@@ -197,74 +294,246 @@ export function NotificationCards() {
             { color: c.muted, paddingHorizontal: 14, marginTop: -4 },
           ]}
         >
-          Recibe un recordatorio diario para sincronizar con los vendedores
+          Toca un recordatorio para ajustar su horario y mensaje
         </Text>
 
         {reminders.map((reminder) => (
           <View key={reminder.id} style={styles.prefRow}>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={[styles.workerName, { color: c.text }]}>
-                {reminder.label}
-              </Text>
+            <TouchableOpacity
+              style={{ flex: 1, gap: 4 }}
+              onPress={() => openEditSheet(reminder)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              >
+                {reminder.deletable !== false ? (
+                  <Bell size={12} color={c.muted as any} />
+                ) : (
+                  <RefreshCw size={12} color={c.blue as any} />
+                )}
+                <Text style={[styles.workerName, { color: c.text }]}>
+                  {reminder.label}
+                </Text>
+              </View>
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 2,
+                  gap: 4,
                   opacity: reminder.enabled ? 1 : 0.4,
                 }}
               >
                 <Clock size={12} color={c.blue as any} />
-                <TouchableOpacity
-                  onPress={() => handleEditTime(reminder)}
-                  disabled={!reminder.enabled}
-                  hitSlop={8}
-                >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      color: c.blue,
-                      fontWeight: "600",
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {String(reminder.hour).padStart(2, "0")}
-                  </Text>
-                </TouchableOpacity>
                 <Text
-                  style={{ fontSize: 15, color: c.blue, fontWeight: "600" }}
+                  style={{
+                    fontSize: 15,
+                    color: c.blue,
+                    fontWeight: "600",
+                    fontVariant: ["tabular-nums"],
+                  }}
                 >
-                  :
+                  {String(reminder.hour).padStart(2, "0")}:
+                  {String(reminder.minute).padStart(2, "0")}
                 </Text>
-                <TouchableOpacity
-                  onPress={() => handleEditTimeMinute(reminder)}
-                  disabled={!reminder.enabled}
-                  hitSlop={8}
-                >
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      color: c.blue,
-                      fontWeight: "600",
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {String(reminder.minute).padStart(2, "0")}
-                  </Text>
-                </TouchableOpacity>
                 <Text style={{ fontSize: 11, color: c.muted, marginLeft: 4 }}>
                   toca para ajustar
                 </Text>
               </View>
+            </TouchableOpacity>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              {reminder.deletable !== false && (
+                <TouchableOpacity
+                  onPress={() => handleDeleteReminder(reminder)}
+                  hitSlop={8}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    backgroundColor: c.dangerBg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Trash2 size={14} color={c.danger as any} />
+                </TouchableOpacity>
+              )}
+              <Switch
+                value={reminder.enabled}
+                onValueChange={(v) =>
+                  updateReminder({ ...reminder, enabled: v })
+                }
+                trackColor={{ false: c.border, true: c.blue }}
+              />
             </View>
-            <Switch
-              value={reminder.enabled}
-              onValueChange={(v) => updateReminder({ ...reminder, enabled: v })}
-              trackColor={{ false: c.border, true: c.blue }}
-            />
           </View>
         ))}
       </View>
+
+      {/* ── Reminder edit/create Modal ────────────────────────────── */}
+      <Modal
+        visible={sheetOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSheetOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1 }}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              paddingHorizontal: 20,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: isDark ? "#1c1c1e" : "#ffffff",
+                borderRadius: 20,
+                overflow: "hidden",
+              }}
+            >
+              <YStack gap="$3" p="$4">
+                <XStack items="center" justify="space-between">
+                  <TText fontSize="$6" fontWeight="bold" color="$color" flex={1}>
+                    {editingReminder
+                      ? "Editar recordatorio"
+                      : "Nuevo recordatorio"}
+                  </TText>
+                  <TouchableOpacity
+                    onPress={() => setSheetOpen(false)}
+                    hitSlop={8}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: c.muted + "20",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <X size={18} color={c.text as any} />
+                  </TouchableOpacity>
+                </XStack>
+
+                {/* Label */}
+                <YStack gap="$1">
+                  <TText
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$color10"
+                    textTransform="uppercase"
+                    letterSpacing={0.5}
+                  >
+                    Nombre *
+                  </TText>
+                  <Input
+                    placeholder="Ej: Revisar inventario"
+                    value={formLabel}
+                    onChangeText={(v: string) => setFormLabel(v)}
+                    autoCapitalize="sentences"
+                    size="$4"
+                  />
+                </YStack>
+
+                {/* Body */}
+                <YStack gap="$1">
+                  <TText
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$color10"
+                    textTransform="uppercase"
+                    letterSpacing={0.5}
+                  >
+                    Mensaje
+                  </TText>
+                  <Input
+                    placeholder="Texto que aparecerá en la notificación"
+                    value={formBody}
+                    onChangeText={(v: string) => setFormBody(v)}
+                    autoCapitalize="sentences"
+                    size="$4"
+                  />
+                </YStack>
+
+                {/* Time picker */}
+                <YStack gap="$1">
+                  <TText
+                    fontSize="$2"
+                    fontWeight="600"
+                    color="$color10"
+                    textTransform="uppercase"
+                    letterSpacing={0.5}
+                  >
+                    Hora
+                  </TText>
+                  <XStack items="center" justify="center">
+                    <View style={{ width: 100 }}>
+                      <Picker
+                        selectedValue={formHour}
+                        onValueChange={(v: number) => setFormHour(v)}
+                        itemStyle={{ color: c.text, fontSize: 22 }}
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <Picker.Item
+                            key={i}
+                            label={String(i).padStart(2, "0")}
+                            value={i}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                    <TText fontSize={24} fontWeight="700" color="$color10">
+                      :
+                    </TText>
+                    <View style={{ width: 100 }}>
+                      <Picker
+                        selectedValue={formMinute}
+                        onValueChange={(v: number) => setFormMinute(v)}
+                        itemStyle={{ color: c.text, fontSize: 22 }}
+                      >
+                        {Array.from({ length: 60 }, (_, i) => (
+                          <Picker.Item
+                            key={i}
+                            label={String(i).padStart(2, "0")}
+                            value={i}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  </XStack>
+                </YStack>
+
+                <XStack gap="$2.5" mt="$1">
+                  <Button
+                    flex={1}
+                    variant="outlined"
+                    onPress={() => setSheetOpen(false)}
+                    size="$4"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    flex={1}
+                    theme="blue"
+                    onPress={handleSaveReminder}
+                    disabled={!formLabel.trim()}
+                    opacity={!formLabel.trim() ? 0.5 : 1}
+                    size="$4"
+                  >
+                    Guardar
+                  </Button>
+                </XStack>
+              </YStack>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }

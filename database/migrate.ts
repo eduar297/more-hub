@@ -15,8 +15,6 @@ async function ensureTables(db: SQLiteDatabase) {
       phone TEXT,
       logoUri TEXT,
       color TEXT NOT NULL DEFAULT '#3b82f6',
-      openingTime TEXT,
-      closingTime TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
 
@@ -148,6 +146,17 @@ async function ensureTables(db: SQLiteDatabase) {
       storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id)
     );
 
+    CREATE TABLE IF NOT EXISTS notification_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      dedupeKey TEXT,
+      seen INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+
     CREATE TABLE IF NOT EXISTS sync_metadata (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       last_sync_at TEXT,
@@ -159,7 +168,7 @@ async function ensureTables(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 18;
+  const DATABASE_VERSION = 20;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -490,6 +499,28 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE stores ADD COLUMN closingTime TEXT;
     `);
     currentVersion = 18;
+  }
+
+  if (currentVersion === 18) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS notification_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        dedupeKey TEXT,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+    `);
+    currentVersion = 19;
+  }
+
+  if (currentVersion === 19) {
+    await db.execAsync(`
+      ALTER TABLE notification_history ADD COLUMN seen INTEGER NOT NULL DEFAULT 0;
+    `);
+    currentVersion = 20;
   }
 
   await seedUnits(db);

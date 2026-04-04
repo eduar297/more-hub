@@ -9,23 +9,23 @@ import { useUserRepository } from "@/hooks/use-user-repository";
 import type { CreateStoreInput, Store as StoreModel } from "@/models/store";
 import { hashPin } from "@/utils/auth";
 import {
-  AlertCircle,
-  Check,
-  Edit3,
-  Plus,
-  Store,
-  Trash2,
+    AlertCircle,
+    Check,
+    Edit3,
+    Plus,
+    Store,
+    Trash2,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { Button, Input, Sheet, Text as TText, XStack, YStack } from "tamagui";
 import { STORE_COLORS, settingStyles as styles } from "./shared";
@@ -94,8 +94,6 @@ export function StoresSection() {
         phone: phone.trim() || null,
         logoUri,
         color,
-        openingTime: null,
-        closingTime: null,
       };
       if (editing) {
         await storeRepo.update(editing.id, data);

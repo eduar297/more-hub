@@ -1,42 +1,43 @@
+import { useNotifications } from "@/components/ui/notification-provider";
 import { useLan } from "@/contexts/lan-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import type { DiscoveredServer } from "@/services/lan/lan-client";
 import { LAN_PORT, serialize } from "@/services/lan/protocol";
 import {
-  applyReceivedTickets,
-  attachPhotos,
-  prepareCatalogMeta,
-  type TicketImportSummary,
+    applyReceivedTickets,
+    attachPhotos,
+    prepareCatalogMeta,
+    type TicketImportSummary,
 } from "@/services/lan/sync-service";
 import {
-  AlertCircle,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  Camera,
-  CheckCircle,
-  Image,
-  Key,
-  Package,
-  Receipt,
-  RefreshCw,
-  SkipForward,
-  Store,
-  Users,
-  Wifi,
-  WifiOff,
-  Zap,
+    AlertCircle,
+    ArrowDownToLine,
+    ArrowUpFromLine,
+    Camera,
+    CheckCircle,
+    Image,
+    Key,
+    Package,
+    Receipt,
+    RefreshCw,
+    SkipForward,
+    Store,
+    Users,
+    Wifi,
+    WifiOff,
+    Zap,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ export function SyncSection() {
   const c = useColors();
   const isDark = useColorScheme() === "dark";
   const db = useSQLiteContext();
+  const { checkStockAlerts } = useNotifications();
   const {
     discoveredServers,
     connectionStatus,
@@ -353,6 +355,8 @@ export function SyncSection() {
         lastSyncAt: now,
         error: null,
       });
+      // Check stock alerts now that tickets have decremented inventory
+      checkStockAlerts();
       // Small delay so sync_tickets_ack reaches worker before socket is destroyed
       setTimeout(() => {
         disconnectFromServer();
@@ -365,6 +369,7 @@ export function SyncSection() {
     sendTicketsAck,
     updateWorker,
     disconnectFromServer,
+    checkStockAlerts,
   ]);
 
   // React to connection status

@@ -3,17 +3,18 @@ import { InventorySection } from "@/components/admin/inventory-section";
 import { OverviewSection } from "@/components/admin/overview-section";
 import { SalesSection } from "@/components/admin/sales-section";
 import { WorkersSection } from "@/components/admin/workers-section";
+import { NotificationHistorySection } from "@/components/settings";
+import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  TrendingUp,
-  Users,
-} from "@tamagui/lucide-icons";
-import { useState } from "react";
-import { YStack } from "tamagui";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useColors } from "@/hooks/use-colors";
+import { Bell, LayoutDashboard, Package, ShoppingCart, TrendingUp, Users, X } from "@tamagui/lucide-icons";
+import { useNavigation } from "expo-router";
+import { useCallback, useLayoutEffect, useState } from "react";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Text as TText, XStack, YStack } from "tamagui";
 
 type Section = "overview" | "sales" | "inventory" | "finance" | "workers";
 
@@ -27,6 +28,57 @@ const SECTIONS: TabDef<Section>[] = [
 
 export default function DashboardScreen() {
   const [section, setSection] = useState<Section>("overview");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const c = useColors();
+  const isDark = useColorScheme() === "dark";
+  const { history, clearHistory, unseenCount, markAllSeen } = useNotifications();
+  const navigation = useNavigation();
+
+  const openHistory = useCallback(() => {
+    setHistoryOpen(true);
+    markAllSeen();
+  }, [markAllSeen]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={openHistory}
+          hitSlop={8}
+          style={{ marginRight: 12, position: "relative" }}
+        >
+          <Bell size={22} color={c.text as any} />
+          {unseenCount > 0 && (
+            <View
+              style={{
+                position: "absolute",
+                top: -6,
+                right: -8,
+                minWidth: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: c.danger,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 4,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: "700",
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {unseenCount > 99 ? "99+" : unseenCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, openHistory, c.text, c.danger, unseenCount]);
 
   return (
     <YStack flex={1} bg="$background">
@@ -38,6 +90,59 @@ export default function DashboardScreen() {
       {section === "inventory" && <InventorySection />}
       {section === "finance" && <FinanceSection />}
       {section === "workers" && <WorkersSection />}
+
+      {/* Notification history modal */}
+      <Modal
+        visible={historyOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setHistoryOpen(false)}
+      >
+        <SafeAreaView
+          style={[
+            indexStyles.modalRoot,
+            { backgroundColor: isDark ? "#1c1c1e" : "#ffffff" },
+          ]}
+        >
+          <XStack
+            p="$3"
+            px="$4"
+            items="center"
+            justify="space-between"
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
+          >
+            <XStack items="center" gap="$2">
+              <Bell size={18} color={c.blue as any} />
+              <TText fontSize={16} fontWeight="700" color="$color">
+                Notificaciones
+              </TText>
+            </XStack>
+            <TouchableOpacity
+              onPress={() => setHistoryOpen(false)}
+              hitSlop={8}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: c.muted + "20",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <X size={18} color={c.text as any} />
+            </TouchableOpacity>
+          </XStack>
+          <NotificationHistorySection
+            historyData={history}
+            onClear={clearHistory}
+          />
+        </SafeAreaView>
+      </Modal>
     </YStack>
   );
 }
+
+const indexStyles = StyleSheet.create({
+  modalRoot: { flex: 1 },
+});
