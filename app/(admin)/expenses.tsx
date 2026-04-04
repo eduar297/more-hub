@@ -11,6 +11,7 @@ import {
     Sheet,
     Spinner,
     Text,
+    TextArea,
     XStack,
     YStack,
 } from "tamagui";
@@ -179,13 +180,14 @@ function ExpenseForm({
         <Label htmlFor={`${uid}-desc`} color="$color10" fontSize="$3">
           Descripción *
         </Label>
-        <Input
+        <TextArea
           id={`${uid}-desc`}
           placeholder="Ej: Pago de electricidad marzo"
           value={description}
           onChangeText={setDescription}
-          returnKeyType="next"
           size="$4"
+          numberOfLines={3}
+          verticalAlign="top"
         />
       </YStack>
 
