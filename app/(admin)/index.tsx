@@ -20,6 +20,7 @@ import {
   Users,
   X,
 } from "@tamagui/lucide-icons";
+import * as Haptics from "expo-haptics";
 import { useNavigation } from "expo-router";
 import { useCallback, useLayoutEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -48,6 +49,7 @@ export default function DashboardScreen() {
   const navigation = useNavigation();
 
   const openHistory = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setHistoryOpen(true);
     markAllSeen();
   }, [markAllSeen]);
@@ -62,7 +64,13 @@ export default function DashboardScreen() {
     navigation.setOptions({
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 24 }}>
-          <TouchableOpacity onPress={() => setSyncOpen(true)} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSyncOpen(true);
+            }}
+            hitSlop={8}
+          >
             <RefreshCw size={24} color={c.blue as any} />
           </TouchableOpacity>
           <TouchableOpacity

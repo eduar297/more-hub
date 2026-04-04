@@ -5,39 +5,40 @@ import { useColors } from "@/hooks/use-colors";
 import type { DiscoveredServer } from "@/services/lan/lan-client";
 import { LAN_PORT, serialize } from "@/services/lan/protocol";
 import {
-    applyReceivedTickets,
-    attachPhotos,
-    prepareCatalogMeta,
-    type TicketImportSummary,
+  applyReceivedTickets,
+  attachPhotos,
+  prepareCatalogMeta,
+  type TicketImportSummary,
 } from "@/services/lan/sync-service";
 import {
-    AlertCircle,
-    ArrowDownToLine,
-    ArrowUpFromLine,
-    Camera,
-    CheckCircle,
-    Image,
-    Key,
-    Package,
-    Receipt,
-    RefreshCw,
-    SkipForward,
-    Store,
-    Users,
-    Wifi,
-    WifiOff,
-    Zap,
+  AlertCircle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Camera,
+  CheckCircle,
+  Image,
+  Key,
+  Package,
+  Receipt,
+  RefreshCw,
+  SkipForward,
+  Store,
+  Users,
+  Wifi,
+  WifiOff,
+  Zap,
 } from "@tamagui/lucide-icons";
+import * as Haptics from "expo-haptics";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -115,6 +116,7 @@ export function SyncSection() {
   // ── Discovery ────────────────────────────────────────────────────────────
 
   const startScan = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setWorkers([]);
     setScanning(true);
     startDiscovery();
@@ -128,6 +130,7 @@ export function SyncSection() {
   const connectManually = useCallback(() => {
     const ip = manualIp.trim();
     if (!ip) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     let host = ip;
     let port = LAN_PORT;
@@ -252,6 +255,7 @@ export function SyncSection() {
           photoManifestRef.current,
         );
       } catch (e: any) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         updateWorker(worker.server.host, {
           state: "error",
           error: `Error al procesar tickets/catálogo: ${
@@ -348,6 +352,7 @@ export function SyncSection() {
 
     // Worker acknowledged catalog → sync complete
     if (syncStatus === "complete") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       sendTicketsAck();
       const now = new Date().toLocaleString("es-MX");
       updateWorker(worker.server.host, {
@@ -390,6 +395,7 @@ export function SyncSection() {
     }
 
     if (connectionStatus === "error" && worker.state !== "idle") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       updateWorker(worker.server.host, {
         state: "error",
         error: "No se pudo conectar al Worker",
@@ -407,6 +413,7 @@ export function SyncSection() {
         worker.state === "preparing")
     ) {
       disconnectFromServer(); // stops auto-reconnect
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       updateWorker(worker.server.host, {
         state: "error",
         error: "Conexión perdida durante sincronización",
@@ -426,6 +433,8 @@ export function SyncSection() {
       ) {
         return;
       }
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       activeWorkerRef.current = info;
       catalogPayloadRef.current = null; // will be prepared after receiving tickets
@@ -506,7 +515,7 @@ export function SyncSection() {
             placeholderTextColor={mutedText}
             value={manualIp}
             onChangeText={setManualIp}
-            keyboardType="decimal-pad"
+            keyboardType="numbers-and-punctuation"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="go"
