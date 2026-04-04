@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/ui/empty-state";
+import { ICON_BTN_BG, OVERLAY } from "@/constants/colors";
 import {
     Building2,
     ChevronRight,
@@ -578,7 +579,7 @@ export default function PurchasesScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
@@ -708,7 +709,7 @@ export default function PurchasesScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
@@ -918,7 +919,7 @@ export default function PurchasesScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
@@ -1192,7 +1193,7 @@ const thumbStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: "rgba(128,128,128,0.12)",
+    backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
   },

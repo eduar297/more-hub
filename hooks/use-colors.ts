@@ -1,3 +1,13 @@
+import {
+  BLUE_TINT,
+  BORDER_SUBTLE,
+  ICON_BTN_BG,
+  OVERLAY,
+  OVERLAY_HEAVY,
+  SCRIM,
+  WHITE_FADED,
+  WHITE_SOFT,
+} from "@/constants/colors";
 import { useTheme } from "tamagui";
 
 export function useColors() {
@@ -38,5 +48,15 @@ export function useColors() {
     tabBarBg: theme.background?.val as string,
     tabBarBorder: theme.borderColor?.val as string,
     modalBg: theme.color1?.val as string,
+
+    // ── Overlays & translucent ────────────────────────────────────────────
+    overlay: OVERLAY,
+    overlayHeavy: OVERLAY_HEAVY,
+    scrim: SCRIM,
+    iconBtnBg: ICON_BTN_BG,
+    blueTint: BLUE_TINT,
+    whiteFaded: WHITE_FADED,
+    whiteSoft: WHITE_SOFT,
+    borderSubtle: BORDER_SUBTLE,
   };
 }

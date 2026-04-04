@@ -6,6 +6,7 @@ import { ProductForm } from "@/components/product/product-form";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { SearchInput } from "@/components/ui/search-input";
+import { ICON_BTN_BG } from "@/constants/colors";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColors } from "@/hooks/use-colors";
 import { useProductRepository } from "@/hooks/use-product-repository";
@@ -14,26 +15,26 @@ import type { CreateProductInput, Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
 import {
-    ChevronDown,
-    Package,
-    Pencil,
-    Plus,
-    ScanLine,
-    ShoppingCart,
-    TrendingDown,
-    TrendingUp,
-    X,
+  ChevronDown,
+  Package,
+  Pencil,
+  Plus,
+  ScanLine,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    SectionList,
-    StyleSheet,
-    TouchableOpacity,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Spinner, Text, XStack, YStack } from "tamagui";
@@ -122,7 +123,7 @@ const rowStyles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 10,
-    backgroundColor: "rgba(128,128,128,0.12)",
+    backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -653,7 +654,7 @@ const pStyles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(128,128,128,0.12)",
+    backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
   },

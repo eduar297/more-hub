@@ -1,3 +1,4 @@
+import { BORDER_SUBTLE, OVERLAY, SCRIM, WHITE_FADED } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import { useStore } from "@/contexts/store-context";
@@ -113,7 +114,7 @@ export function StoreBubble() {
 
   const storeColor = currentStore.color ?? "#3b82f6";
   const isDark = colorScheme === "dark";
-  const borderColor = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.15)";
+  const borderColor = isDark ? WHITE_FADED : BORDER_SUBTLE;
 
   return (
     <>
@@ -165,7 +166,7 @@ export function StoreBubble() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />
@@ -306,7 +307,7 @@ const styles = StyleSheet.create({
   nameTag: {
     position: "absolute",
     top: BUBBLE_SIZE + 4,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: SCRIM,
     paddingHorizontal: 4,
     paddingVertical: 3,
     borderRadius: 7,

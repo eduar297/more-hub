@@ -1,3 +1,4 @@
+import { ICON_BTN_BG } from "@/constants/colors";
 import type { CartMirrorState } from "@/services/lan/protocol";
 import { Check, Package, ShoppingCart } from "@tamagui/lucide-icons";
 import { useEffect, useState } from "react";
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 10,
-    backgroundColor: "rgba(128,128,128,0.12)",
+    backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
   },

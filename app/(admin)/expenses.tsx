@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/ui/empty-state";
+import { OVERLAY } from "@/constants/colors";
 import { ChevronDown, Plus, Receipt, Trash2 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Alert, FlatList, ScrollView } from "react-native";
@@ -96,7 +97,7 @@ function CategoryPicker({
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />
@@ -462,7 +463,7 @@ export default function ExpensesScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />

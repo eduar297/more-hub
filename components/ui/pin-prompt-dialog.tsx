@@ -1,3 +1,4 @@
+import { OVERLAY } from "@/constants/colors";
 import { useColors } from "@/hooks/use-colors";
 import { useEffect, useState } from "react";
 import {
@@ -121,7 +122,7 @@ export function PinPromptDialog({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: OVERLAY,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,

@@ -3,7 +3,7 @@ import { StatCard } from "@/components/admin/stat-card";
 import { StockRow } from "@/components/admin/stock-row";
 import { ProductDetail } from "@/components/product/product-detail";
 import { SearchInput } from "@/components/ui/search-input";
-import { CHART_PALETTE } from "@/constants/colors";
+import { CHART_PALETTE, OVERLAY } from "@/constants/colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useProductRepository } from "@/hooks/use-product-repository";
@@ -872,7 +872,7 @@ export function InventorySection() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />

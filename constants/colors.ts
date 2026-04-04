@@ -137,3 +137,22 @@ export const PAYMENT_COLORS = {
 export const AXIS_LABEL_COLOR = "#888";
 export const AXIS_LINE_COLOR = "#555";
 export const PLACEHOLDER_BG = "#e5e7eb";
+
+// ── Translucent / overlay colors ─────────────────────────────────────────────
+
+/** Sheet / dialog backdrop */
+export const OVERLAY = "rgba(0,0,0,0.5)";
+/** Heavier backdrop for login / period sheets */
+export const OVERLAY_HEAVY = "rgba(0,0,0,0.55)";
+/** Dense scrim for readable text on busy backgrounds */
+export const SCRIM = "rgba(0,0,0,0.75)";
+/** Subtle icon-button / placeholder background */
+export const ICON_BTN_BG = "rgba(128,128,128,0.12)";
+/** Very light blue tint for highlighted rows */
+export const BLUE_TINT = "rgba(59,130,246,0.08)";
+/** White at 20 % – faint borders / backgrounds */
+export const WHITE_FADED = "rgba(255,255,255,0.2)";
+/** White at 75 % – soft text on dark backgrounds */
+export const WHITE_SOFT = "rgba(255,255,255,0.75)";
+/** Black at 15 % – subtle border in light mode */
+export const BORDER_SUBTLE = "rgba(0,0,0,0.15)";

@@ -1,3 +1,4 @@
+import { OVERLAY_HEAVY, WHITE_FADED, WHITE_SOFT } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { useStore } from "@/contexts/store-context";
 import type { Store } from "@/models/store";
@@ -5,37 +6,37 @@ import type { User, UserRole } from "@/models/user";
 import { UserRepository } from "@/repositories/user.repository";
 import { hashPin } from "@/utils/auth";
 import {
-  AlertCircle,
-  ChevronLeft,
-  Lock,
-  Store as StoreIcon,
-  User as UserIcon,
-  Users,
+    AlertCircle,
+    ChevronLeft,
+    Lock,
+    Store as StoreIcon,
+    User as UserIcon,
+    Users,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Vibration,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    Vibration,
+    View,
 } from "react-native";
 import { useTheme } from "tamagui";
 
@@ -112,7 +113,7 @@ export function LoginSheet({
   const isDark = (theme.background?.val as string)?.startsWith("#0");
   const c = {
     bg: theme.background?.val as string,
-    overlay: "rgba(0,0,0,0.55)",
+    overlay: OVERLAY_HEAVY,
     text: theme.color?.val as string,
     muted: theme.color8?.val as string,
     border: theme.borderColor?.val as string,
@@ -1107,7 +1108,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: WHITE_FADED,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1118,7 +1119,7 @@ const styles = StyleSheet.create({
   },
   storeCardAddr: {
     fontSize: 11,
-    color: "rgba(255,255,255,0.75)",
+    color: WHITE_SOFT,
   },
 
   /* Worker grid (step 1) */

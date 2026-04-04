@@ -1,4 +1,5 @@
 import { ServerStatusBadge } from "@/components/lan/server-status";
+import { ICON_BTN_BG, OVERLAY } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { useLan } from "@/contexts/lan-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
@@ -220,7 +221,7 @@ const rowStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: "rgba(128,128,128,0.12)",
+    backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -872,7 +873,7 @@ export default function WorkerScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />

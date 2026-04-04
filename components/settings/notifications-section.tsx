@@ -1,4 +1,5 @@
 import { useNotifications } from "@/components/ui/notification-provider";
+import { OVERLAY } from "@/constants/colors";
 import { useColors } from "@/hooks/use-colors";
 import type {
     NotificationPrefKey,
@@ -384,7 +385,7 @@ export function NotificationCards() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
+              backgroundColor: OVERLAY,
               justifyContent: "center",
               paddingHorizontal: 20,
             }}

@@ -1,5 +1,6 @@
 import { StatCard } from "@/components/admin/stat-card";
 import { SearchInput } from "@/components/ui/search-input";
+import { OVERLAY } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
@@ -9,44 +10,44 @@ import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import { exportTicketsPDF } from "@/utils/export";
 import {
-  daysInMonth,
-  fmtMoney,
-  fmtMoneyFull,
-  fmtTime,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  shiftMonth,
-  shiftWeek,
-  shortDayLabel,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    fmtMoneyFull,
+    fmtTime,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shiftMonth,
+    shiftWeek,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  Ban,
-  ChevronRight,
-  CreditCard,
-  DollarSign,
-  Printer,
-  Receipt,
-  Search,
-  ShoppingCart,
-  TrendingUp,
-  User,
-  Users,
-  X,
+    Ban,
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    Printer,
+    Receipt,
+    Search,
+    ShoppingCart,
+    TrendingUp,
+    User,
+    Users,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Image, Pressable, ScrollView } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
-  Button,
-  Card,
-  Separator,
-  Sheet,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Separator,
+    Sheet,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
@@ -941,7 +942,7 @@ export function SalesSection() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />

@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/ui/empty-state";
+import { OVERLAY } from "@/constants/colors";
 import { Building2, Edit3, Plus, Trash2 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Alert, FlatList } from "react-native";
@@ -364,7 +365,7 @@ export default function SuppliersScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
@@ -385,7 +386,7 @@ export default function SuppliersScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />
@@ -476,7 +477,7 @@ export default function SuppliersScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame theme={themeName as any} bg="$background">
           <Sheet.Handle />

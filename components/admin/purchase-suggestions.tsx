@@ -1,34 +1,34 @@
 import { SearchInput } from "@/components/ui/search-input";
-import { TREND_COLORS, URGENCY_COLORS } from "@/constants/colors";
+import { BLUE_TINT, TREND_COLORS, URGENCY_COLORS } from "@/constants/colors";
 import { useStore } from "@/contexts/store-context";
 import { fmtMoney } from "@/utils/format";
 import type {
-    PurchaseReport,
-    PurchaseSuggestion,
-    SalesTrend,
-    Urgency,
+  PurchaseReport,
+  PurchaseSuggestion,
+  SalesTrend,
+  Urgency,
 } from "@/utils/purchase-suggestions";
 import { runPurchaseSuggestions } from "@/utils/purchase-suggestions";
 import {
-    ArrowUpDown,
-    ChevronDown,
-    Package,
-    ShoppingCart,
+  ArrowUpDown,
+  ChevronDown,
+  Package,
+  ShoppingCart,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Image, ScrollView } from "react-native";
 import {
-    Accordion,
-    Button,
-    Card,
-    Input,
-    Label,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Accordion,
+  Button,
+  Card,
+  Input,
+  Label,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 // ── Urgency helpers ──────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ function SuggestionRow({ item }: { item: PurchaseSuggestion }) {
             p="$2"
             style={{
               borderRadius: 8,
-              backgroundColor: "rgba(59,130,246,0.08)",
+              backgroundColor: BLUE_TINT,
             }}
           >
             <Text fontSize="$2" color="$blue10" fontWeight="500">
@@ -240,14 +240,16 @@ function SuggestionRow({ item }: { item: PurchaseSuggestion }) {
               item.salesTrend === "rising"
                 ? "#22c55e"
                 : item.salesTrend === "falling"
-                  ? "#ef4444"
-                  : undefined
+                ? "#ef4444"
+                : undefined
             }
           />
           <DetailRow label="Días de stock" value={daysStr} />
           <DetailRow
             label="Tendencia"
-            value={`${TREND_META[item.salesTrend].emoji} ${item.trendFactor.toFixed(2)}x`}
+            value={`${
+              TREND_META[item.salesTrend].emoji
+            } ${item.trendFactor.toFixed(2)}x`}
           />
 
           <Separator my="$1" />
@@ -263,8 +265,8 @@ function SuggestionRow({ item }: { item: PurchaseSuggestion }) {
               item.marginPct >= 0.2
                 ? "#22c55e"
                 : item.marginPct >= 0.1
-                  ? "#f59e0b"
-                  : "#ef4444"
+                ? "#f59e0b"
+                : "#ef4444"
             }
           />
           <DetailRow
@@ -278,8 +280,8 @@ function SuggestionRow({ item }: { item: PurchaseSuggestion }) {
               item.roi >= 0.3
                 ? "#22c55e"
                 : item.roi >= 0.15
-                  ? "#f59e0b"
-                  : "#ef4444"
+                ? "#f59e0b"
+                : "#ef4444"
             }
           />
           <DetailRow
@@ -293,8 +295,8 @@ function SuggestionRow({ item }: { item: PurchaseSuggestion }) {
               item.stockTurnover >= 12
                 ? "#22c55e"
                 : item.stockTurnover >= 4
-                  ? "#f59e0b"
-                  : "#ef4444"
+                ? "#f59e0b"
+                : "#ef4444"
             }
           />
 
@@ -303,7 +305,9 @@ function SuggestionRow({ item }: { item: PurchaseSuggestion }) {
               <Separator my="$1" />
               <DetailRow
                 label="Compra sugerida"
-                value={`${item.suggestedQty} uds → $${fmtMoney(item.estimatedCost)}`}
+                value={`${item.suggestedQty} uds → $${fmtMoney(
+                  item.estimatedCost,
+                )}`}
                 color="#3b82f6"
               />
             </>

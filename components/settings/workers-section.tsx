@@ -1,4 +1,5 @@
 import { PhotoPicker } from "@/components/ui/photo-picker";
+import { OVERLAY } from "@/constants/colors";
 import { useLan } from "@/contexts/lan-context";
 import { useColors } from "@/hooks/use-colors";
 import { useUserRepository } from "@/hooks/use-user-repository";
@@ -272,7 +273,7 @@ export function WorkersSection() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />

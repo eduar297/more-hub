@@ -7,6 +7,7 @@ import { NotificationHistorySection, SyncSection } from "@/components/settings";
 import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
+import { ICON_BTN_BG } from "@/constants/colors";
 import { useLan } from "@/contexts/lan-context";
 import { useColors } from "@/hooks/use-colors";
 import {
@@ -208,7 +209,7 @@ const indexStyles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(128,128,128,0.12)",
+    backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -1,3 +1,4 @@
+import { OVERLAY } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
@@ -270,7 +271,7 @@ export default function HistoryScreen() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame p="$4" bg="$background" theme={themeName as any}>
           <Sheet.Handle />

@@ -1,14 +1,15 @@
+import { OVERLAY_HEAVY } from "@/constants/colors";
 import type { PeriodNavigation } from "@/hooks/use-period-navigation";
 import { todayISO } from "@/utils/format";
 import { Calendar, ChevronLeft, ChevronRight, X } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Modal,
-  Pressable,
-  Text as RNText,
-  StyleSheet,
-  View,
+    Modal,
+    Pressable,
+    Text as RNText,
+    StyleSheet,
+    View,
 } from "react-native";
 import type { DateData } from "react-native-calendars";
 import { Calendar as RNCalendar } from "react-native-calendars";
@@ -197,7 +198,10 @@ export function CalendarSheet({
   const theme = useTheme();
   const today = todayISO();
   const nowYear = new Date().getFullYear();
-  const nowYM = `${nowYear}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const nowYM = `${nowYear}-${String(new Date().getMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
 
   const c = useMemo(
     () => ({
@@ -224,7 +228,7 @@ export function CalendarSheet({
     // For range: if from===to it's a fresh default — show only start so the
     // user picks a proper end instead of seeing a weird single-day period mark.
     setRangeStart(range?.from ?? null);
-    setRangeEnd(range?.from !== range?.to ? (range?.to ?? null) : null);
+    setRangeEnd(range?.from !== range?.to ? range?.to ?? null : null);
     setWeekStart(selectedWeek ?? null);
     if (mode === "month") {
       setPickerYear(
@@ -607,7 +611,7 @@ export function CalendarSheet({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: OVERLAY_HEAVY,
   },
   centeredContainer: {
     flex: 1,

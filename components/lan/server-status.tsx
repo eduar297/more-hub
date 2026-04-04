@@ -1,3 +1,4 @@
+import { OVERLAY } from "@/constants/colors";
 import { useLan } from "@/contexts/lan-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { LAN_PORT } from "@/services/lan/protocol";
@@ -110,7 +111,7 @@ function ServerSheet({
       <Sheet.Overlay
         enterStyle={{ opacity: 0 }}
         exitStyle={{ opacity: 0 }}
-        backgroundColor="rgba(0,0,0,0.5)"
+        backgroundColor={OVERLAY}
       />
       <Sheet.Frame bg="$background" theme={themeName as any}>
         <Sheet.Handle />

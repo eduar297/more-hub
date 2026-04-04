@@ -1,5 +1,6 @@
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { PinPromptDialog } from "@/components/ui/pin-prompt-dialog";
+import { OVERLAY } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
@@ -338,7 +339,7 @@ export function StoresSection() {
         <Sheet.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          backgroundColor="rgba(0,0,0,0.5)"
+          backgroundColor={OVERLAY}
         />
         <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />
