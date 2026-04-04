@@ -17,7 +17,8 @@
     "prebuild:ios:clean": "npx expo prebuild --platform ios --clean",
     "prebuild:clean": "npx expo prebuild --clean",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "relay": "bash scripts/lan-relay.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

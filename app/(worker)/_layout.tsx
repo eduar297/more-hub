@@ -8,10 +8,12 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { SyncCatalogData } from "@/services/lan/protocol";
 import {
   applyReceivedCatalog,
-  type CatalogChangeSummary,
+  checkCatalogNeeds,
   deleteAllWorkerTickets,
   getLastSyncAt,
   prepareTicketsPayload,
+  saveCatalogHash,
+  type CatalogChangeSummary,
 } from "@/services/lan/sync-service";
 import {
   Download,
@@ -22,7 +24,7 @@ import {
 } from "@tamagui/lucide-icons";
 import { Tabs } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -205,6 +207,8 @@ export default function WorkerLayout() {
     bumpCatalogVersion,
   } = useLan();
   const [hasSynced, setHasSynced] = useState<boolean | null>(null); // null = loading
+  /** Store latest catalog hash so we can save it after successful apply */
+  const pendingCatalogHashRef = useRef<string | null>(null);
 
   const showSyncNotification = useCallback((summary: CatalogChangeSummary) => {
     const lines: string[] = [];
@@ -286,15 +290,34 @@ export default function WorkerLayout() {
     startServer();
   }, [startServer]);
 
-  // Handle sync_prepare from Admin — acknowledge immediately so Admin starts sending
+  // Handle sync_prepare from Admin — check delta needs and respond
   useEffect(() => {
-    onSyncPrepareReceived.current = (clientId, _totalBytes) => {
-      sendSyncPrepareAck(clientId);
+    onSyncPrepareReceived.current = async (
+      clientId,
+      _totalBytes,
+      catalogHash,
+      photoManifest,
+    ) => {
+      try {
+        const { needsCatalog, neededPhotos } = await checkCatalogNeeds(
+          db,
+          catalogHash,
+          photoManifest,
+        );
+        // Store hash so we can save it after catalog is applied
+        pendingCatalogHashRef.current = catalogHash;
+        sendSyncPrepareAck(clientId, needsCatalog, neededPhotos);
+      } catch (err) {
+        console.error("[Worker] checkCatalogNeeds FAILED:", err);
+        // Fallback: request everything
+        pendingCatalogHashRef.current = catalogHash;
+        sendSyncPrepareAck(clientId, true, Object.keys(photoManifest));
+      }
     };
     return () => {
       onSyncPrepareReceived.current = null;
     };
-  }, [sendSyncPrepareAck, onSyncPrepareReceived]);
+  }, [db, sendSyncPrepareAck, onSyncPrepareReceived]);
 
   // Handle catalog from Admin
   useEffect(() => {
@@ -309,6 +332,12 @@ export default function WorkerLayout() {
         }
         const summary = await applyReceivedCatalog(db, data);
         console.log(`[Worker] Catalog applied successfully, sending ACK`);
+
+        // Save catalog hash so next sync can skip if unchanged
+        if (pendingCatalogHashRef.current) {
+          await saveCatalogHash(db, pendingCatalogHashRef.current);
+          pendingCatalogHashRef.current = null;
+        }
 
         sendCatalogAck(clientId);
 

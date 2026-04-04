@@ -101,7 +101,7 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
   `);
 
   // ── Versioned migrations ────────────────────────────────────────────────
-  const WORKER_DB_VERSION = 1;
+  const WORKER_DB_VERSION = 2;
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
   );
@@ -158,6 +158,15 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
     }
 
     currentVersion = 1;
+  }
+
+  if (currentVersion < 2) {
+    // Add columns for delta sync: catalog hash + profile hash + photo manifest
+    await db.execAsync(`
+      ALTER TABLE sync_metadata ADD COLUMN last_catalog_hash TEXT;
+      ALTER TABLE sync_metadata ADD COLUMN last_profile_hash TEXT;
+    `);
+    currentVersion = 2;
   }
 
   await db.execAsync(`PRAGMA user_version = ${WORKER_DB_VERSION}`);

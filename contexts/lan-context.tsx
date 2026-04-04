@@ -72,8 +72,12 @@ interface LanContextValue {
   syncStatus: SyncStatus;
   syncProgress: SyncProgress | null;
   lastSyncAt: string | null;
-  /** Admin: notify worker about incoming data size, then send catalog */
-  sendSyncPrepare: (totalBytes: number) => void;
+  /** Admin: notify worker about incoming data size + catalog hash for delta sync */
+  sendSyncPrepare: (
+    totalBytes: number,
+    catalogHash: string,
+    photoManifest: Record<string, string>,
+  ) => void;
   /** Admin: send catalog to Worker */
   sendCatalog: (data: SyncCatalogData) => void;
   /** Admin: request tickets from Worker */
@@ -82,8 +86,12 @@ interface LanContextValue {
   sendTickets: (clientId: string, data: SyncTicketsData) => void;
   /** Worker: acknowledge catalog received */
   sendCatalogAck: (clientId: string) => void;
-  /** Worker: acknowledge sync prepare (ready to receive) */
-  sendSyncPrepareAck: (clientId: string) => void;
+  /** Worker: acknowledge sync prepare with delta-sync needs */
+  sendSyncPrepareAck: (
+    clientId: string,
+    needsCatalog: boolean,
+    neededPhotos: string[],
+  ) => void;
   /** Admin: acknowledge tickets received (so Worker can delete them) */
   sendTicketsAck: () => void;
   /** Callback: set from outside to handle sync messages on Worker/Admin */
@@ -96,15 +104,27 @@ interface LanContextValue {
   onSyncTicketsRequested: React.MutableRefObject<
     ((clientId: string, since: string | null) => void) | null
   >;
-  /** Callback: worker receives sync_prepare from admin */
+  /** Callback: worker receives sync_prepare from admin (with catalog hash + photo manifest for delta sync) */
   onSyncPrepareReceived: React.MutableRefObject<
-    ((clientId: string, totalBytes: number) => void) | null
+    | ((
+        clientId: string,
+        totalBytes: number,
+        catalogHash: string,
+        photoManifest: Record<string, string>,
+      ) => void)
+    | null
   >;
   /** Callback: worker receives sync_tickets_ack — tickets confirmed received by admin */
   onSyncTicketsAckReceived: React.MutableRefObject<(() => void) | null>;
 
   /** Worker server ref for direct access */
   serverRef: React.MutableRefObject<LanServer | null>;
+
+  /** Ref holding the worker's delta sync response (needsCatalog + neededPhotos) */
+  syncPrepareAckRef: React.MutableRefObject<{
+    needsCatalog: boolean;
+    neededPhotos: string[];
+  } | null>;
 
   /** Monotonic counter bumped after each catalog apply — screens watch this to reload */
   catalogVersion: number;
@@ -145,6 +165,7 @@ const LanContext = createContext<LanContextValue>({
   onSyncPrepareReceived: { current: null },
   onSyncTicketsAckReceived: { current: null },
   serverRef: { current: null },
+  syncPrepareAckRef: { current: null },
   catalogVersion: 0,
   bumpCatalogVersion: () => {},
 });
@@ -169,7 +190,13 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     ((clientId: string, since: string | null) => void) | null
   >(null);
   const onSyncPrepareReceived = useRef<
-    ((clientId: string, totalBytes: number) => void) | null
+    | ((
+        clientId: string,
+        totalBytes: number,
+        catalogHash: string,
+        photoManifest: Record<string, string>,
+      ) => void)
+    | null
   >(null);
   const onSyncTicketsAckReceived = useRef<(() => void) | null>(null);
 
@@ -230,7 +257,12 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
         switch (msg.type) {
           case "sync_prepare":
             setSyncProgress({ receivedBytes: 0, totalBytes: msg.totalBytes });
-            onSyncPrepareReceived.current?.(clientId, msg.totalBytes);
+            onSyncPrepareReceived.current?.(
+              clientId,
+              msg.totalBytes,
+              msg.catalogHash,
+              msg.photoManifest,
+            );
             break;
           case "sync_catalog":
             setSyncProgress(null);
@@ -314,9 +346,16 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
     serverRef.current?.sendToClient(clientId, { type: "sync_catalog_ack" });
   }, []);
 
-  const sendSyncPrepareAck = useCallback((clientId: string) => {
-    serverRef.current?.sendToClient(clientId, { type: "sync_prepare_ack" });
-  }, []);
+  const sendSyncPrepareAck = useCallback(
+    (clientId: string, needsCatalog: boolean, neededPhotos: string[]) => {
+      serverRef.current?.sendToClient(clientId, {
+        type: "sync_prepare_ack",
+        needsCatalog,
+        neededPhotos,
+      });
+    },
+    [],
+  );
 
   const sendTickets = useCallback((clientId: string, data: SyncTicketsData) => {
     serverRef.current?.sendToClient(clientId, {
@@ -347,6 +386,11 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   >([]);
   const [cartMirror, setCartMirror] = useState<CartMirrorState>(EMPTY_MIRROR);
   const checkoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Stores the worker's delta-sync response so sync-section can read it */
+  const syncPrepareAckRef = useRef<{
+    needsCatalog: boolean;
+    neededPhotos: string[];
+  } | null>(null);
 
   // Create client with the correct role
   useEffect(() => {
@@ -414,6 +458,11 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
         break;
       // Sync responses from Worker → Admin
       case "sync_prepare_ack":
+        // Store delta-sync response for sync-section to read
+        syncPrepareAckRef.current = {
+          needsCatalog: msg.needsCatalog,
+          neededPhotos: msg.neededPhotos,
+        };
         setSyncStatus("sending_catalog");
         break;
       case "sync_catalog_ack":
@@ -433,10 +482,22 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Admin sync actions
-  const sendSyncPrepare = useCallback((totalBytes: number) => {
-    setSyncStatus("preparing");
-    clientRef.current?.send({ type: "sync_prepare", totalBytes });
-  }, []);
+  const sendSyncPrepare = useCallback(
+    (
+      totalBytes: number,
+      catalogHash: string,
+      photoManifest: Record<string, string>,
+    ) => {
+      setSyncStatus("preparing");
+      clientRef.current?.send({
+        type: "sync_prepare",
+        totalBytes,
+        catalogHash,
+        photoManifest,
+      });
+    },
+    [],
+  );
 
   const sendCatalog = useCallback((data: SyncCatalogData) => {
     setSyncStatus("sending_catalog");
@@ -545,6 +606,7 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       onSyncPrepareReceived,
       onSyncTicketsAckReceived,
       serverRef,
+      syncPrepareAckRef,
       catalogVersion,
       bumpCatalogVersion,
     }),

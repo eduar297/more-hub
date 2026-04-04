@@ -5,7 +5,8 @@ import type { DiscoveredServer } from "@/services/lan/lan-client";
 import { LAN_PORT, serialize } from "@/services/lan/protocol";
 import {
   applyReceivedTickets,
-  prepareCatalogPayload,
+  attachPhotos,
+  prepareCatalogMeta,
 } from "@/services/lan/sync-service";
 import {
   AlertCircle,
@@ -74,6 +75,7 @@ export function SyncSection() {
     requestTickets,
     sendTicketsAck,
     onSyncTicketsReceived,
+    syncPrepareAckRef,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onSyncCatalogReceived: _onSyncCatalogReceived,
   } = useLan();
@@ -85,6 +87,8 @@ export function SyncSection() {
   const activeWorkerRef = useRef<WorkerSyncInfo | null>(null);
   const catalogPayloadRef = useRef<any>(null);
   const catalogBytesRef = useRef<number>(0);
+  const catalogHashRef = useRef<string>("");
+  const photoManifestRef = useRef<Record<string, string>>({});
   const shouldSendPrepareRef = useRef(false);
 
   // ── Discovery ────────────────────────────────────────────────────────────
@@ -185,8 +189,9 @@ export function SyncSection() {
           } total received`,
         );
 
-        // Prepare catalog AFTER tickets applied — stock is now correct
-        const payload = await prepareCatalogPayload(db);
+        // Prepare catalog meta (hash + photo manifest) — no photos yet
+        const { payload, catalogHash, photoManifest } =
+          await prepareCatalogMeta(db);
         // Log first 3 products' stock for debugging
         for (const p of (payload.products as any[]).slice(0, 3)) {
           console.log(
@@ -194,6 +199,8 @@ export function SyncSection() {
           );
         }
         catalogPayloadRef.current = payload;
+        catalogHashRef.current = catalogHash;
+        photoManifestRef.current = photoManifest;
         const serialized = serialize({ type: "sync_catalog", data: payload });
         const totalBytes = serialized.length;
         catalogBytesRef.current = totalBytes;
@@ -212,8 +219,12 @@ export function SyncSection() {
           catalogBytes: totalBytes,
         });
 
-        // Now send sync_prepare with corrected-stock catalog
-        sendSyncPrepare(catalogBytesRef.current);
+        // Now send sync_prepare with hash + photo manifest for delta sync
+        sendSyncPrepare(
+          catalogBytesRef.current,
+          catalogHashRef.current,
+          photoManifestRef.current,
+        );
       } catch (e: any) {
         updateWorker(worker.server.host, {
           state: "error",
@@ -247,10 +258,38 @@ export function SyncSection() {
     );
     if (!worker) return;
 
-    // Worker acknowledged sync_prepare → now send the actual catalog
+    // Worker acknowledged sync_prepare → check delta-sync response
     if (syncStatus === "sending_catalog" && catalogPayloadRef.current) {
-      updateWorker(worker.server.host, { state: "sending" });
-      sendCatalog(catalogPayloadRef.current);
+      const ack = syncPrepareAckRef.current;
+      const needsCatalog = ack?.needsCatalog ?? true;
+      const neededPhotos = ack?.neededPhotos ?? [];
+      syncPrepareAckRef.current = null; // consumed
+
+      if (!needsCatalog && neededPhotos.length === 0) {
+        // ✨ Fast path — worker already has everything
+        console.log(
+          "[SyncSection] Worker has latest catalog + photos, skipping catalog send",
+        );
+        sendTicketsAck();
+        const now = new Date().toLocaleString("es-MX");
+        updateWorker(worker.server.host, {
+          state: "done",
+          lastSyncAt: now,
+          error: null,
+        });
+        setTimeout(() => {
+          disconnectFromServer();
+        }, 300);
+        activeWorkerRef.current = null;
+      } else {
+        // Attach only needed photos, then send
+        updateWorker(worker.server.host, { state: "sending" });
+        attachPhotos(catalogPayloadRef.current, neededPhotos).then(
+          (withPhotos) => {
+            sendCatalog(withPhotos);
+          },
+        );
+      }
     }
 
     // Worker acknowledged catalog → sync complete

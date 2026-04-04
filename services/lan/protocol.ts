@@ -21,12 +21,20 @@ export interface SyncCatalogData {
   products: unknown[];
   units: unknown[];
   unitCategories: unknown[];
+  /** Base64-encoded photos keyed by original photoUri — only those requested */
+  photos?: Record<string, string>;
 }
 
 /** Data payload for tickets sync (Worker → Admin) */
 export interface SyncTicketsData {
   tickets: unknown[];
   ticketItems: unknown[];
+  /** Worker profile updates (PIN, photo) to apply on admin side — only if changed */
+  workerUpdates?: {
+    id: number;
+    pinHash?: string;
+    photoBase64?: string | null;
+  }[];
 }
 
 export type LanMessage =
@@ -45,8 +53,21 @@ export type LanMessage =
   | { type: "pong" }
   // ── Sync messages (Admin ↔ Worker) ──
   | { type: "sync_request" }
-  | { type: "sync_prepare"; totalBytes: number }
-  | { type: "sync_prepare_ack" }
+  | {
+      type: "sync_prepare";
+      totalBytes: number;
+      /** Hash of catalog data (products+stores+workers+units, no photos) */
+      catalogHash: string;
+      /** Map of photoUri → md5 so worker can request only missing ones */
+      photoManifest: Record<string, string>;
+    }
+  | {
+      type: "sync_prepare_ack";
+      /** Worker already has this catalog hash — skip sending data */
+      needsCatalog: boolean;
+      /** Photos the worker doesn't have locally */
+      neededPhotos: string[];
+    }
   | { type: "sync_catalog"; data: SyncCatalogData }
   | { type: "sync_catalog_ack" }
   | { type: "sync_tickets_request"; since: string | null }
