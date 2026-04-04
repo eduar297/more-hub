@@ -3,20 +3,21 @@ import { InventorySection } from "@/components/admin/inventory-section";
 import { OverviewSection } from "@/components/admin/overview-section";
 import { SalesSection } from "@/components/admin/sales-section";
 import { WorkersSection } from "@/components/admin/workers-section";
-import { NotificationHistorySection } from "@/components/settings";
+import { NotificationHistorySection, SyncSection } from "@/components/settings";
 import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
 import {
-    Bell,
-    LayoutDashboard,
-    Package,
-    ShoppingCart,
-    TrendingUp,
-    Users,
-    X,
+  Bell,
+  LayoutDashboard,
+  Package,
+  RefreshCw,
+  ShoppingCart,
+  TrendingUp,
+  Users,
+  X,
 } from "@tamagui/lucide-icons";
 import { useNavigation } from "expo-router";
 import { useCallback, useLayoutEffect, useState } from "react";
@@ -37,6 +38,7 @@ const SECTIONS: TabDef<Section>[] = [
 export default function DashboardScreen() {
   const [section, setSection] = useState<Section>("overview");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const c = useColors();
   const isDark = useColorScheme() === "dark";
   const { history, clearHistory, unseenCount, markAllSeen } =
@@ -51,42 +53,48 @@ export default function DashboardScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={openHistory}
-          hitSlop={8}
-          style={{ marginRight: 12, position: "relative" }}
-        >
-          <Bell size={22} color={c.text as any} />
-          {unseenCount > 0 && (
-            <View
-              style={{
-                position: "absolute",
-                top: -6,
-                right: -8,
-                minWidth: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: c.danger,
-                alignItems: "center",
-                justifyContent: "center",
-                paddingHorizontal: 4,
-              }}
-            >
-              <Text
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 24 }}>
+          <TouchableOpacity onPress={() => setSyncOpen(true)} hitSlop={8}>
+            <RefreshCw size={24} color={c.blue as any} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={openHistory}
+            hitSlop={8}
+            style={{ marginRight: 12, position: "relative" }}
+          >
+            <Bell size={24} color={c.text as any} />
+            {unseenCount > 0 && (
+              <View
                 style={{
-                  color: "#fff",
-                  fontSize: 10,
-                  fontWeight: "700",
-                  fontVariant: ["tabular-nums"],
+                  position: "absolute",
+                  top: -6,
+                  right: -8,
+                  minWidth: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  backgroundColor: c.danger,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 4,
                 }}
               >
-                {unseenCount > 99 ? "99+" : unseenCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: "700",
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {unseenCount > 99 ? "99+" : unseenCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       ),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation, openHistory, c.text, c.danger, unseenCount]);
 
   return (
@@ -99,6 +107,52 @@ export default function DashboardScreen() {
       {section === "inventory" && <InventorySection />}
       {section === "finance" && <FinanceSection />}
       {section === "workers" && <WorkersSection />}
+
+      {/* Sync modal */}
+      <Modal
+        visible={syncOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSyncOpen(false)}
+      >
+        <SafeAreaView
+          style={[
+            indexStyles.modalRoot,
+            { backgroundColor: isDark ? "#1c1c1e" : "#ffffff" },
+          ]}
+        >
+          <XStack
+            p="$3"
+            px="$4"
+            items="center"
+            justify="space-between"
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
+          >
+            <XStack items="center" gap="$2">
+              <RefreshCw size={18} color={c.blue as any} />
+              <TText fontSize={16} fontWeight="700" color="$color">
+                Sincronizar
+              </TText>
+            </XStack>
+            <TouchableOpacity
+              onPress={() => setSyncOpen(false)}
+              hitSlop={8}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: c.muted + "20",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <X size={18} color={c.text as any} />
+            </TouchableOpacity>
+          </XStack>
+          <SyncSection />
+        </SafeAreaView>
+      </Modal>
 
       {/* Notification history modal */}
       <Modal

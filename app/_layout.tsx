@@ -10,9 +10,9 @@ import { migrateWorkerDb } from "@/database/migrate-worker";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { config } from "@/tamagui.config";
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
 } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
