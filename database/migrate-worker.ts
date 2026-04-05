@@ -101,7 +101,7 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
   `);
 
   // ── Versioned migrations ────────────────────────────────────────────────
-  const WORKER_DB_VERSION = 3;
+  const WORKER_DB_VERSION = 4;
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
   );
@@ -176,6 +176,19 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       ALTER TABLE stores ADD COLUMN closingTime TEXT;
     `);
     currentVersion = 3;
+  }
+
+  if (currentVersion < 4) {
+    // Rename barcode column to code
+    const cols = await db.getAllAsync<{ name: string }>(
+      "SELECT name FROM pragma_table_info('products')",
+    );
+    if (cols.some((c) => c.name === "barcode")) {
+      await db.execAsync(`
+        ALTER TABLE products RENAME COLUMN barcode TO code;
+      `);
+    }
+    currentVersion = 4;
   }
 
   await db.execAsync(`PRAGMA user_version = ${WORKER_DB_VERSION}`);
