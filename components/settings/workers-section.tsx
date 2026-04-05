@@ -9,22 +9,22 @@ import { AlertCircle, Edit3, Plus, Trash2, Users } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  Button,
-  Input,
-  Sheet,
-  Text as TText,
-  useThemeName,
-  XStack,
-  YStack,
+    Button,
+    Input,
+    Sheet,
+    Text as TText,
+    useThemeName,
+    XStack,
+    YStack,
 } from "tamagui";
 import { settingStyles as styles } from "./shared";
 
@@ -165,7 +165,7 @@ export function WorkersSection() {
           {workers.length} vendedor{workers.length !== 1 ? "es" : ""}
         </Text>
         <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: c.green }]}
+          style={[styles.addBtn, { backgroundColor: c.blue }]}
           onPress={openCreate}
           activeOpacity={0.8}
           accessibilityRole="button"
@@ -179,12 +179,12 @@ export function WorkersSection() {
       <ScrollView contentContainerStyle={styles.listContent}>
         {loading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator color={c.green} size="large" />
+            <ActivityIndicator color={c.blue} size="large" />
           </View>
         ) : workers.length === 0 ? (
           <View style={styles.centerBox}>
-            <View style={[styles.emptyIcon, { backgroundColor: c.greenLight }]}>
-              <Users size={34} color={c.green as any} />
+            <View style={[styles.emptyIcon, { backgroundColor: c.blueLight }]}>
+              <Users size={34} color={c.blue as any} />
             </View>
             <Text style={[styles.emptyTitle, { color: c.text }]}>
               Sin vendedores
@@ -211,7 +211,7 @@ export function WorkersSection() {
                   <View
                     style={[
                       styles.avatar,
-                      { backgroundColor: c.greenLight, overflow: "hidden" },
+                      { backgroundColor: c.blueLight, overflow: "hidden" },
                     ]}
                   >
                     {w.photoUri ? (
@@ -220,7 +220,7 @@ export function WorkersSection() {
                         style={{ width: 38, height: 38, borderRadius: 19 }}
                       />
                     ) : (
-                      <Text style={[styles.avatarText, { color: c.green }]}>
+                      <Text style={[styles.avatarText, { color: c.blue }]}>
                         {w.name.charAt(0).toUpperCase()}
                       </Text>
                     )}
