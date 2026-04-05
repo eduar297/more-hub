@@ -11,41 +11,39 @@ import type { PaymentMethod } from "@/models/ticket";
 import type { CartItemWire } from "@/services/lan/protocol";
 import { todayISO } from "@/utils/format";
 import {
-    AlertCircle,
-    Banknote,
-    CreditCard,
-    Minus,
-    Package,
-    Plus,
-    Receipt,
-    ScanLine,
-    Search,
-    ShoppingCart,
-    Trash2,
-    TrendingUp,
-    X,
+  AlertCircle,
+  Banknote,
+  CreditCard,
+  Minus,
+  Package,
+  Plus,
+  Receipt,
+  ScanLine,
+  Search,
+  ShoppingCart,
+  Trash2,
+  TrendingUp,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
 } from "react-native";
 import {
-    Button,
-    Card,
-    Input,
-    Sheet,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Input,
+  Sheet,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 // ── Cart item type ───────────────────────────────────────────────────────────
@@ -56,174 +54,124 @@ interface CartItem {
   unitPrice: number;
 }
 
-// ── Cart item row (used in both the main list and checkout sheet) ────────────
+// ── Cart item row ────────────────────────────────────────────────────────────
 
-function CartItemRow({
+const CartItemRow = memo(function CartItemRow({
   item,
   onChangeQty,
-  onChangePrice,
   onRemove,
-  editable,
 }: {
   item: CartItem;
   onChangeQty: (qty: number) => void;
-  onChangePrice: (price: number) => void;
   onRemove: () => void;
-  editable: boolean;
 }) {
   const subtotal = item.quantity * item.unitPrice;
-  const [rawQty, setRawQty] = useState(String(item.quantity));
-  const [rawPrice, setRawPrice] = useState(String(item.unitPrice));
-
-  // Keep local raw strings in sync when parent value changes (e.g. +/- buttons)
-  useEffect(() => {
-    setRawQty(String(item.quantity));
-  }, [item.quantity]);
-  useEffect(() => {
-    setRawPrice(String(item.unitPrice));
-  }, [item.unitPrice]);
 
   return (
-    <YStack
+    <XStack
       px="$3"
       py="$3"
-      gap="$2"
-      borderBottomWidth={1}
+      gap="$3"
+      style={{ alignItems: "center" }}
+      borderBottomWidth={StyleSheet.hairlineWidth}
       borderColor="$borderColor"
     >
-      <XStack style={{ alignItems: "center" }} gap="$3">
-        {item.product.photoUri ? (
-          <Image
-            source={{ uri: item.product.photoUri }}
-            style={rowStyles.thumb}
-            resizeMode="cover"
-          />
-        ) : (
-          <YStack style={rowStyles.thumbPlaceholder}>
-            <Package size={18} color="$color8" />
-          </YStack>
-        )}
-        <YStack flex={1} gap="$0.5">
-          <Text
-            fontSize="$3"
-            fontWeight="bold"
-            color="$color"
-            numberOfLines={1}
-          >
-            {item.product.name}
-          </Text>
-          <Text fontSize="$2" color="$color10">
-            Stock: {item.product.stockBaseQty}
-          </Text>
+      {/* Photo */}
+      {item.product.photoUri ? (
+        <Image
+          source={{ uri: item.product.photoUri }}
+          style={rowStyles.thumb}
+          resizeMode="cover"
+        />
+      ) : (
+        <YStack style={rowStyles.thumbPlaceholder}>
+          <Package size={20} color="$color8" />
         </YStack>
-        {editable && (
-          <Button
-            size="$2"
-            theme="red"
-            chromeless
-            icon={Trash2}
-            onPress={onRemove}
-          />
-        )}
-      </XStack>
+      )}
 
-      {/* Qty + price row */}
-      <XStack style={{ alignItems: "center" }} gap="$2">
-        {editable ? (
-          <>
-            <Button
-              size="$2"
-              theme="red"
-              icon={Minus}
-              circular
-              disabled={item.quantity <= 1}
-              onPress={() => onChangeQty(item.quantity - 1)}
-            />
-            <Input
-              size="$3"
-              width={60}
-              textAlign="center"
-              value={rawQty}
-              keyboardType="numeric"
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              onChangeText={(t) => {
-                setRawQty(t);
-                const n = parseFloat(t);
-                if (!isNaN(n) && n > 0) onChangeQty(n);
-              }}
-            />
-            <Button
-              size="$2"
-              theme="green"
-              icon={Plus}
-              circular
-              onPress={() => onChangeQty(item.quantity + 1)}
-            />
-          </>
-        ) : (
-          <Text
-            fontSize="$3"
-            color="$color"
-            width={60}
-            style={{ textAlign: "center" }}
-          >
-            x{item.quantity}
-          </Text>
-        )}
-
-        <Text fontSize="$2" color="$color10" mx="$1">
-          ×
+      {/* Content */}
+      <YStack flex={1} gap="$1.5">
+        {/* Name */}
+        <Text fontSize="$4" fontWeight="600" color="$color" numberOfLines={1}>
+          {item.product.name}
         </Text>
 
-        {editable ? (
-          <XStack style={{ alignItems: "center" }} gap="$1" flex={1}>
-            <Text fontSize="$3" color="$color10">
-              $
+        {/* Qty stepper + unit price */}
+        <XStack style={{ alignItems: "center" }} gap="$3">
+          {/* Stepper */}
+          <XStack
+            bg="$color3"
+            style={{ borderRadius: 10, alignItems: "center" }}
+            height={40}
+          >
+            <Pressable
+              onPress={() =>
+                item.quantity > 1 && onChangeQty(item.quantity - 1)
+              }
+              style={stepperStyles.btn}
+              hitSlop={8}
+            >
+              <Minus size={18} color="$color11" />
+            </Pressable>
+            <Text
+              fontSize="$4"
+              fontWeight="bold"
+              color="$color"
+              width={34}
+              style={{ textAlign: "center" }}
+            >
+              {item.quantity}
             </Text>
-            <Input
-              size="$3"
-              flex={1}
-              value={rawPrice}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              onChangeText={(t) => {
-                setRawPrice(t);
-                const n = parseFloat(t);
-                if (!isNaN(n) && n >= 0) onChangePrice(n);
-              }}
-            />
+            <Pressable
+              onPress={() => onChangeQty(item.quantity + 1)}
+              style={stepperStyles.btn}
+              hitSlop={8}
+            >
+              <Plus size={18} color="$color11" />
+            </Pressable>
           </XStack>
-        ) : (
-          <Text fontSize="$3" color="$color10" flex={1}>
-            ${item.unitPrice.toFixed(2)}
-          </Text>
-        )}
 
-        <Text
-          fontSize="$4"
-          fontWeight="bold"
-          color="$green10"
-          width={80}
-          style={{ textAlign: "right" }}
-        >
+          {/* Unit price */}
+          <Text fontSize="$3" color="$color10">
+            × ${item.unitPrice.toFixed(2)}
+          </Text>
+        </XStack>
+      </YStack>
+
+      {/* Subtotal + delete */}
+      <YStack style={{ alignItems: "flex-end" }} gap="$2">
+        <Text fontSize="$5" fontWeight="bold" color="$green10">
           ${subtotal.toFixed(2)}
         </Text>
-      </XStack>
-    </YStack>
+        <Pressable onPress={onRemove} hitSlop={12} style={rowStyles.deleteBtn}>
+          <Trash2 size={18} color="$red10" />
+        </Pressable>
+      </YStack>
+    </XStack>
   );
-}
+});
 
 const rowStyles = StyleSheet.create({
-  thumb: { width: 40, height: 40, borderRadius: 8 },
+  thumb: { width: 44, height: 44, borderRadius: 10 },
   thumbPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
+  },
+  deleteBtn: {
+    padding: 6,
+  },
+});
+
+const stepperStyles = StyleSheet.create({
+  btn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
@@ -252,6 +200,7 @@ export default function WorkerScreen() {
     broadcastClear,
     broadcastCheckout,
     startServer,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     serverRunning,
     catalogVersion,
   } = useLan();
@@ -453,148 +402,153 @@ export default function WorkerScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack p="$4" gap="$4">
-          {/* LAN status + Stats row */}
-          <XStack justify="flex-end" mb="$-2">
-            <ServerStatusBadge />
-          </XStack>
+      {/* ── Top section (fixed, doesn't scroll) ── */}
+      <YStack px="$4" pt="$3" pb="$2" gap="$3">
+        {/* Server status */}
+        <XStack justify="flex-end" mb="$-2">
+          <ServerStatusBadge />
+        </XStack>
 
-          <XStack gap="$3">
-            <Card
-              flex={1}
-              borderWidth={1}
-              bg="$green2"
-              p="$4"
-              style={{ borderRadius: 16 }}
-              borderColor="$green5"
-            >
+        {/* Compact stats */}
+        <XStack gap="$3">
+          <Card
+            flex={1}
+            bg="$green2"
+            p="$3"
+            style={{ borderRadius: 14 }}
+            borderWidth={1}
+            borderColor="$green5"
+          >
+            <XStack style={{ alignItems: "center" }} gap="$2">
               <TrendingUp size={20} color="$green10" />
-              <Text fontSize="$7" fontWeight="bold" color="$green10" mt="$1">
-                ${todaySales.toFixed(2)}
-              </Text>
-              <Text fontSize="$2" color="$color10">
-                Mis ventas hoy
-              </Text>
-            </Card>
-            <Card
-              flex={1}
-              borderWidth={1}
-              bg="$blue2"
-              p="$4"
-              style={{ borderRadius: 16 }}
-              borderColor="$blue5"
-            >
-              <ShoppingCart size={20} color="$blue10" />
-              <Text fontSize="$7" fontWeight="bold" color="$blue10" mt="$1">
-                {todayCount}
-              </Text>
-              <Text fontSize="$2" color="$color10">
-                Mis tickets
-              </Text>
-            </Card>
-          </XStack>
-
-          {/* Error banner */}
-          {error && (
-            <XStack
-              bg="$red2"
-              p="$3"
-              style={{ borderRadius: 12, alignItems: "center" }}
-              gap="$2"
-            >
-              <AlertCircle size={18} color="$red10" />
-              <Text fontSize="$3" color="$red10" flex={1}>
-                {error}
-              </Text>
-            </XStack>
-          )}
-
-          {/* Action buttons */}
-          <XStack gap="$3">
-            <Button
-              flex={1}
-              size="$5"
-              theme="green"
-              icon={ScanLine}
-              onPress={scan}
-            >
-              Escanear
-            </Button>
-            <Button
-              flex={1}
-              size="$5"
-              theme="blue"
-              icon={Search}
-              onPress={() => {
-                setSearchQuery("");
-                setShowSearchSheet(true);
-              }}
-            >
-              Buscar
-            </Button>
-          </XStack>
-
-          {/* Cart */}
-          {cart.length > 0 && (
-            <Card
-              borderWidth={1}
-              borderColor="$borderColor"
-              style={{ borderRadius: 14 }}
-              overflow="hidden"
-              bg="$background"
-            >
-              <XStack
-                px="$3"
-                py="$2"
-                bg="$color2"
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text fontSize="$4" fontWeight="bold" color="$color">
-                  Carrito ({cartItemCount})
+              <YStack>
+                <Text fontSize="$6" fontWeight="bold" color="$green10">
+                  ${todaySales.toFixed(2)}
                 </Text>
-                <Button
-                  size="$2"
-                  theme="red"
-                  chromeless
-                  onPress={() =>
-                    Alert.alert(
-                      "Vaciar carrito",
-                      "¿Vaciar todos los productos?",
-                      [
-                        { text: "Cancelar", style: "cancel" },
-                        {
-                          text: "Vaciar",
-                          style: "destructive",
-                          onPress: clearCart,
-                        },
-                      ],
-                    )
-                  }
-                >
-                  Vaciar
-                </Button>
-              </XStack>
-              {cart.map((item) => (
-                <CartItemRow
-                  key={item.product.id}
-                  item={item}
-                  editable
-                  onChangeQty={(q) =>
-                    updateCartItem(item.product.id, { quantity: q })
-                  }
-                  onChangePrice={(p) =>
-                    updateCartItem(item.product.id, { unitPrice: p })
-                  }
-                  onRemove={() => removeCartItem(item.product.id)}
-                />
-              ))}
+                <Text fontSize="$2" color="$color10">
+                  Mis ventas
+                </Text>
+              </YStack>
+            </XStack>
+          </Card>
+          <Card
+            flex={1}
+            bg="$blue2"
+            p="$3"
+            style={{ borderRadius: 14 }}
+            borderWidth={1}
+            borderColor="$blue5"
+          >
+            <XStack style={{ alignItems: "center" }} gap="$2">
+              <ShoppingCart size={20} color="$blue10" />
+              <YStack>
+                <Text fontSize="$6" fontWeight="bold" color="$blue10">
+                  {todayCount}
+                </Text>
+                <Text fontSize="$2" color="$color10">
+                  Tickets
+                </Text>
+              </YStack>
+            </XStack>
+          </Card>
+        </XStack>
 
-              {/* Stock warnings inline */}
-              {stockErrors.length > 0 && (
+        {/* Error banner */}
+        {error && (
+          <XStack
+            bg="$red2"
+            p="$3"
+            style={{ borderRadius: 12, alignItems: "center" }}
+            gap="$2"
+          >
+            <AlertCircle size={20} color="$red10" />
+            <Text fontSize="$4" color="$red10" flex={1}>
+              {error}
+            </Text>
+          </XStack>
+        )}
+
+        {/* Action buttons */}
+        <XStack gap="$3">
+          <Button
+            flex={1}
+            size="$5"
+            theme="green"
+            icon={ScanLine}
+            onPress={scan}
+          >
+            Escanear
+          </Button>
+          <Button
+            flex={1}
+            size="$5"
+            theme="blue"
+            icon={Search}
+            onPress={() => {
+              setSearchQuery("");
+              setShowSearchSheet(true);
+            }}
+          >
+            Buscar
+          </Button>
+        </XStack>
+      </YStack>
+
+      {/* ── Cart area (scrollable, takes remaining space) ── */}
+      {cart.length > 0 ? (
+        <>
+          {/* Cart header */}
+          <XStack
+            px="$4"
+            py="$2"
+            bg="$color2"
+            borderTopWidth={1}
+            borderBottomWidth={1}
+            borderColor="$borderColor"
+            style={{
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text fontSize="$4" fontWeight="bold" color="$color">
+              Carrito ({cartItemCount})
+            </Text>
+            <Button
+              size="$3"
+              theme="red"
+              chromeless
+              onPress={() =>
+                Alert.alert("Vaciar carrito", "¿Vaciar todos los productos?", [
+                  { text: "Cancelar", style: "cancel" },
+                  {
+                    text: "Vaciar",
+                    style: "destructive",
+                    onPress: clearCart,
+                  },
+                ])
+              }
+            >
+              Vaciar
+            </Button>
+          </XStack>
+
+          <FlatList
+            data={cart}
+            keyExtractor={(item) => String(item.product.id)}
+            renderItem={({ item }) => (
+              <CartItemRow
+                item={item}
+                onChangeQty={(q) =>
+                  updateCartItem(item.product.id, { quantity: q })
+                }
+                onRemove={() => removeCartItem(item.product.id)}
+              />
+            )}
+            keyboardShouldPersistTaps="handled"
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 4 }}
+            ListFooterComponent={
+              stockErrors.length > 0 ? (
                 <YStack px="$3" py="$2" gap="$1">
                   {stockErrors.map((err) => (
                     <XStack key={err} style={{ alignItems: "center" }} gap="$2">
@@ -605,58 +559,58 @@ export default function WorkerScreen() {
                     </XStack>
                   ))}
                 </YStack>
-              )}
-
-              <YStack px="$3" py="$3" gap="$3">
-                <XStack
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text fontSize="$5" fontWeight="bold" color="$color">
-                    Total
-                  </Text>
-                  <Text fontSize="$6" fontWeight="bold" color="$green10">
-                    ${cartTotal.toFixed(2)}
-                  </Text>
-                </XStack>
-                <Button
-                  size="$5"
-                  theme="green"
-                  icon={Receipt}
-                  disabled={stockErrors.length > 0}
-                  onPress={() => setShowCheckout(true)}
-                >
-                  Finalizar venta
-                </Button>
-              </YStack>
-            </Card>
-          )}
-
-          {/* Empty state */}
-          {cart.length === 0 && (
-            <Card
-              borderWidth={1}
-              bg="$background"
-              p="$5"
-              style={{ borderRadius: 16 }}
-              borderColor="$borderColor"
-            >
-              <YStack style={{ alignItems: "center" }} gap="$2">
-                <ScanLine size={40} color="$color8" />
-                <Text
-                  color="$color10"
-                  fontSize="$3"
-                  style={{ textAlign: "center" }}
-                >
-                  Escanea o busca productos para agregarlos al carrito
-                </Text>
-              </YStack>
-            </Card>
-          )}
+              ) : null
+            }
+          />
+        </>
+      ) : (
+        <YStack
+          flex={1}
+          style={{ alignItems: "center", justifyContent: "center" }}
+          gap="$3"
+          p="$6"
+        >
+          <ScanLine size={64} color="$color8" />
+          <Text color="$color10" fontSize="$4" style={{ textAlign: "center" }}>
+            Escanea o busca productos para agregarlos al carrito
+          </Text>
         </YStack>
-      </ScrollView>
+      )}
+
+      {/* ── Sticky bottom bar ── */}
+      {cart.length > 0 && (
+        <YStack
+          px="$4"
+          py="$3"
+          gap="$3"
+          borderTopWidth={1}
+          borderColor="$borderColor"
+          bg="$background"
+        >
+          <XStack
+            style={{
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text fontSize="$6" fontWeight="bold" color="$color">
+              Total
+            </Text>
+            <Text fontSize="$8" fontWeight="bold" color="$green10">
+              ${cartTotal.toFixed(2)}
+            </Text>
+          </XStack>
+          <Button
+            size="$6"
+            theme="green"
+            icon={Receipt}
+            disabled={stockErrors.length > 0}
+            onPress={() => setShowCheckout(true)}
+          >
+            Finalizar venta
+          </Button>
+        </YStack>
+      )}
 
       {/* ── Product search (full-screen modal) ────────────────────────── */}
       <Modal
@@ -680,14 +634,14 @@ export default function WorkerScreen() {
               alignItems: "center",
             }}
           >
-            <Text fontSize="$5" fontWeight="bold" color="$color">
+            <Text fontSize="$6" fontWeight="bold" color="$color">
               Buscar producto
             </Text>
             <Button
-              size="$3"
+              size="$4"
               circular
               chromeless
-              icon={<X size={18} />}
+              icon={<X size={22} />}
               onPress={() => setShowSearchSheet(false)}
             />
           </XStack>
@@ -697,21 +651,21 @@ export default function WorkerScreen() {
             bg="$color3"
             borderWidth={1}
             borderColor="$borderColor"
-            style={{ borderRadius: 12, alignItems: "center" }}
+            style={{ borderRadius: 14, alignItems: "center" }}
             px="$3"
             gap="$2"
-            height={44}
+            height={50}
           >
-            <Search size={18} color="$color10" />
+            <Search size={20} color="$color10" />
             <Input
               flex={1}
-              size="$3"
+              size="$4"
               bg="transparent"
               borderWidth={0}
               color="$color"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Nombre o código de barras…"
+              placeholder="Nombre o código…"
               placeholderTextColor="$color8"
               returnKeyType="search"
               autoCorrect={false}
@@ -721,10 +675,10 @@ export default function WorkerScreen() {
             />
             {searchQuery.length > 0 && (
               <Button
-                size="$2"
+                size="$3"
                 chromeless
                 circular
-                icon={<X size={14} color="$color10" />}
+                icon={<X size={16} color="$color10" />}
                 onPress={() => setSearchQuery("")}
               />
             )}
@@ -736,14 +690,14 @@ export default function WorkerScreen() {
               bg="$blue3"
               style={{
                 alignItems: "center",
-                borderRadius: 8,
+                borderRadius: 10,
               }}
               px="$3"
-              py="$2"
+              py="$2.5"
               gap="$2"
             >
-              <ShoppingCart size={14} color="$blue10" />
-              <Text fontSize="$2" color="$blue10" fontWeight="600">
+              <ShoppingCart size={16} color="$blue10" />
+              <Text fontSize="$3" color="$blue10" fontWeight="600">
                 {cart.length} producto{cart.length !== 1 ? "s" : ""} en carrito
               </Text>
             </XStack>
@@ -763,10 +717,10 @@ export default function WorkerScreen() {
                 >
                   <XStack
                     px="$3"
-                    py="$3"
+                    py="$3.5"
                     style={{
                       alignItems: "center",
-                      borderRadius: inCart ? 10 : 0,
+                      borderRadius: inCart ? 12 : 0,
                     }}
                     gap="$3"
                     borderBottomWidth={1}
@@ -776,26 +730,26 @@ export default function WorkerScreen() {
                     {p.photoUri ? (
                       <Image
                         source={{ uri: p.photoUri }}
-                        style={{ width: 44, height: 44, borderRadius: 10 }}
+                        style={{ width: 48, height: 48, borderRadius: 12 }}
                         resizeMode="cover"
                       />
                     ) : (
                       <YStack
-                        width={44}
-                        height={44}
+                        width={48}
+                        height={48}
                         bg="$color3"
                         style={{
-                          borderRadius: 10,
+                          borderRadius: 12,
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
-                        <Package size={20} color="$color8" />
+                        <Package size={22} color="$color8" />
                       </YStack>
                     )}
-                    <YStack flex={1} gap="$0.5">
+                    <YStack flex={1} gap="$1">
                       <Text
-                        fontSize="$3"
+                        fontSize="$4"
                         fontWeight="600"
                         color="$color"
                         numberOfLines={1}
@@ -803,41 +757,41 @@ export default function WorkerScreen() {
                         {p.name}
                       </Text>
                       <XStack gap="$2" style={{ alignItems: "center" }}>
-                        <Text fontSize="$3" fontWeight="bold" color="$blue10">
+                        <Text fontSize="$4" fontWeight="bold" color="$blue10">
                           ${p.salePrice.toFixed(2)}
                         </Text>
-                        <Text fontSize="$2" color="$color10">
+                        <Text fontSize="$3" color="$color10">
                           Stock: {p.stockBaseQty}
                         </Text>
                       </XStack>
                     </YStack>
                     {inCart ? (
                       <XStack
-                        px="$2"
-                        py="$1.5"
+                        px="$3"
+                        py="$2"
                         bg="$green9"
                         style={{
-                          borderRadius: 8,
+                          borderRadius: 10,
                           alignItems: "center",
                         }}
-                        gap="$1"
+                        gap="$1.5"
                       >
-                        <ShoppingCart size={14} color="white" />
-                        <Text fontSize="$2" fontWeight="bold" color="white">
+                        <ShoppingCart size={16} color="white" />
+                        <Text fontSize="$3" fontWeight="bold" color="white">
                           Añadido
                         </Text>
                       </XStack>
                     ) : (
                       <XStack
-                        px="$2"
-                        py="$1.5"
+                        px="$3"
+                        py="$2"
                         bg="$color3"
                         style={{
-                          borderRadius: 8,
+                          borderRadius: 10,
                           alignItems: "center",
                         }}
                       >
-                        <Text fontSize="$2" fontWeight="500" color="$color10">
+                        <Text fontSize="$3" fontWeight="500" color="$color10">
                           Agregar
                         </Text>
                       </XStack>
@@ -847,9 +801,9 @@ export default function WorkerScreen() {
               );
             }}
             ListEmptyComponent={
-              <YStack p="$6" style={{ alignItems: "center" }} gap="$2">
-                <Search size={40} color="$color8" />
-                <Text color="$color10" fontSize="$3">
+              <YStack p="$6" style={{ alignItems: "center" }} gap="$3">
+                <Search size={48} color="$color8" />
+                <Text color="$color10" fontSize="$4">
                   {searchQuery.trim()
                     ? "No se encontraron productos"
                     : "Escribe para buscar productos"}
@@ -878,7 +832,7 @@ export default function WorkerScreen() {
         <Sheet.Frame bg="$background" theme={themeName as any}>
           <Sheet.Handle />
           <YStack p="$4" gap="$4">
-            <Text fontSize="$6" fontWeight="bold" color="$color">
+            <Text fontSize="$7" fontWeight="bold" color="$color">
               Confirmar venta
             </Text>
 
@@ -889,8 +843,8 @@ export default function WorkerScreen() {
               style={{ borderRadius: 14 }}
               overflow="hidden"
               bg="$color2"
-              p="$3"
-              gap="$2"
+              p="$3.5"
+              gap="$2.5"
             >
               {cart.map((item) => {
                 const subtotal = item.quantity * item.unitPrice;
@@ -901,18 +855,18 @@ export default function WorkerScreen() {
                     justify="space-between"
                   >
                     <Text
-                      fontSize="$3"
+                      fontSize="$4"
                       color="$color"
                       flex={1}
                       numberOfLines={1}
                     >
                       {item.product.name}
                     </Text>
-                    <Text fontSize="$2" color="$color10" mx="$2">
+                    <Text fontSize="$3" color="$color10" mx="$2">
                       x{item.quantity} × ${item.unitPrice.toFixed(2)}
                     </Text>
                     <Text
-                      fontSize="$3"
+                      fontSize="$4"
                       fontWeight="bold"
                       color="$green10"
                       width={80}
@@ -926,14 +880,14 @@ export default function WorkerScreen() {
             </Card>
 
             {/* Payment method */}
-            <YStack gap="$2">
-              <Text fontSize="$4" fontWeight="bold" color="$color">
+            <YStack gap="$2.5">
+              <Text fontSize="$5" fontWeight="bold" color="$color">
                 Método de pago
               </Text>
               <XStack gap="$3">
                 <Button
                   flex={1}
-                  size="$5"
+                  size="$6"
                   icon={Banknote}
                   theme={paymentMethod === "CASH" ? "green" : undefined}
                   variant={paymentMethod === "CASH" ? undefined : "outlined"}
@@ -943,7 +897,7 @@ export default function WorkerScreen() {
                 </Button>
                 <Button
                   flex={1}
-                  size="$5"
+                  size="$6"
                   icon={CreditCard}
                   theme={paymentMethod === "CARD" ? "blue" : undefined}
                   variant={paymentMethod === "CARD" ? undefined : "outlined"}
@@ -964,17 +918,17 @@ export default function WorkerScreen() {
               borderTopWidth={1}
               borderColor="$borderColor"
             >
-              <Text fontSize="$6" fontWeight="bold" color="$color">
+              <Text fontSize="$7" fontWeight="bold" color="$color">
                 Total
               </Text>
-              <Text fontSize="$8" fontWeight="bold" color="$green10">
+              <Text fontSize="$9" fontWeight="bold" color="$green10">
                 ${cartTotal.toFixed(2)}
               </Text>
             </XStack>
 
             {/* Confirm */}
             <Button
-              size="$5"
+              size="$6"
               theme="green"
               icon={confirming ? <Spinner /> : ShoppingCart}
               disabled={confirming || cart.length === 0}
