@@ -170,11 +170,7 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
   }
 
   if (currentVersion < 3) {
-    // Add store hours columns
-    await db.execAsync(`
-      ALTER TABLE stores ADD COLUMN openingTime TEXT;
-      ALTER TABLE stores ADD COLUMN closingTime TEXT;
-    `);
+    // Skip store hours columns (no longer needed)
     currentVersion = 3;
   }
 
