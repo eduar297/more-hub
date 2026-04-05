@@ -799,6 +799,10 @@ export async function resetDatabase(db: SQLiteDatabase) {
     DELETE FROM suppliers;
     DELETE FROM users WHERE role != 'ADMIN';
     DELETE FROM stores;
+    DELETE FROM paired_devices;
+    DELETE FROM notification_history;
+    DELETE FROM app_settings;
+    UPDATE sync_metadata SET last_sync_at = NULL, admin_device_id = NULL WHERE id = 1;
   `);
 
   const storeCount = await db.getFirstAsync<{ count: number }>(

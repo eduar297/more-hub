@@ -8,23 +8,23 @@ import { useColors } from "@/hooks/use-colors";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import { hashPin } from "@/utils/auth";
 import {
-    Database,
-    Play,
-    RefreshCw,
-    Store,
-    Trash2,
-    TriangleAlert,
+  Database,
+  Play,
+  RefreshCw,
+  Store,
+  Trash2,
+  TriangleAlert,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { NotificationCards } from "./notifications-section";
 import { settingStyles as styles } from "./shared";
@@ -82,7 +82,7 @@ export function PreferencesSection() {
       if (pinDialogMode === "reset") {
         Alert.alert(
           "⚠️ Borrar base de datos",
-          "Se eliminarán TODOS los datos: productos, tickets, compras, gastos, proveedores, trabajadores y fotos. Solo se conservará tu cuenta de administrador y las unidades del sistema.\n\n¿Estás completamente seguro?",
+          "Se eliminarán TODOS los datos: productos, tickets, compras, gastos, proveedores, trabajadores, fotos, dispositivos emparejados, historial de notificaciones y preferencias. Solo se conservará tu cuenta de administrador y las unidades del sistema.\n\n¿Estás completamente seguro?",
           [
             { text: "Cancelar", style: "cancel" },
             {
