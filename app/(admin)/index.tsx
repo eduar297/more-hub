@@ -3,7 +3,11 @@ import { InventorySection } from "@/components/admin/inventory-section";
 import { OverviewSection } from "@/components/admin/overview-section";
 import { SalesSection } from "@/components/admin/sales-section";
 import { WorkersSection } from "@/components/admin/workers-section";
-import { NotificationHistorySection, SyncSection } from "@/components/settings";
+import {
+    CloudSyncSection,
+    NotificationHistorySection,
+    SyncSection,
+} from "@/components/settings";
 import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
@@ -11,14 +15,16 @@ import { ICON_BTN_BG } from "@/constants/colors";
 import { useLan } from "@/contexts/lan-context";
 import { useColors } from "@/hooks/use-colors";
 import {
-  Bell,
-  LayoutDashboard,
-  Package,
-  RefreshCw,
-  ShoppingCart,
-  TrendingUp,
-  Users,
-  X,
+    Bell,
+    Cloud,
+    LayoutDashboard,
+    Package,
+    RefreshCw,
+    ShoppingCart,
+    TrendingUp,
+    Users,
+    Wifi,
+    X,
 } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "expo-router";
@@ -41,6 +47,7 @@ export default function DashboardScreen() {
   const [section, setSection] = useState<Section>("overview");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [syncMode, setSyncMode] = useState<"lan" | "cloud">("lan");
   const c = useColors();
   const { history, clearHistory, unseenCount, markAllSeen } =
     useNotifications();
@@ -156,7 +163,53 @@ export default function DashboardScreen() {
               <X size={18} color={c.text as any} />
             </TouchableOpacity>
           </XStack>
-          <SyncSection />
+          <View
+            style={[indexStyles.syncToggleRow, { borderBottomColor: c.border }]}
+          >
+            <TouchableOpacity
+              style={[
+                indexStyles.syncToggleBtn,
+                syncMode === "lan" && { backgroundColor: c.blue },
+              ]}
+              onPress={() => setSyncMode("lan")}
+              activeOpacity={0.7}
+            >
+              <Wifi
+                size={14}
+                color={syncMode === "lan" ? "#fff" : (c.muted as any)}
+              />
+              <Text
+                style={[
+                  indexStyles.syncToggleText,
+                  { color: syncMode === "lan" ? "#fff" : c.muted },
+                ]}
+              >
+                Vendedores
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                indexStyles.syncToggleBtn,
+                syncMode === "cloud" && { backgroundColor: c.blue },
+              ]}
+              onPress={() => setSyncMode("cloud")}
+              activeOpacity={0.7}
+            >
+              <Cloud
+                size={14}
+                color={syncMode === "cloud" ? "#fff" : (c.muted as any)}
+              />
+              <Text
+                style={[
+                  indexStyles.syncToggleText,
+                  { color: syncMode === "cloud" ? "#fff" : c.muted },
+                ]}
+              >
+                Nube
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {syncMode === "lan" ? <SyncSection /> : <CloudSyncSection />}
         </SafeAreaView>
       </Modal>
 
@@ -212,5 +265,24 @@ const indexStyles = StyleSheet.create({
     backgroundColor: ICON_BTN_BG,
     alignItems: "center",
     justifyContent: "center",
+  },
+  syncToggleRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  syncToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  syncToggleText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
