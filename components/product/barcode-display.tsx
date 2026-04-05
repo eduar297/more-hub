@@ -61,8 +61,8 @@ const PARITY = [
  * Produces a 113-character bit string (0=white, 1=black) for EAN-13.
  * Structure: 9 quiet | 3 left guard | 42 left data | 5 center guard | 42 right data | 3 right guard | 9 quiet
  */
-function encode(barcode: string): string {
-  const d = barcode.split("").map(Number);
+function encode(code: string): string {
+  const d = code.split("").map(Number);
   const parity = PARITY[d[0]];
   const left = Array.from({ length: 6 }, (_, i) =>
     parity[i] === "A" ? ENC_A[d[i + 1]] : ENC_B[d[i + 1]],
@@ -80,7 +80,7 @@ const EXTENDED_BARS = new Set([9, 11, 55, 57, 101, 103]);
 // ── Component ───────────────────────────────────────────────────────────────
 
 export interface BarcodeDisplayProps {
-  barcode: string;
+  code: string;
   /** Total rendered width in dp. Default 280. */
   width?: number;
   /** Height of the data bars in dp. Default 60. */
@@ -90,16 +90,16 @@ export interface BarcodeDisplayProps {
 }
 
 export function BarcodeDisplay({
-  barcode,
+  code,
   width = 280,
   barHeight = 60,
   showText = true,
 }: BarcodeDisplayProps) {
   // Normalise UPC-A (12 digits) → EAN-13 by prepending a leading zero
   const normalised = useMemo(() => {
-    if (/^\d{12}$/.test(barcode)) return "0" + barcode;
-    return barcode;
-  }, [barcode]);
+    if (/^\d{12}$/.test(code)) return "0" + code;
+    return code;
+  }, [code]);
 
   const bits = useMemo(() => {
     if (normalised.length !== 13 || !/^\d{13}$/.test(normalised)) return null;
@@ -111,7 +111,7 @@ export function BarcodeDisplay({
     return (
       <View style={{ alignItems: "center", paddingVertical: 8 }}>
         <Text fontSize="$3" color="$color10" letterSpacing={2}>
-          {barcode}
+          {code}
         </Text>
       </View>
     );

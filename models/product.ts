@@ -3,7 +3,7 @@ export type SaleMode = "UNIT" | "VARIABLE";
 export interface Product {
   id: number;
   name: string;
-  barcode: string;
+  code: string;
   /** Legacy field kept for DB compat. Use costPrice / salePrice instead. */
   pricePerBaseUnit: number;
   /** Cost price (purchase). Used for margin calculations. */

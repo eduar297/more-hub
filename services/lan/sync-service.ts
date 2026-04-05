@@ -112,7 +112,7 @@ export async function computeCatalogHash(data: {
     products: (data.products as any[]).map((p) => ({
       id: p.id,
       name: p.name,
-      barcode: p.barcode,
+      code: p.code,
       pricePerBaseUnit: p.pricePerBaseUnit,
       costPrice: p.costPrice,
       salePrice: p.salePrice,
@@ -503,12 +503,12 @@ export async function applyReceivedCatalog(
       }
       await tx.runAsync(
         `INSERT OR REPLACE INTO products
-         (id, name, barcode, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, storeId)
+         (id, name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, storeId)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           product.id,
           product.name,
-          product.barcode,
+          product.code,
           product.pricePerBaseUnit,
           product.costPrice,
           product.salePrice,

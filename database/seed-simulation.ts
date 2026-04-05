@@ -102,7 +102,7 @@ const PRODUCTS_DATA = [
   // ── Bebidas (supplier 4 = Bebidas y Refrescos Unidos) ──
   {
     name: "Coca-Cola 600ml",
-    barcode: "7501055300120",
+    code: "7501055300120",
     price: 18,
     unit: 7,
     mode: "UNIT" as const,
@@ -110,7 +110,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Coca-Cola 2L",
-    barcode: "7501055300228",
+    code: "7501055300228",
     price: 35,
     unit: 7,
     mode: "UNIT" as const,
@@ -118,7 +118,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Pepsi 600ml",
-    barcode: "7501031310227",
+    code: "7501031310227",
     price: 17,
     unit: 7,
     mode: "UNIT" as const,
@@ -126,7 +126,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Agua Bonafont 1L",
-    barcode: "7501013130519",
+    code: "7501013130519",
     price: 14,
     unit: 7,
     mode: "UNIT" as const,
@@ -134,7 +134,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Agua Bonafont 1.5L",
-    barcode: "7501013130526",
+    code: "7501013130526",
     price: 18,
     unit: 7,
     mode: "UNIT" as const,
@@ -142,7 +142,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Jugo Del Valle 1L Manzana",
-    barcode: "7501055301103",
+    code: "7501055301103",
     price: 28,
     unit: 7,
     mode: "UNIT" as const,
@@ -150,7 +150,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Gatorade 600ml",
-    barcode: "7501031311101",
+    code: "7501031311101",
     price: 22,
     unit: 7,
     mode: "UNIT" as const,
@@ -158,7 +158,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Sprite 600ml",
-    barcode: "7501055300330",
+    code: "7501055300330",
     price: 17,
     unit: 7,
     mode: "UNIT" as const,
@@ -166,7 +166,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Fanta Naranja 600ml",
-    barcode: "7501055300440",
+    code: "7501055300440",
     price: 17,
     unit: 7,
     mode: "UNIT" as const,
@@ -174,7 +174,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Red Bull 250ml",
-    barcode: "9002490100070",
+    code: "9002490100070",
     price: 38,
     unit: 7,
     mode: "UNIT" as const,
@@ -184,7 +184,7 @@ const PRODUCTS_DATA = [
   // ── Snacks y Dulces (supplier 2 = Dulces y Snacks del Norte) ──
   {
     name: "Sabritas Original 45g",
-    barcode: "7501011115001",
+    code: "7501011115001",
     price: 20,
     unit: 8,
     mode: "UNIT" as const,
@@ -192,7 +192,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Doritos Nacho 62g",
-    barcode: "7501011115100",
+    code: "7501011115100",
     price: 22,
     unit: 8,
     mode: "UNIT" as const,
@@ -200,7 +200,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Cheetos Flamin Hot 52g",
-    barcode: "7501011115200",
+    code: "7501011115200",
     price: 20,
     unit: 8,
     mode: "UNIT" as const,
@@ -208,7 +208,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Ruffles Queso 45g",
-    barcode: "7501011115300",
+    code: "7501011115300",
     price: 20,
     unit: 8,
     mode: "UNIT" as const,
@@ -216,7 +216,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Galletas Marías Gamesa",
-    barcode: "7501000611201",
+    code: "7501000611201",
     price: 16,
     unit: 8,
     mode: "UNIT" as const,
@@ -224,7 +224,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Galletas Oreo 6pz",
-    barcode: "7622210100108",
+    code: "7622210100108",
     price: 18,
     unit: 8,
     mode: "UNIT" as const,
@@ -232,7 +232,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Chocolate Carlos V",
-    barcode: "7501000912301",
+    code: "7501000912301",
     price: 12,
     unit: 7,
     mode: "UNIT" as const,
@@ -240,7 +240,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Chicles Trident 18pz",
-    barcode: "7622210300201",
+    code: "7622210300201",
     price: 25,
     unit: 8,
     mode: "UNIT" as const,
@@ -248,7 +248,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Mazapán De La Rosa",
-    barcode: "7501000403011",
+    code: "7501000403011",
     price: 8,
     unit: 7,
     mode: "UNIT" as const,
@@ -256,7 +256,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Paleta Payaso",
-    barcode: "7501000404018",
+    code: "7501000404018",
     price: 15,
     unit: 7,
     mode: "UNIT" as const,
@@ -266,7 +266,7 @@ const PRODUCTS_DATA = [
   // ── Lácteos (supplier 3 = Lácteos Frescos SA) ──
   {
     name: "Leche Lala Entera 1L",
-    barcode: "7501055900107",
+    code: "7501055900107",
     price: 28,
     unit: 3,
     mode: "UNIT" as const,
@@ -274,7 +274,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Leche Lala Light 1L",
-    barcode: "7501055900114",
+    code: "7501055900114",
     price: 30,
     unit: 3,
     mode: "UNIT" as const,
@@ -282,7 +282,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Yogurt Yoplait Fresa 1kg",
-    barcode: "7501055900200",
+    code: "7501055900200",
     price: 42,
     unit: 1,
     mode: "UNIT" as const,
@@ -290,7 +290,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Queso Oaxaca 400g",
-    barcode: "7501055900307",
+    code: "7501055900307",
     price: 75,
     unit: 1,
     mode: "VARIABLE" as const,
@@ -298,7 +298,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Crema Lala 200ml",
-    barcode: "7501055900404",
+    code: "7501055900404",
     price: 22,
     unit: 7,
     mode: "UNIT" as const,
@@ -306,7 +306,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Mantequilla Gloria 90g",
-    barcode: "7501055900501",
+    code: "7501055900501",
     price: 28,
     unit: 7,
     mode: "UNIT" as const,
@@ -316,7 +316,7 @@ const PRODUCTS_DATA = [
   // ── Abarrotes básicos (supplier 0 = Distribuidora El Sol) ──
   {
     name: "Aceite 123 1L",
-    barcode: "7501003332103",
+    code: "7501003332103",
     price: 42,
     unit: 3,
     mode: "UNIT" as const,
@@ -324,7 +324,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Arroz Verde Valle 1kg",
-    barcode: "7501003340108",
+    code: "7501003340108",
     price: 32,
     unit: 1,
     mode: "UNIT" as const,
@@ -332,7 +332,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Frijol Negro 1kg",
-    barcode: "7501003340201",
+    code: "7501003340201",
     price: 38,
     unit: 1,
     mode: "UNIT" as const,
@@ -340,7 +340,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Azúcar Morena 1kg",
-    barcode: "7501003340304",
+    code: "7501003340304",
     price: 30,
     unit: 1,
     mode: "UNIT" as const,
@@ -348,7 +348,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Sal de Mesa 1kg",
-    barcode: "7501003340407",
+    code: "7501003340407",
     price: 12,
     unit: 1,
     mode: "UNIT" as const,
@@ -356,7 +356,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Harina de Maíz Maseca 1kg",
-    barcode: "7501003340500",
+    code: "7501003340500",
     price: 25,
     unit: 1,
     mode: "UNIT" as const,
@@ -364,7 +364,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Pasta Spaghetti La Moderna",
-    barcode: "7501003340603",
+    code: "7501003340603",
     price: 14,
     unit: 8,
     mode: "UNIT" as const,
@@ -372,7 +372,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Atún Dolores en Agua",
-    barcode: "7501003340706",
+    code: "7501003340706",
     price: 24,
     unit: 7,
     mode: "UNIT" as const,
@@ -380,7 +380,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Salsa Valentina 370ml",
-    barcode: "7501003340809",
+    code: "7501003340809",
     price: 16,
     unit: 7,
     mode: "UNIT" as const,
@@ -388,7 +388,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Papel Higiénico Regio 4 rollos",
-    barcode: "7501003340902",
+    code: "7501003340902",
     price: 35,
     unit: 8,
     mode: "UNIT" as const,
@@ -396,7 +396,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Jabón Zote en Barra",
-    barcode: "7501003341009",
+    code: "7501003341009",
     price: 18,
     unit: 7,
     mode: "UNIT" as const,
@@ -404,7 +404,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Detergente Roma 500g",
-    barcode: "7501003341102",
+    code: "7501003341102",
     price: 22,
     unit: 7,
     mode: "UNIT" as const,
@@ -414,7 +414,7 @@ const PRODUCTS_DATA = [
   // ── Mayoreo / granel (supplier 1 = Abarrotes Mayoreo MX) ──
   {
     name: "Huevo Blanco (kg)",
-    barcode: "7501003350101",
+    code: "7501003350101",
     price: 55,
     unit: 1,
     mode: "VARIABLE" as const,
@@ -422,7 +422,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Tortillas de Maíz 1kg",
-    barcode: "7501003350204",
+    code: "7501003350204",
     price: 22,
     unit: 1,
     mode: "UNIT" as const,
@@ -430,7 +430,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Pan Blanco Bimbo Grande",
-    barcode: "7501003350307",
+    code: "7501003350307",
     price: 58,
     unit: 8,
     mode: "UNIT" as const,
@@ -438,7 +438,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Café Nescafé Clásico 120g",
-    barcode: "7501003350400",
+    code: "7501003350400",
     price: 85,
     unit: 7,
     mode: "UNIT" as const,
@@ -446,7 +446,7 @@ const PRODUCTS_DATA = [
   },
   {
     name: "Cereal Zucaritas 490g",
-    barcode: "7501003350503",
+    code: "7501003350503",
     price: 68,
     unit: 7,
     mode: "UNIT" as const,
@@ -883,10 +883,10 @@ export async function seedSimulation(
     const costPx = Math.round(salePx * profile.costPct * 100) / 100;
 
     const result = await db.runAsync(
-      `INSERT INTO products (name, barcode, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, storeId)
+      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, storeId)
        VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?)`,
       p.name,
-      p.barcode,
+      p.code,
       p.price,
       costPx,
       salePx,

@@ -25,7 +25,7 @@ export interface TicketItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
-  barcode: string | null;
+  code: string | null;
   photoUri: string | null;
   originalPrice: number | null;
 }

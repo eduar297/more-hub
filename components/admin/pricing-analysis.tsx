@@ -220,8 +220,8 @@ function AnalysisRow({
                 item.currentMargin >= 0.2
                   ? "$green10"
                   : item.currentMargin >= 0.1
-                    ? "$orange10"
-                    : "$red10"
+                  ? "$orange10"
+                  : "$red10"
               }
             >
               {`${(item.currentMargin * 100).toFixed(1)}%`}
@@ -318,7 +318,7 @@ export function PricingAnalysisSection({
       items = items.filter(
         (i) =>
           i.product.name.toLowerCase().includes(q) ||
-          i.product.barcode.toLowerCase().includes(q),
+          i.product.code.toLowerCase().includes(q),
       );
     }
     items.sort((a, b) => {
@@ -402,7 +402,9 @@ export function PricingAnalysisSection({
 
     Alert.alert(
       "Aplicar precios sugeridos",
-      `Se actualizará el precio de venta de ${updates.length} producto${updates.length > 1 ? "s" : ""}. ¿Continuar?`,
+      `Se actualizará el precio de venta de ${updates.length} producto${
+        updates.length > 1 ? "s" : ""
+      }. ¿Continuar?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -418,7 +420,9 @@ export function PricingAnalysisSection({
               onPricesUpdated();
               Alert.alert(
                 "Listo",
-                `${updates.length} precio${updates.length > 1 ? "s" : ""} actualizado${updates.length > 1 ? "s" : ""}.`,
+                `${updates.length} precio${
+                  updates.length > 1 ? "s" : ""
+                } actualizado${updates.length > 1 ? "s" : ""}.`,
               );
             } catch (e) {
               Alert.alert("Error", (e as Error).message);

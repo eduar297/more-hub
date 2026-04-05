@@ -7,7 +7,7 @@ import { useProductRepository } from "./use-product-repository";
 
 export type ScanResult =
   | { kind: "found"; product: Product }
-  | { kind: "not-found"; barcode: string };
+  | { kind: "not-found"; code: string };
 
 // Module-level gate: only the hook instance that launched the scanner should
 // handle the result. This prevents other mounted instances (e.g. a sibling tab)
@@ -48,12 +48,12 @@ export function useBarcodeScanner({
     try {
       await CameraViewClass.dismissScanner().catch(() => {});
       const found = visibleOnlyRef.current
-        ? await productsRef.current.findVisibleByBarcode(barcode)
-        : await productsRef.current.findByBarcode(barcode);
+        ? await productsRef.current.findVisibleByCode(barcode)
+        : await productsRef.current.findByCode(barcode);
       if (found) {
         onResultRef.current({ kind: "found", product: found });
       } else {
-        onResultRef.current({ kind: "not-found", barcode });
+        onResultRef.current({ kind: "not-found", code: barcode });
       }
     } catch (e) {
       onErrorRef.current?.("Error buscando producto: " + (e as Error).message);

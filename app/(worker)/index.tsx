@@ -337,7 +337,7 @@ export default function WorkerScreen() {
         setError(null);
         addToCart(result.product);
       } else {
-        setError("Producto no encontrado: " + result.barcode);
+        setError("Producto no encontrado: " + result.code);
       }
     },
     onError(msg) {
@@ -351,7 +351,7 @@ export default function WorkerScreen() {
     const q = searchQuery.toLowerCase().trim();
     return visibleProducts.filter(
       (p) =>
-        p.name.toLowerCase().includes(q) || p.barcode.toLowerCase().includes(q),
+        p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q),
     );
   }, [visibleProducts, searchQuery]);
 

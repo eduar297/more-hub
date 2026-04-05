@@ -27,8 +27,8 @@ export function generateEAN13(): string {
 /**
  * Validates whether a 13-character string is a valid EAN-13 barcode.
  */
-export function validateEAN13(barcode: string): boolean {
-  if (!/^\d{13}$/.test(barcode)) return false;
-  const digits = barcode.split("").map(Number);
+export function validateEAN13(code: string): boolean {
+  if (!/^\d{13}$/.test(code)) return false;
+  const digits = code.split("").map(Number);
   return calcCheckDigit(digits.slice(0, 12)) === digits[12];
 }

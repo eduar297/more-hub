@@ -36,7 +36,7 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      barcode TEXT UNIQUE,
+      code TEXT UNIQUE,
       pricePerBaseUnit REAL NOT NULL,
       costPrice REAL,
       salePrice REAL,

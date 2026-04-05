@@ -21,8 +21,8 @@ export function StockRow({
     product.stockBaseQty === 0
       ? "$red10"
       : product.stockBaseQty <= 5
-        ? "$orange10"
-        : "$green10";
+      ? "$orange10"
+      : "$green10";
 
   return (
     <XStack
@@ -73,7 +73,7 @@ export function StockRow({
           {product.name}
         </Text>
         <Text fontSize="$2" color="$color10">
-          {product.barcode}
+          {product.code}
         </Text>
       </YStack>
       <Text fontSize="$4" fontWeight="bold" color={stockColor as any}>

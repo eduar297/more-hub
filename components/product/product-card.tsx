@@ -13,6 +13,7 @@ import {
 } from "@tamagui/lucide-icons";
 import { useEffect, useId, useState } from "react";
 import { Image, Switch } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import {
     Button,
     Input,
@@ -115,7 +116,7 @@ export function ProductCard({
     if (!canSave) return;
     onSave({
       name: name.trim(),
-      barcode: product.barcode,
+      code: product.code,
       pricePerBaseUnit: parsedCost,
       costPrice: parsedCost,
       salePrice: parsedSale,
@@ -153,24 +154,50 @@ export function ProductCard({
           />
         )}
 
-        {/* Barcode visual */}
-        {/^\d{13}$/.test(product.barcode) && (
-          <YStack
-            bg="$color2"
-            style={{ borderRadius: 14, alignItems: "center" }}
-            p="$3"
-            gap="$2"
+        {/* Code (barcode + QR) */}
+        <YStack bg="$color2" style={{ borderRadius: 14 }} p="$3" gap="$2">
+          <XStack gap="$2.5">
+            <YStack
+              flex={2}
+              bg="white"
+              style={{
+                borderRadius: 10,
+                overflow: "hidden",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              py="$2"
+            >
+              <BarcodeDisplay
+                code={product.code}
+                width={180}
+                barHeight={48}
+                showText={false}
+              />
+            </YStack>
+            <YStack
+              flex={1}
+              bg="white"
+              style={{
+                borderRadius: 10,
+                overflow: "hidden",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              p="$2"
+            >
+              <QRCode value={product.code} size={76} backgroundColor="white" />
+            </YStack>
+          </XStack>
+          <Text
+            fontSize="$2"
+            color="$color10"
+            letterSpacing={2}
+            style={{ textAlign: "center" }}
           >
-            <BarcodeDisplay
-              barcode={product.barcode}
-              width={240}
-              barHeight={50}
-            />
-            <Text fontSize="$2" color="$color10" letterSpacing={2}>
-              {product.barcode}
-            </Text>
-          </YStack>
-        )}
+            {product.code}
+          </Text>
+        </YStack>
 
         {/* Info rows */}
         <YStack
@@ -240,16 +267,43 @@ export function ProductCard({
         <PhotoPicker uri={photoUri} onChange={setPhotoUri} />
       </YStack>
 
-      {/* Barcode (read-only) */}
-      <YStack
-        bg="$color2"
-        style={{ borderRadius: 14, alignItems: "center" }}
-        p="$3"
-        gap="$1"
-      >
-        <BarcodeDisplay barcode={product.barcode} width={240} barHeight={44} />
-        <Text fontSize="$1" color="$color8">
-          {product.barcode} — no editable
+      {/* Code (read-only) */}
+      <YStack bg="$color2" style={{ borderRadius: 14 }} p="$3" gap="$2">
+        <XStack gap="$2">
+          <YStack
+            flex={2}
+            bg="white"
+            style={{
+              borderRadius: 10,
+              overflow: "hidden",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            py="$2"
+          >
+            <BarcodeDisplay
+              code={product.code}
+              width={170}
+              barHeight={40}
+              showText={false}
+            />
+          </YStack>
+          <YStack
+            flex={1}
+            bg="white"
+            style={{
+              borderRadius: 10,
+              overflow: "hidden",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            p="$2"
+          >
+            <QRCode value={product.code} size={64} backgroundColor="white" />
+          </YStack>
+        </XStack>
+        <Text fontSize="$1" color="$color8" style={{ textAlign: "center" }}>
+          {product.code} — no editable
         </Text>
       </YStack>
 

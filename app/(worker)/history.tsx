@@ -353,13 +353,13 @@ export default function HistoryScreen() {
                           >
                             {item.productName}
                           </Text>
-                          {item.barcode && (
+                          {item.code && (
                             <Text
                               fontSize="$1"
                               color="$color9"
                               numberOfLines={1}
                             >
-                              {item.barcode}
+                              {item.code}
                             </Text>
                           )}
                           <XStack gap="$2" style={{ alignItems: "center" }}>

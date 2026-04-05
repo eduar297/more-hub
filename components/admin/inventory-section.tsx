@@ -334,8 +334,7 @@ export function InventorySection() {
           if (!searchQuery.trim()) return true;
           const q = searchQuery.toLowerCase().trim();
           return (
-            p.name.toLowerCase().includes(q) ||
-            p.barcode.toLowerCase().includes(q)
+            p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)
           );
         })}
         keyExtractor={(item) => String(item.id)}
@@ -827,8 +826,7 @@ export function InventorySection() {
                     {p.name}
                   </Text>
                   <Text fontSize="$2" color="$color10">
-                    {p.barcode} · ${fmtMoney(p.salePrice)}/
-                    {unit?.symbol ?? "ud"}
+                    {p.code} · ${fmtMoney(p.salePrice)}/{unit?.symbol ?? "ud"}
                   </Text>
                 </YStack>
                 <YStack style={{ alignItems: "flex-end" }}>

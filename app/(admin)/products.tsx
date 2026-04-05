@@ -15,26 +15,26 @@ import type { CreateProductInput, Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
 import {
-  ChevronDown,
-  Package,
-  Pencil,
-  Plus,
-  ScanLine,
-  ShoppingCart,
-  TrendingDown,
-  TrendingUp,
-  X,
+    ChevronDown,
+    Package,
+    Pencil,
+    Plus,
+    ScanLine,
+    ShoppingCart,
+    TrendingDown,
+    TrendingUp,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
-  Image,
-  Modal,
-  ScrollView,
-  SectionList,
-  StyleSheet,
-  TouchableOpacity,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    SectionList,
+    StyleSheet,
+    TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Spinner, Text, XStack, YStack } from "tamagui";
@@ -86,7 +86,7 @@ function ProductRow({
           {product.name}
         </Text>
         <Text fontSize="$1" color="$color10" numberOfLines={1}>
-          {product.barcode}
+          {product.code}
         </Text>
       </YStack>
 
@@ -211,8 +211,8 @@ export default function ProductsScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("view");
   const [detailEditing, setDetailEditing] = useState(false);
-  const [createBarcode, setCreateBarcode] = useState<string>("");
-  const [scannedBarcode, setScannedBarcode] = useState(false);
+  const [createCode, setCreateCode] = useState<string>("");
+  const [scannedCode, setScannedCode] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -223,8 +223,8 @@ export default function ProductsScreen() {
   const closeModal = useCallback(() => {
     setModalOpen(false);
     setSelectedProduct(null);
-    setCreateBarcode("");
-    setScannedBarcode(false);
+    setCreateCode("");
+    setScannedCode(false);
     setDetailEditing(false);
   }, []);
 
@@ -237,8 +237,8 @@ export default function ProductsScreen() {
         setModalMode("view");
         setModalOpen(true);
       } else {
-        setCreateBarcode(result.barcode);
-        setScannedBarcode(true);
+        setCreateCode(result.code);
+        setScannedCode(true);
         setModalMode("create");
         setModalOpen(true);
       }
@@ -311,7 +311,7 @@ export default function ProductsScreen() {
           ? catProducts.filter(
               (p) =>
                 p.name.toLowerCase().includes(q) ||
-                p.barcode.toLowerCase().includes(q),
+                p.code.toLowerCase().includes(q),
             )
           : catProducts;
         const isCollapsed = collapsedSections.has(category.name);
@@ -336,8 +336,8 @@ export default function ProductsScreen() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleAddManual = () => {
-    setCreateBarcode(generateEAN13());
-    setScannedBarcode(false);
+    setCreateCode(generateEAN13());
+    setScannedCode(false);
     setModalMode("create");
     setModalOpen(true);
   };
@@ -348,8 +348,8 @@ export default function ProductsScreen() {
     try {
       const created = await products.create(data);
       setSelectedProduct(created);
-      setCreateBarcode("");
-      setScannedBarcode(false);
+      setCreateCode("");
+      setScannedCode(false);
       setDetailEditing(false);
       setModalMode("view");
       await loadData();
@@ -611,9 +611,9 @@ export default function ProductsScreen() {
               automaticallyAdjustKeyboardInsets
             >
               <ProductForm
-                key={createBarcode}
-                barcode={createBarcode}
-                scanned={scannedBarcode}
+                key={createCode}
+                code={createCode}
+                scanned={scannedCode}
                 units={allUnits}
                 onSubmit={handleCreate}
                 loading={creating}

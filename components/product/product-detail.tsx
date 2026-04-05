@@ -2,6 +2,7 @@ import { BarcodeDisplay } from "@/components/product/barcode-display";
 import type { Product } from "@/models/product";
 import { PackagePlus, Pencil, Trash2 } from "@tamagui/lucide-icons";
 import { Image } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import {
     Button,
     Card,
@@ -70,29 +71,66 @@ export function ProductDetail({
           {product.name}
         </Text>
 
-        {/* Barcode visual */}
-        {/^\d{13}$/.test(product.barcode) && (
+        {/* Code visual */}
+        {/^\d{13}$/.test(product.code) && (
           <YStack
             bg="$color1"
-            style={{ borderRadius: 12, alignItems: "center" }}
+            style={{ borderRadius: 12 }}
             p="$3"
             gap="$2"
             mb="$2"
           >
-            <BarcodeDisplay
-              barcode={product.barcode}
-              width={240}
-              barHeight={50}
-            />
-            <Text fontSize="$2" color="$color10" letterSpacing={2}>
-              {product.barcode}
+            <XStack gap="$2.5">
+              <YStack
+                flex={2}
+                bg="white"
+                style={{
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                py="$2"
+              >
+                <BarcodeDisplay
+                  code={product.code}
+                  width={180}
+                  barHeight={48}
+                  showText={false}
+                />
+              </YStack>
+              <YStack
+                flex={1}
+                bg="white"
+                style={{
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                p="$2"
+              >
+                <QRCode
+                  value={product.code}
+                  size={76}
+                  backgroundColor="white"
+                />
+              </YStack>
+            </XStack>
+            <Text
+              fontSize="$2"
+              color="$color10"
+              letterSpacing={2}
+              style={{ textAlign: "center" }}
+            >
+              {product.code}
             </Text>
           </YStack>
         )}
 
         <Separator />
 
-        <DetailRow label="Código de barras" value={product.barcode} />
+        <DetailRow label="Código" value={product.code} />
         <Separator />
         <DetailRow
           label="Precio costo"

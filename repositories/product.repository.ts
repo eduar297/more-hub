@@ -1,7 +1,7 @@
 import type {
-  CreateProductInput,
-  Product,
-  UpdateProductInput,
+    CreateProductInput,
+    Product,
+    UpdateProductInput,
 } from "@/models/product";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { BaseRepository } from "./base.repository";
@@ -23,7 +23,9 @@ export class ProductRepository extends BaseRepository<
   async findAll(orderBy?: string): Promise<Product[]> {
     if (this.storeId !== undefined) {
       const rows = await this.db.getAllAsync<any>(
-        `SELECT * FROM products WHERE storeId = ? ORDER BY ${orderBy ?? "name ASC"}`,
+        `SELECT * FROM products WHERE storeId = ? ORDER BY ${
+          orderBy ?? "name ASC"
+        }`,
         [this.storeId],
       );
       return rows.map(this.mapRow);
@@ -57,43 +59,43 @@ export class ProductRepository extends BaseRepository<
     return row ? this.mapRow(row) : null;
   }
 
-  async findByBarcode(barcode: string): Promise<Product | null> {
+  async findByCode(code: string): Promise<Product | null> {
     if (this.storeId !== undefined) {
       const row = await this.db.getFirstAsync<any>(
-        "SELECT * FROM products WHERE barcode = ? AND storeId = ?",
-        [barcode, this.storeId],
+        "SELECT * FROM products WHERE code = ? AND storeId = ?",
+        [code, this.storeId],
       );
       return row ? this.mapRow(row) : null;
     }
     const row = await this.db.getFirstAsync<any>(
-      "SELECT * FROM products WHERE barcode = ?",
-      [barcode],
+      "SELECT * FROM products WHERE code = ?",
+      [code],
     );
     return row ? this.mapRow(row) : null;
   }
 
-  /** Find a visible product by barcode (for worker scanner). */
-  async findVisibleByBarcode(barcode: string): Promise<Product | null> {
+  /** Find a visible product by code (for worker scanner). */
+  async findVisibleByCode(code: string): Promise<Product | null> {
     if (this.storeId !== undefined) {
       const row = await this.db.getFirstAsync<any>(
-        "SELECT * FROM products WHERE barcode = ? AND visible = 1 AND storeId = ?",
-        [barcode, this.storeId],
+        "SELECT * FROM products WHERE code = ? AND visible = 1 AND storeId = ?",
+        [code, this.storeId],
       );
       return row ? this.mapRow(row) : null;
     }
     const row = await this.db.getFirstAsync<any>(
-      "SELECT * FROM products WHERE barcode = ? AND visible = 1",
-      [barcode],
+      "SELECT * FROM products WHERE code = ? AND visible = 1",
+      [code],
     );
     return row ? this.mapRow(row) : null;
   }
 
   async create(input: CreateProductInput): Promise<Product> {
     await this.db.runAsync(
-      `INSERT INTO products (name, barcode, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, storeId)
+      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, storeId)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       input.name,
-      input.barcode,
+      input.code,
       input.costPrice,
       input.costPrice,
       input.salePrice,
@@ -104,7 +106,7 @@ export class ProductRepository extends BaseRepository<
       input.photoUri ?? null,
       this.storeId ?? 1,
     );
-    const created = await this.findByBarcode(input.barcode);
+    const created = await this.findByCode(input.code);
     if (!created) throw new Error("Producto creado pero no encontrado");
     return created;
   }
@@ -115,7 +117,7 @@ export class ProductRepository extends BaseRepository<
 
     const map: Record<string, string> = {
       name: "name",
-      barcode: "barcode",
+      code: "code",
       costPrice: "costPrice",
       salePrice: "salePrice",
       pricePerBaseUnit: "pricePerBaseUnit",

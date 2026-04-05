@@ -1,38 +1,38 @@
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG, OVERLAY } from "@/constants/colors";
 import {
-  Building2,
-  ChevronRight,
-  Package,
-  Plus,
-  ScanLine,
-  Search,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
-  X,
+    Building2,
+    ChevronRight,
+    Package,
+    Plus,
+    ScanLine,
+    Search,
+    ShoppingBag,
+    ShoppingCart,
+    Trash2,
+    X,
 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    StyleSheet,
 } from "react-native";
 import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Separator,
-  Sheet,
-  Spinner,
-  Text,
-  TextArea,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Label,
+    Separator,
+    Sheet,
+    Spinner,
+    Text,
+    TextArea,
+    XStack,
+    YStack,
 } from "tamagui";
 
 import { PeriodSelector } from "@/components/admin/period-selector";
@@ -227,7 +227,7 @@ export default function PurchasesScreen() {
       if (result.kind === "not-found") {
         Alert.alert(
           "Producto no encontrado",
-          `Código: ${result.barcode}\nRegistra el producto primero en la sección "Productos".`,
+          `Código: ${result.code}\nRegistra el producto primero en la sección "Productos".`,
         );
         return;
       }
@@ -352,7 +352,7 @@ export default function PurchasesScreen() {
     const q = searchQuery.toLowerCase().trim();
     return allProducts.filter(
       (p) =>
-        p.name.toLowerCase().includes(q) || p.barcode.toLowerCase().includes(q),
+        p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q),
     );
   }, [allProducts, searchQuery]);
 

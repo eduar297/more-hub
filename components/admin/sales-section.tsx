@@ -1079,13 +1079,13 @@ export function SalesSection() {
                             >
                               {item.productName}
                             </Text>
-                            {item.barcode ? (
+                            {item.code ? (
                               <Text
                                 fontSize="$1"
                                 color="$color9"
                                 numberOfLines={1}
                               >
-                                {item.barcode}
+                                {item.code}
                               </Text>
                             ) : null}
                             <Text fontSize="$1" color="$color10">

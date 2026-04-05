@@ -35,7 +35,7 @@ async function ensureTables(db: SQLiteDatabase) {
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      barcode TEXT UNIQUE,
+      code TEXT UNIQUE,
       pricePerBaseUnit REAL NOT NULL,
       costPrice REAL,
       salePrice REAL,
@@ -168,7 +168,7 @@ async function ensureTables(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 20;
+  const DATABASE_VERSION = 21;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -521,6 +521,13 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE notification_history ADD COLUMN seen INTEGER NOT NULL DEFAULT 0;
     `);
     currentVersion = 20;
+  }
+
+  if (currentVersion === 20) {
+    await db.execAsync(`
+      ALTER TABLE products RENAME COLUMN barcode TO code;
+    `);
+    currentVersion = 21;
   }
 
   await seedUnits(db);

@@ -3,32 +3,32 @@ import { BLUE_TINT, TREND_COLORS, URGENCY_COLORS } from "@/constants/colors";
 import { useStore } from "@/contexts/store-context";
 import { fmtMoney } from "@/utils/format";
 import type {
-  PurchaseReport,
-  PurchaseSuggestion,
-  SalesTrend,
-  Urgency,
+    PurchaseReport,
+    PurchaseSuggestion,
+    SalesTrend,
+    Urgency,
 } from "@/utils/purchase-suggestions";
 import { runPurchaseSuggestions } from "@/utils/purchase-suggestions";
 import {
-  ArrowUpDown,
-  ChevronDown,
-  Package,
-  ShoppingCart,
+    ArrowUpDown,
+    ChevronDown,
+    Package,
+    ShoppingCart,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Image, ScrollView } from "react-native";
 import {
-  Accordion,
-  Button,
-  Card,
-  Input,
-  Label,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Accordion,
+    Button,
+    Card,
+    Input,
+    Label,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 // ── Urgency helpers ──────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ export function PurchaseSuggestionsSection() {
       items = items.filter(
         (i) =>
           i.product.name.toLowerCase().includes(q) ||
-          i.product.barcode.toLowerCase().includes(q),
+          i.product.code.toLowerCase().includes(q),
       );
     }
     items.sort((a, b) => {
