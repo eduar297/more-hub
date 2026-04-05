@@ -12,8 +12,7 @@ import {
     ArrowDownToLine,
     ArrowUpFromLine,
     CheckCircle,
-    Cloud,
-    CloudOff,
+    CloudOff
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
@@ -26,7 +25,6 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { settingStyles } from "./shared";
 
 type SyncState =
   | "idle"
@@ -162,22 +160,15 @@ export function CloudSyncSection() {
   // Not configured
   if (available === false) {
     return (
-      <ScrollView contentContainerStyle={settingStyles.profileContent}>
-        <View
-          style={[
-            settingStyles.profileCard,
-            { backgroundColor: c.card, borderColor: c.border },
-          ]}
-        >
-          <View style={settingStyles.cardTitleRow}>
-            <CloudOff size={15} color={c.muted as any} />
-            <Text style={[settingStyles.cardTitle, { color: c.text }]}>
-              Sincronización en la nube
-            </Text>
-          </View>
-          <Text style={[styles.desc, { color: c.muted }]}>
+      <ScrollView
+        style={[styles.root, { backgroundColor: c.bg }]}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.emptyBox}>
+          <CloudOff size={40} color={c.muted as any} />
+          <Text style={[styles.emptyText, { color: c.muted }]}>
             La sincronización en la nube no está configurada para este negocio.
-            Contacta al administrador del sistema para habilitar esta función.
+            {"\n"}Contacta al administrador del sistema.
           </Text>
         </View>
       </ScrollView>
@@ -187,152 +178,148 @@ export function CloudSyncSection() {
   // Loading
   if (available === null) {
     return (
-      <View style={settingStyles.centerBox}>
+      <View style={[styles.root, styles.centerBox, { backgroundColor: c.bg }]}>
         <ActivityIndicator color={c.blue} />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={settingStyles.profileContent}>
-      {/* Header card */}
-      <View
-        style={[
-          settingStyles.profileCard,
-          { backgroundColor: c.card, borderColor: c.border },
-        ]}
-      >
-        <View style={settingStyles.cardTitleRow}>
-          <Cloud size={15} color={c.blue as any} />
-          <Text style={[settingStyles.cardTitle, { color: c.text }]}>
-            Sincronización en la nube
-          </Text>
-        </View>
-        <Text style={[styles.desc, { color: c.muted }]}>
-          Respalda tus datos en la nube o restaura desde un respaldo anterior.
-          Solo el administrador puede realizar estas acciones.
+    <ScrollView
+      style={[styles.root, { backgroundColor: c.bg }]}
+      contentContainerStyle={styles.content}
+    >
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: c.border }]}>
+        <Text style={[styles.headerTitle, { color: c.text }]}>
+          Sincronización en la nube
         </Text>
+        <Text style={[styles.headerSub, { color: c.muted }]}>
+          Respalda tus datos o restaura desde un respaldo anterior
+        </Text>
+      </View>
 
-        {/* Progress */}
-        {progress && isBusy && (
-          <View style={[styles.progressBox, { backgroundColor: c.blueLight }]}>
+      {/* Upload button */}
+      <TouchableOpacity
+        style={[
+          styles.actionBtn,
+          { backgroundColor: isBusy ? "#6b7280" : c.blue },
+        ]}
+        onPress={handleUpload}
+        disabled={isBusy}
+        activeOpacity={0.8}
+      >
+        {state === "uploading" ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <ArrowUpFromLine size={18} color="#fff" />
+        )}
+        <Text style={styles.actionBtnText}>Respaldar en la nube</Text>
+      </TouchableOpacity>
+
+      {/* Download button */}
+      <TouchableOpacity
+        style={[
+          styles.actionBtn,
+          styles.actionBtnOutline,
+          {
+            borderColor: c.blue,
+            opacity: isBusy ? 0.6 : 1,
+          },
+        ]}
+        onPress={handleDownload}
+        disabled={isBusy}
+        activeOpacity={0.8}
+      >
+        {state === "downloading" ? (
+          <ActivityIndicator color={c.blue} size="small" />
+        ) : (
+          <ArrowDownToLine size={18} color={c.blue as any} />
+        )}
+        <Text style={[styles.actionBtnText, { color: c.blue }]}>
+          Restaurar desde la nube
+        </Text>
+      </TouchableOpacity>
+
+      {/* Progress card */}
+      {progress && isBusy && (
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
+          <View style={styles.cardContent}>
             <ActivityIndicator color={c.blue} size="small" />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[styles.progressText, { color: c.blue }]}>
+              <Text style={[styles.progressText, { color: c.text }]}>
                 {progress.message}
               </Text>
-              <Text style={[styles.progressMeta, { color: c.blue }]}>
+              <Text style={[styles.progressMeta, { color: c.muted }]}>
                 {progress.current}/{progress.total} tablas
               </Text>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Result */}
-        {!!result && state === "done" && (
-          <View
-            style={[
-              settingStyles.feedbackRow,
-              { backgroundColor: c.successBg },
-            ]}
-          >
-            <CheckCircle size={16} color={c.green as any} />
-            <Text style={[settingStyles.feedbackText, { color: c.green }]}>
-              {result}
-            </Text>
+      {/* Result card */}
+      {!!result && state === "done" && (
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
+          <View style={styles.cardContent}>
+            <CheckCircle size={16} color="#22c55e" />
+            <Text style={[styles.resultText, { color: c.text }]}>{result}</Text>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Error */}
-        {!!error && (
-          <View
-            style={[settingStyles.feedbackRow, { backgroundColor: c.dangerBg }]}
-          >
-            <AlertCircle size={16} color={c.danger as any} />
-            <Text style={[settingStyles.feedbackText, { color: c.danger }]}>
+      {/* Error card */}
+      {!!error && (
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
+          <View style={styles.cardContent}>
+            <AlertCircle size={16} color="#ef4444" />
+            <Text style={[styles.resultText, { color: "#ef4444" }]}>
               {error}
             </Text>
           </View>
-        )}
-
-        {/* Actions */}
-        <View style={styles.actions}>
-          {/* Upload */}
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              { backgroundColor: c.blue, opacity: isBusy ? 0.6 : 1 },
-            ]}
-            onPress={handleUpload}
-            disabled={isBusy}
-            activeOpacity={0.8}
-          >
-            {state === "uploading" ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <ArrowUpFromLine size={18} color="#fff" />
-            )}
-            <Text style={styles.actionBtnText}>Respaldar en la nube</Text>
-          </TouchableOpacity>
-
-          {/* Download */}
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              styles.actionBtnOutline,
-              {
-                borderColor: c.blue,
-                opacity: isBusy ? 0.6 : 1,
-              },
-            ]}
-            onPress={handleDownload}
-            disabled={isBusy}
-            activeOpacity={0.8}
-          >
-            {state === "downloading" ? (
-              <ActivityIndicator color={c.blue} size="small" />
-            ) : (
-              <ArrowDownToLine size={18} color={c.blue as any} />
-            )}
-            <Text style={[styles.actionBtnText, { color: c.blue }]}>
-              Restaurar desde la nube
-            </Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  desc: {
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  progressBox: {
-    flexDirection: "row",
+  root: { flex: 1 },
+  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  centerBox: {
     alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
+    justifyContent: "center",
   },
-  progressText: {
-    fontSize: 13,
-    fontWeight: "600",
+  header: {
+    paddingBottom: 16,
+    marginBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 4,
   },
-  progressMeta: {
-    fontSize: 12,
-  },
-  actions: {
-    gap: 10,
-  },
+  headerTitle: { fontSize: 17, fontWeight: "600" },
+  headerSub: { fontSize: 13 },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 12,
   },
   actionBtnOutline: {
     backgroundColor: "transparent",
@@ -341,6 +328,39 @@ const styles = StyleSheet.create({
   actionBtnText: {
     color: "#fff",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  card: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  cardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+  },
+  progressText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  progressMeta: {
+    fontSize: 12,
+  },
+  resultText: {
+    fontSize: 13,
+    flex: 1,
+  },
+  emptyBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 22,
   },
 });

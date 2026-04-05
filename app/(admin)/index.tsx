@@ -4,9 +4,9 @@ import { OverviewSection } from "@/components/admin/overview-section";
 import { SalesSection } from "@/components/admin/sales-section";
 import { WorkersSection } from "@/components/admin/workers-section";
 import {
-    CloudSyncSection,
-    NotificationHistorySection,
-    SyncSection,
+  CloudSyncSection,
+  NotificationHistorySection,
+  SyncSection,
 } from "@/components/settings";
 import { useNotifications } from "@/components/ui/notification-provider";
 import type { TabDef } from "@/components/ui/screen-tabs";
@@ -15,16 +15,16 @@ import { ICON_BTN_BG } from "@/constants/colors";
 import { useLan } from "@/contexts/lan-context";
 import { useColors } from "@/hooks/use-colors";
 import {
-    Bell,
-    Cloud,
-    LayoutDashboard,
-    Package,
-    RefreshCw,
-    ShoppingCart,
-    TrendingUp,
-    Users,
-    Wifi,
-    X,
+  Bell,
+  Cloud,
+  LayoutDashboard,
+  Package,
+  RefreshCw,
+  ShoppingCart,
+  TrendingUp,
+  Users,
+  Wifi,
+  X,
 } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
 import { useNavigation } from "expo-router";

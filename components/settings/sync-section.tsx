@@ -106,7 +106,7 @@ export function SyncSection() {
     onSyncCatalogReceived: _onSyncCatalogReceived,
   } = useLan();
 
-  const tint = c.green;
+  const tint = c.blue;
   const [scanning, setScanning] = useState(false);
   const [workers, setWorkers] = useState<WorkerSyncInfo[]>([]);
   const [manualIp, setManualIp] = useState("");
