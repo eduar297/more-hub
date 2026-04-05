@@ -1,4 +1,3 @@
-import { ServerStatusBadge } from "@/components/lan/server-status";
 import { CartItemRow } from "@/components/worker/cart-item-row";
 import { CheckoutSheet } from "@/components/worker/checkout-sheet";
 import { ProductSearchModal } from "@/components/worker/product-search-modal";
@@ -12,19 +11,11 @@ import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Product } from "@/models/product";
 import type { PaymentMethod } from "@/models/ticket";
 import type { CartItemWire } from "@/services/lan/protocol";
-import { todayISO } from "@/utils/format";
-import {
-  AlertCircle,
-  Receipt,
-  ScanLine,
-  Search,
-  ShoppingCart,
-  TrendingUp,
-} from "@tamagui/lucide-icons";
+import { AlertCircle, Receipt, ScanLine, Search } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Modal } from "react-native";
-import { Button, Card, Text, XStack, YStack } from "tamagui";
+import { Button, Text, XStack, YStack } from "tamagui";
 
 // ── Main screen ──────────────────────────────────────────────────────────────
 
@@ -45,55 +36,21 @@ export default function WorkerScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // LAN broadcasting
-  const {
-    broadcastCart,
-    broadcastClear,
-    broadcastCheckout,
-    startServer,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    serverRunning,
-    catalogVersion,
-  } = useLan();
-  const serverStarted = useRef(false);
-
-  // Auto-start LAN server on first mount
-  useEffect(() => {
-    if (user && !serverStarted.current) {
-      serverStarted.current = true;
-      startServer().catch(() => {});
-    }
-  }, [user, startServer]);
-
-  // Today's summary (worker-scoped)
-  const [todaySales, setTodaySales] = useState(0);
-  const [todayCount, setTodayCount] = useState(0);
-
-  const loadSummary = useCallback(async () => {
-    if (!user) return;
-    try {
-      const today = todayISO();
-      const s = await tickets.workerRangeSummary(user.id, today, today);
-      setTodaySales(s.totalSales);
-      setTodayCount(s.ticketCount);
-    } catch {
-      // ignore
-    }
-  }, [tickets, user]);
+  const { broadcastCart, broadcastClear, broadcastCheckout, catalogVersion } =
+    useLan();
 
   useFocusEffect(
     useCallback(() => {
-      loadSummary();
       productRepo.findAllVisible().then(setVisibleProducts);
-    }, [loadSummary, productRepo]),
+    }, [productRepo]),
   );
 
   // Reload products when catalog is updated via sync (more reliable than useFocusEffect alone)
   useEffect(() => {
     if (catalogVersion > 0) {
       productRepo.findAllVisible().then(setVisibleProducts);
-      loadSummary();
     }
-  }, [catalogVersion, productRepo, loadSummary]);
+  }, [catalogVersion, productRepo]);
 
   // Barcode scanner — adds to cart
   const addToCart = useCallback((product: Product) => {
@@ -235,7 +192,6 @@ export default function WorkerScreen() {
       });
       broadcastCheckout(cartTotal, cartItemCount, paymentMethod);
       clearCart();
-      await loadSummary();
       // Reload products so stock reflects the sale just made
       productRepo.findAllVisible().then(setVisibleProducts);
     } catch (e) {
@@ -244,7 +200,7 @@ export default function WorkerScreen() {
       setConfirming(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, paymentMethod, stockErrors, tickets, clearCart, loadSummary]);
+  }, [cart, paymentMethod, stockErrors, tickets, clearCart]);
 
   // Stable FlatList helpers (avoid re-creating closures on every render)
   const cartKeyExtractor = useCallback(
@@ -267,55 +223,6 @@ export default function WorkerScreen() {
     <YStack flex={1} bg="$background">
       {/* ── Top section (fixed, doesn't scroll) ── */}
       <YStack px="$4" pt="$3" pb="$2" gap="$3">
-        {/* Server status */}
-        <XStack justify="flex-end" mb="$-2">
-          <ServerStatusBadge />
-        </XStack>
-
-        {/* Compact stats */}
-        <XStack gap="$3">
-          <Card
-            flex={1}
-            bg="$green2"
-            p="$3"
-            style={{ borderRadius: 14 }}
-            borderWidth={1}
-            borderColor="$green5"
-          >
-            <XStack style={{ alignItems: "center" }} gap="$2">
-              <TrendingUp size={20} color="$green10" />
-              <YStack>
-                <Text fontSize="$6" fontWeight="bold" color="$green10">
-                  ${todaySales.toFixed(2)}
-                </Text>
-                <Text fontSize="$2" color="$color10">
-                  Mis ventas
-                </Text>
-              </YStack>
-            </XStack>
-          </Card>
-          <Card
-            flex={1}
-            bg="$blue2"
-            p="$3"
-            style={{ borderRadius: 14 }}
-            borderWidth={1}
-            borderColor="$blue5"
-          >
-            <XStack style={{ alignItems: "center" }} gap="$2">
-              <ShoppingCart size={20} color="$blue10" />
-              <YStack>
-                <Text fontSize="$6" fontWeight="bold" color="$blue10">
-                  {todayCount}
-                </Text>
-                <Text fontSize="$2" color="$color10">
-                  Tickets
-                </Text>
-              </YStack>
-            </XStack>
-          </Card>
-        </XStack>
-
         {/* Error banner */}
         {error && (
           <XStack

@@ -19,6 +19,7 @@ import {
 import {
     Download,
     LayoutList,
+    Monitor,
     ScanLine,
     User,
     Wifi,
@@ -478,6 +479,13 @@ export default function WorkerLayout() {
           tabBarIcon: ({ color }) => (
             <LayoutList size={26} color={color as any} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="display"
+        options={{
+          title: "Display",
+          tabBarIcon: ({ color }) => <Monitor size={26} color={color as any} />,
         }}
       />
       <Tabs.Screen
