@@ -243,13 +243,7 @@ export default function WorkerScreen() {
 
         {/* Action buttons */}
         <XStack gap="$3">
-          <Button
-            flex={1}
-            size="$5"
-            theme="green"
-            icon={ScanLine}
-            onPress={scan}
-          >
+          <Button flex={1} size="$5" icon={ScanLine} onPress={scan}>
             Escanear
           </Button>
           <Button

@@ -1,5 +1,5 @@
 import type { Product } from "@/models/product";
-import { Package, Search, ShoppingCart, X } from "@tamagui/lucide-icons";
+import { Check, Package, Search, ShoppingCart, X } from "@tamagui/lucide-icons";
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet } from "react-native";
 import { Button, Input, Text, XStack, YStack } from "tamagui";
@@ -179,106 +179,123 @@ export function ProductSearchModal({
   }, [onClose]);
 
   return (
-    <FlatList
-      // Use FlatList as the root so the keyboard dismisses on scroll
-      data={visible ? searchResults : []}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
-      ListEmptyComponent={visible ? listEmpty : null}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      removeClippedSubviews
-      maxToRenderPerBatch={15}
-      initialNumToRender={12}
-      windowSize={5}
-      style={visible ? styles.list : styles.hidden}
-      contentContainerStyle={styles.listContent}
-      ListHeaderComponent={
-        visible ? (
-          <YStack
-            bg="$background"
-            theme={themeName as any}
-            pt="$6"
-            px="$4"
-            gap="$3"
-            pb="$1"
-          >
-            {/* Header */}
-            <XStack
-              style={{
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+    <YStack flex={1}>
+      <FlatList
+        // Use FlatList as the root so the keyboard dismisses on scroll
+        data={visible ? searchResults : []}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListEmptyComponent={visible ? listEmpty : null}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        maxToRenderPerBatch={15}
+        initialNumToRender={12}
+        windowSize={5}
+        style={visible ? styles.list : styles.hidden}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          visible ? (
+            <YStack
+              bg="$background"
+              theme={themeName as any}
+              pt="$6"
+              px="$4"
+              gap="$3"
+              pb="$1"
             >
-              <Text fontSize="$6" fontWeight="bold" color="$color">
-                Buscar producto
-              </Text>
-              <Button
-                size="$4"
-                circular
-                chromeless
-                icon={<X size={22} />}
-                onPress={handleClose}
-              />
-            </XStack>
-
-            {/* Search input */}
-            <XStack
-              bg="$color3"
-              borderWidth={1}
-              borderColor="$borderColor"
-              style={styles.searchBar}
-              px="$3"
-              gap="$2"
-              height={50}
-            >
-              <Search size={20} color="$color10" />
-              <Input
-                flex={1}
-                size="$4"
-                bg="transparent"
-                borderWidth={0}
-                color="$color"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Nombre o código…"
-                placeholderTextColor="$color8"
-                returnKeyType="search"
-                autoCorrect={false}
-                autoCapitalize="none"
-                autoFocus
-                px={0}
-              />
-              {searchQuery.length > 0 && (
+              {/* Header */}
+              <XStack
+                style={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text fontSize="$6" fontWeight="bold" color="$color">
+                  Buscar producto
+                </Text>
                 <Button
-                  size="$3"
-                  chromeless
+                  size="$4"
                   circular
-                  icon={<X size={16} color="$color10" />}
-                  onPress={() => setSearchQuery("")}
+                  chromeless
+                  icon={<X size={22} />}
+                  onPress={handleClose}
                 />
-              )}
-            </XStack>
+              </XStack>
 
-            {/* Cart badge */}
+              {/* Search input */}
+              <XStack
+                bg="$color3"
+                borderWidth={1}
+                borderColor="$borderColor"
+                style={styles.searchBar}
+                px="$3"
+                gap="$2"
+                height={50}
+              >
+                <Search size={20} color="$color10" />
+                <Input
+                  flex={1}
+                  size="$4"
+                  bg="transparent"
+                  borderWidth={0}
+                  color="$color"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Nombre o código…"
+                  placeholderTextColor="$color8"
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  autoFocus
+                  px={0}
+                />
+                {searchQuery.length > 0 && (
+                  <Button
+                    size="$3"
+                    chromeless
+                    circular
+                    icon={<X size={16} color="$color10" />}
+                    onPress={() => setSearchQuery("")}
+                  />
+                )}
+              </XStack>
 
-            <XStack
-              bg="$blue3"
-              style={styles.cartBadge}
-              px="$3"
-              py="$2.5"
-              gap="$2"
-            >
-              <ShoppingCart size={16} color="$blue10" />
-              <Text fontSize="$3" color="$blue10" fontWeight="600">
-                {cartCount} producto{cartCount !== 1 ? "s" : ""} seleccionado
-                {cartCount !== 1 ? "s" : ""}
-              </Text>
-            </XStack>
-          </YStack>
-        ) : null
-      }
-    />
+              {/* Cart badge */}
+
+              <XStack
+                bg="$blue3"
+                style={styles.cartBadge}
+                px="$3"
+                py="$2.5"
+                gap="$2"
+              >
+                <ShoppingCart size={16} color="$blue10" />
+                <Text fontSize="$3" color="$blue10" fontWeight="600">
+                  {cartCount} producto{cartCount !== 1 ? "s" : ""} seleccionado
+                  {cartCount !== 1 ? "s" : ""}
+                </Text>
+              </XStack>
+            </YStack>
+          ) : null
+        }
+      />
+
+      {/* Floating close button — easy thumb access */}
+      {visible && (
+        <YStack
+          px="$4"
+          pb="$5"
+          pt="$2"
+          bg="$background"
+          theme={themeName as any}
+        >
+          <Button size="$5" theme="blue" icon={Check} onPress={handleClose}>
+            Listo
+          </Button>
+        </YStack>
+      )}
+    </YStack>
   );
 }
 
