@@ -168,7 +168,7 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
 export default function WorkerLayout() {
   const c = useColors();
   const theme = useTheme();
-  const tint = theme.green10?.val ?? "#22c55e";
+  const tint = theme.blue10?.val;
   const db = useSQLiteContext();
   const { resetDevice } = useDevice();
   const { user, logout } = useAuth();

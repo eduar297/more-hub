@@ -14,8 +14,13 @@ interface ProductRowProps {
 
 const ProductRow = memo(
   function ProductRow({ product, inCart, onToggle }: ProductRowProps) {
+    const outOfStock = product.stockBaseQty <= 0;
     return (
-      <Pressable onPress={() => onToggle(product)} style={pressableStyle}>
+      <Pressable
+        onPress={outOfStock ? undefined : () => onToggle(product)}
+        style={pressableStyle}
+        disabled={outOfStock}
+      >
         <XStack
           px="$3"
           py="$3.5"
@@ -27,6 +32,7 @@ const ProductRow = memo(
           borderBottomWidth={1}
           borderColor="$borderColor"
           bg={inCart ? "$green3" : "transparent"}
+          opacity={outOfStock ? 0.4 : 1}
         >
           {product.photoUri ? (
             <Image
@@ -73,6 +79,12 @@ const ProductRow = memo(
               <ShoppingCart size={16} color="white" />
               <Text fontSize="$3" fontWeight="bold" color="white">
                 Añadido
+              </Text>
+            </XStack>
+          ) : outOfStock ? (
+            <XStack px="$3" py="$2" bg="$red3" style={styles.badge}>
+              <Text fontSize="$3" fontWeight="500" color="$red10">
+                Agotado
               </Text>
             </XStack>
           ) : (

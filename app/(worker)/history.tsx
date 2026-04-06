@@ -386,7 +386,7 @@ export default function HistoryScreen() {
           ListEmptyComponent={
             loading ? (
               <YStack p="$6" style={{ alignItems: "center" }} gap="$3">
-                <Spinner size="large" color="$green10" />
+                <Spinner size="large" color="$blue10" />
                 <Text color="$color10">Cargando...</Text>
               </YStack>
             ) : (

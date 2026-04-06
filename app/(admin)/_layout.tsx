@@ -15,7 +15,7 @@ import { useTheme } from "tamagui";
 export default function AdminLayout() {
   const c = useColors();
   const theme = useTheme();
-  const tint = theme.blue10?.val ?? "#0a7ea4";
+  const tint = theme.blue10?.val;
 
   return (
     <Tabs
