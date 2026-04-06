@@ -4,21 +4,21 @@ import { useColors } from "@/hooks/use-colors";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import { hashPin } from "@/utils/auth";
 import {
-    AlertCircle,
-    Camera,
-    CheckCircle,
-    Lock,
-    UserCog,
+  AlertCircle,
+  Camera,
+  CheckCircle,
+  Lock,
+  UserCog,
 } from "@tamagui/lucide-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { settingStyles as styles } from "./shared";
 
@@ -131,6 +131,7 @@ export function ProfileSection() {
     } finally {
       setSaving(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, name, curPin, newPin, confPin, userRepo]);
 
   return (

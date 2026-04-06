@@ -113,9 +113,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: "700",
+    textAlign: "center",
   },
   desc: {
     fontSize: 12,
     fontWeight: "400",
+    textAlign: "center",
   },
 });
