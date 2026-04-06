@@ -75,7 +75,8 @@ export const CartItemRow = memo(function CartItemRow({
               }}
               style={[
                 styles.stepperBtn,
-                item.quantity >= item.product.stockBaseQty && styles.stepperBtnDisabled,
+                item.quantity >= item.product.stockBaseQty &&
+                  styles.stepperBtnDisabled,
               ]}
               hitSlop={8}
             >
