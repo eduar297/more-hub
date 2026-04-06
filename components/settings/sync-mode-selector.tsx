@@ -79,7 +79,9 @@ export function SyncModeSelector({ value, onChange }: SyncModeSelectorProps) {
         >
           Nube
         </Text>
-        <Text style={[styles.desc, { color: c.muted }]}>Supabase remoto</Text>
+        <Text style={[styles.desc, { color: c.muted }]}>
+          Requiere conexión a internet
+        </Text>
       </TouchableOpacity>
     </View>
   );

@@ -1,8 +1,8 @@
 import {
-    BORDER_SUBTLE,
-    ICON_BTN_BG,
-    SCRIM,
-    WHITE_FADED,
+  BORDER_SUBTLE,
+  ICON_BTN_BG,
+  SCRIM,
+  WHITE_FADED,
 } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { usePreferences } from "@/contexts/preferences-context";
@@ -13,21 +13,21 @@ import { Store, Store as StoreIcon, X } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    PanResponder,
-    Pressable,
-    ScrollView as RNScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView as RNScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import {
-    SafeAreaView,
-    useSafeAreaInsets,
+  SafeAreaView,
+  useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useTheme } from "tamagui";
 
@@ -178,11 +178,16 @@ export function StoreBubble() {
           style={[styles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           {/* Header */}
-          <View style={styles.modalHeader}>
+          <View
+            style={[
+              styles.modalHeader,
+              { borderBottomColor: theme.borderColor?.val as string },
+            ]}
+          >
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
             >
-              <Store size={18} color={theme.blue10?.val as string} />
+              <Store size={18} color={theme.blue10?.val as any} />
               <Text
                 style={{
                   fontSize: 16,
@@ -211,7 +216,7 @@ export function StoreBubble() {
                     <View
                       style={[
                         styles.divider,
-                        { backgroundColor: theme.color3?.val },
+                        { backgroundColor: theme.borderColor?.val as string },
                       ]}
                     />
                   )}
@@ -312,8 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ccc",
+    borderBottomWidth: 1,
   },
   closeBtn: {
     width: 32,
