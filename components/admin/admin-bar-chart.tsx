@@ -30,6 +30,8 @@ type AdminBarChartProps = {
   mostNegativeValue?: number;
   xAxisThickness?: number;
   xAxisColor?: string;
+  xAxisLabel?: string;
+  yAxisLabel?: string;
 };
 
 export function AdminBarChart({
@@ -41,52 +43,81 @@ export function AdminBarChart({
   mostNegativeValue,
   xAxisThickness = 0,
   xAxisColor,
+  xAxisLabel,
+  yAxisLabel,
 }: AdminBarChartProps) {
   return (
-    <BarChart
-      data={data}
-      showVerticalLines={true}
-      barBorderRadius={4}
-      showScrollIndicator={true}
-      noOfSections={noOfSections}
-      hideRules={true}
-      yAxisTextStyle={{ fontSize: 10, color: "#888" }}
-      formatYLabel={fmtYLabel}
-      yAxisThickness={0}
-      xAxisThickness={xAxisThickness}
-      xAxisColor={xAxisColor}
-      isAnimated
-      animationDuration={400}
-      showLine={showLine}
-      lineConfig={{
-        color: lineColor,
-        hideDataPoints: true,
-      }}
-      stepValue={stepValue}
-      mostNegativeValue={mostNegativeValue}
-      yAxisExtraHeight={25}
-      renderTooltip={(item: BarDataItem) => (
-        <View
+    <View>
+      {yAxisLabel ? (
+        <Text
           style={{
-            backgroundColor: "#333",
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 6,
-            marginBottom: 0,
-            marginLeft: -6,
+            fontSize: 10,
+            color: "#888",
+            marginBottom: 2,
+            fontWeight: "500",
           }}
         >
-          <Text
+          {yAxisLabel}
+        </Text>
+      ) : null}
+      <BarChart
+        data={data}
+        showVerticalLines={true}
+        barBorderRadius={4}
+        showScrollIndicator={true}
+        noOfSections={noOfSections}
+        hideRules={true}
+        yAxisTextStyle={{ fontSize: 10, color: "#888" }}
+        formatYLabel={fmtYLabel}
+        yAxisThickness={0}
+        xAxisThickness={xAxisThickness}
+        xAxisColor={xAxisColor}
+        isAnimated
+        animationDuration={400}
+        showLine={showLine}
+        lineConfig={{
+          color: lineColor,
+          hideDataPoints: true,
+        }}
+        stepValue={stepValue}
+        mostNegativeValue={mostNegativeValue}
+        yAxisExtraHeight={25}
+        renderTooltip={(item: BarDataItem) => (
+          <View
             style={{
-              color: "#fff",
-              fontSize: 10,
-              fontWeight: "600",
+              backgroundColor: "#333",
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              marginBottom: 0,
+              marginLeft: -6,
             }}
           >
-            ${fmtMoney(Math.abs(item.value))}
-          </Text>
-        </View>
-      )}
-    />
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 10,
+                fontWeight: "600",
+              }}
+            >
+              ${fmtMoney(Math.abs(item.value))}
+            </Text>
+          </View>
+        )}
+      />
+      {xAxisLabel ? (
+        <Text
+          style={{
+            fontSize: 10,
+            color: "#888",
+            textAlign: "center",
+            marginTop: 2,
+            fontWeight: "500",
+          }}
+        >
+          {xAxisLabel}
+        </Text>
+      ) : null}
+    </View>
   );
 }

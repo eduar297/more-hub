@@ -6,14 +6,12 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-  daysInMonth,
   fmtMoney,
   fmtMoneyFull,
   MONTH_NAMES_SHORT,
   shiftDay,
   shiftMonth,
   shiftWeek,
-  shortDayLabel,
   weekEndISO,
 } from "@/utils/format";
 import {
@@ -222,69 +220,37 @@ export function OverviewSection() {
     }, [loadData]),
   );
 
-  // Chart data
-  const chartData = useMemo(() => {
-    if (nav.period === "day") {
-      const hourMap = new Map(hourlySales.map((h) => [h.hour, h.total]));
-      return Array.from({ length: 24 }, (_, i) => {
-        const total = hourMap.get(i) ?? 0;
-        return {
-          value: total,
-          label: `${i}h`,
-          frontColor: total > 0 ? "#22c55e" : "#555555",
-          labelTextStyle: { fontSize: 10, color: "#888" },
-        };
+  // Balance chart data (3 bars: Ingresos, Compras, Gastos)
+  const balanceChartData = useMemo(() => {
+    const items: {
+      value: number;
+      label: string;
+      frontColor: string;
+      labelTextStyle: object;
+    }[] = [];
+    if (salesTotal > 0)
+      items.push({
+        value: salesTotal,
+        label: "Ingresos",
+        frontColor: "#22c55e",
+        labelTextStyle: { fontSize: 10, color: "#888" },
       });
-    }
-    if (nav.period === "week") {
-      const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-      return dailySalesData.map((d, i) => ({
-        value: d.total,
-        label: DAY_LABELS[i] ?? String(i + 1),
-        frontColor: d.total > 0 ? "#22c55e" : "#555555",
+    if (purchasesTotal > 0)
+      items.push({
+        value: purchasesTotal,
+        label: "Compras",
+        frontColor: "#3b82f6",
         labelTextStyle: { fontSize: 10, color: "#888" },
-      }));
-    }
-    if (nav.period === "month") {
-      const days = daysInMonth(nav.selectedMonth);
-      const dataMap = new Map(dailySalesData.map((d) => [d.day, d.total]));
-      return Array.from({ length: days }, (_, i) => ({
-        value: dataMap.get(i + 1) ?? 0,
-        label: String(i + 1),
-        frontColor: (dataMap.get(i + 1) ?? 0) > 0 ? "#22c55e" : "#555555",
+      });
+    if (expensesTotal > 0)
+      items.push({
+        value: expensesTotal,
+        label: "Gastos",
+        frontColor: "#ef4444",
         labelTextStyle: { fontSize: 10, color: "#888" },
-      }));
-    }
-    if (nav.period === "range") {
-      const dayCount = dailySalesData.length;
-      if (dayCount === 0) return [];
-      return dailySalesData.map((d, i) => ({
-        value: d.total,
-        label: shortDayLabel(shiftDay(nav.dateRange.from, i))
-          .replace(/\sde\s/g, " ")
-          .slice(0, 6),
-        frontColor: d.total > 0 ? "#22c55e" : "#555555",
-        labelTextStyle: { fontSize: 9, color: "#888" },
-      }));
-    }
-    return Array.from({ length: 12 }, (_, i) => {
-      const entry = yearlySales.find((y) => y.month === i + 1);
-      return {
-        value: entry?.total ?? 0,
-        label: MONTH_NAMES_SHORT[i],
-        frontColor: (entry?.total ?? 0) > 0 ? "#22c55e" : "#555555",
-        labelTextStyle: { fontSize: 10, color: "#888" },
-        labelWidth: 28,
-      };
-    });
-  }, [
-    nav.period,
-    hourlySales,
-    dailySalesData,
-    yearlySales,
-    nav.selectedMonth,
-    nav.dateRange,
-  ]);
+      });
+    return items;
+  }, [salesTotal, purchasesTotal, expensesTotal]);
 
   const totalEgresos = purchasesTotal + expensesTotal;
   const profit = salesTotal - totalEgresos;
@@ -386,17 +352,6 @@ export function OverviewSection() {
     );
   }
 
-  const chartTitle =
-    nav.period === "day"
-      ? "Ventas por hora"
-      : nav.period === "week"
-      ? "Ventas de la semana"
-      : nav.period === "month"
-      ? "Ventas diarias"
-      : nav.period === "range"
-      ? "Ventas del período"
-      : "Ventas mensuales";
-
   return (
     <>
       {/* Sticky period selector card */}
@@ -459,8 +414,8 @@ export function OverviewSection() {
             />
           </XStack>
 
-          {/* Sales chart */}
-          {chartData.length > 0 && (
+          {/* Balance chart */}
+          {balanceChartData.length > 0 && (
             <Card
               bg="$color1"
               borderWidth={1}
@@ -472,10 +427,14 @@ export function OverviewSection() {
                 <XStack gap="$2" style={{ alignItems: "center" }}>
                   <BarChart3 size={18} color="$blue10" />
                   <Text fontSize="$4" fontWeight="bold" color="$color">
-                    {chartTitle}
+                    Balance
                   </Text>
                 </XStack>
-                <AdminBarChart data={chartData} />
+                <AdminBarChart
+                  data={balanceChartData}
+                  showLine={false}
+                  yAxisLabel="Monto ($)"
+                />
               </YStack>
             </Card>
           )}

@@ -7,34 +7,34 @@ import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
 import { exportFinancePDF } from "@/utils/export";
 import {
-  daysInMonth,
-  fmtMoney,
-  fmtMoneyFull,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  shiftMonth,
-  shiftWeek,
-  shortDayLabel,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    fmtMoneyFull,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shiftMonth,
+    shiftWeek,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  Download,
-  ShoppingBag,
-  TrendingDown,
-  TrendingUp,
+    Download,
+    ShoppingBag,
+    TrendingDown,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ScrollView } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
-  Button,
-  Card,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
@@ -465,7 +465,9 @@ export function FinanceSection() {
       labelTextStyle?: object;
       labelWidth?: number;
     }[] = [];
-    for (const item of monthDailyTrend) {
+    for (const item of monthDailyTrend.filter(
+      (d) => d.income > 0 || d.outflow > 0,
+    )) {
       data.push({
         value: item.income,
         label: String(item.day),
@@ -485,12 +487,14 @@ export function FinanceSection() {
   // Monthly daily profit trend data
   const monthProfitTrendData = useMemo(
     () =>
-      monthDailyTrend.map((item) => ({
-        value: item.income - item.outflow,
-        label: String(item.day),
-        frontColor: item.income - item.outflow >= 0 ? "#22c55e" : "#ef4444",
-        labelTextStyle: { fontSize: 9, color: "#888" },
-      })),
+      monthDailyTrend
+        .filter((d) => d.income > 0 || d.outflow > 0)
+        .map((item) => ({
+          value: item.income - item.outflow,
+          label: String(item.day),
+          frontColor: item.income - item.outflow >= 0 ? "#22c55e" : "#ef4444",
+          labelTextStyle: { fontSize: 9, color: "#888" },
+        })),
     [monthDailyTrend],
   );
 
@@ -505,7 +509,9 @@ export function FinanceSection() {
       labelTextStyle?: object;
       labelWidth?: number;
     }[] = [];
-    for (const item of weekDailyData) {
+    for (const item of weekDailyData.filter(
+      (d) => d.income > 0 || d.outflow > 0,
+    )) {
       data.push({
         value: item.income,
         label: item.label,
@@ -527,13 +533,16 @@ export function FinanceSection() {
   const weekProfitTrendData = useMemo(
     () =>
       weekDailyData.some((d) => d.income > 0 || d.outflow > 0)
-        ? weekDailyData.map((item) => ({
-            value: item.income - item.outflow,
-            label: item.label,
-            frontColor: item.income - item.outflow >= 0 ? "#22c55e" : "#ef4444",
-            labelTextStyle: { fontSize: 10, color: "#888" },
-            labelWidth: 30,
-          }))
+        ? weekDailyData
+            .filter((d) => d.income > 0 || d.outflow > 0)
+            .map((item) => ({
+              value: item.income - item.outflow,
+              label: item.label,
+              frontColor:
+                item.income - item.outflow >= 0 ? "#22c55e" : "#ef4444",
+              labelTextStyle: { fontSize: 10, color: "#888" },
+              labelWidth: 30,
+            }))
         : [],
     [weekDailyData],
   );
@@ -588,29 +597,33 @@ export function FinanceSection() {
         frontColor: total > 0 ? "#22c55e" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
       };
-    });
+    }).filter((item) => item.value > 0);
   }, [nav.period, hourlySales]);
 
   // Week daily income bar chart
   const weekChartData = useMemo(() => {
     if (nav.period !== "week") return [];
-    return weekDailyData.map((d) => ({
-      value: d.income,
-      label: d.label,
-      frontColor: d.income > 0 ? "#22c55e" : "#555555",
-      labelTextStyle: { fontSize: 10, color: "#888" },
-    }));
+    return weekDailyData
+      .map((d) => ({
+        value: d.income,
+        label: d.label,
+        frontColor: d.income > 0 ? "#22c55e" : "#555555",
+        labelTextStyle: { fontSize: 10, color: "#888" },
+      }))
+      .filter((item) => item.value > 0);
   }, [nav.period, weekDailyData]);
 
   // Range daily income bar chart
   const rangeChartData = useMemo(() => {
     if (nav.period !== "range" || rangeDailyData.length === 0) return [];
-    return rangeDailyData.map((d) => ({
-      value: d.income,
-      label: d.label,
-      frontColor: d.income > 0 ? "#22c55e" : "#555555",
-      labelTextStyle: { fontSize: 9, color: "#888" },
-    }));
+    return rangeDailyData
+      .map((d) => ({
+        value: d.income,
+        label: d.label,
+        frontColor: d.income > 0 ? "#22c55e" : "#555555",
+        labelTextStyle: { fontSize: 9, color: "#888" },
+      }))
+      .filter((item) => item.value > 0);
   }, [nav.period, rangeDailyData]);
 
   // Month daily income bar chart
@@ -626,7 +639,7 @@ export function FinanceSection() {
         frontColor: total > 0 ? "#22c55e" : "#555555",
         labelTextStyle: { fontSize: 9, color: "#888" },
       };
-    });
+    }).filter((item) => item.value > 0);
   }, [nav.period, nav.selectedMonth, monthDailySales]);
 
   // Select the active trend data based on period
@@ -1076,7 +1089,11 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos por hora
                 </Text>
-                <AdminBarChart data={hourlyChartData} />
+                <AdminBarChart
+                  data={hourlyChartData}
+                  xAxisLabel="Hora"
+                  yAxisLabel="Monto ($)"
+                />
               </YStack>
             </Card>
           )}
@@ -1094,7 +1111,11 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos de la semana
                 </Text>
-                <AdminBarChart data={weekChartData} />
+                <AdminBarChart
+                  data={weekChartData}
+                  xAxisLabel="Día"
+                  yAxisLabel="Monto ($)"
+                />
               </YStack>
             </Card>
           )}
@@ -1112,7 +1133,11 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos del período
                 </Text>
-                <AdminBarChart data={rangeChartData} />
+                <AdminBarChart
+                  data={rangeChartData}
+                  xAxisLabel="Día"
+                  yAxisLabel="Monto ($)"
+                />
               </YStack>
             </Card>
           )}
@@ -1130,7 +1155,11 @@ export function FinanceSection() {
                 <Text fontSize="$3" fontWeight="600" color="$color10">
                   Ingresos diarios del mes
                 </Text>
-                <AdminBarChart data={monthChartData} />
+                <AdminBarChart
+                  data={monthChartData}
+                  xAxisLabel="Día"
+                  yAxisLabel="Monto ($)"
+                />
               </YStack>
             </Card>
           )}
@@ -1192,6 +1221,14 @@ export function FinanceSection() {
                     <AdminBarChart
                       data={activeGroupedBarData}
                       showLine={false}
+                      xAxisLabel={
+                        nav.period === "day"
+                          ? "Hora"
+                          : nav.period === "year"
+                          ? "Mes"
+                          : "Día"
+                      }
+                      yAxisLabel="Monto ($)"
                     />
                   </YStack>
                 </Card>
@@ -1225,6 +1262,14 @@ export function FinanceSection() {
                       }
                       xAxisThickness={1}
                       xAxisColor="#555"
+                      xAxisLabel={
+                        nav.period === "day"
+                          ? "Hora"
+                          : nav.period === "year"
+                          ? "Mes"
+                          : "Día"
+                      }
+                      yAxisLabel="Ganancia ($)"
                     />
                   </YStack>
                 </Card>

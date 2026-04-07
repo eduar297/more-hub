@@ -1,6 +1,6 @@
 import { StatCard } from "@/components/admin/stat-card";
 import { SearchInput } from "@/components/ui/search-input";
-import { ICON_BTN_BG } from "@/constants/colors";
+import { CHART_PALETTE, ICON_BTN_BG } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
 import { useColors } from "@/hooks/use-colors";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
@@ -502,16 +502,18 @@ export function SalesSection() {
           frontColor: total > 0 ? "#3b82f6" : "#555555",
           labelTextStyle: { fontSize: 10, color: "#888" },
         };
-      });
+      }).filter((item) => item.value > 0);
     }
     if (nav.period === "week") {
       const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-      return dailySales.map((d, i) => ({
-        value: d.total,
-        label: DAY_LABELS[i] ?? String(i + 1),
-        frontColor: d.total > 0 ? "#3b82f6" : "#555555",
-        labelTextStyle: { fontSize: 10, color: "#888" },
-      }));
+      return dailySales
+        .map((d, i) => ({
+          value: d.total,
+          label: DAY_LABELS[i] ?? String(i + 1),
+          frontColor: d.total > 0 ? "#3b82f6" : "#555555",
+          labelTextStyle: { fontSize: 10, color: "#888" },
+        }))
+        .filter((item) => item.value > 0);
     }
     if (nav.period === "month") {
       const days = daysInMonth(nav.selectedMonth);
@@ -521,19 +523,21 @@ export function SalesSection() {
         label: String(i + 1),
         frontColor: (dataMap.get(i + 1) ?? 0) > 0 ? "#3b82f6" : "#555555",
         labelTextStyle: { fontSize: 10, color: "#888" },
-      }));
+      })).filter((item) => item.value > 0);
     }
     if (nav.period === "range") {
       const dayCount = dailySales.length;
       if (dayCount === 0) return [];
-      return dailySales.map((d, i) => ({
-        value: d.total,
-        label: shortDayLabel(shiftDay(nav.dateRange.from, i))
-          .replace(/\sde\s/g, " ")
-          .slice(0, 6),
-        frontColor: d.total > 0 ? "#3b82f6" : "#555555",
-        labelTextStyle: { fontSize: 9, color: "#888" },
-      }));
+      return dailySales
+        .map((d, i) => ({
+          value: d.total,
+          label: shortDayLabel(shiftDay(nav.dateRange.from, i))
+            .replace(/\sde\s/g, " ")
+            .slice(0, 6),
+          frontColor: d.total > 0 ? "#3b82f6" : "#555555",
+          labelTextStyle: { fontSize: 9, color: "#888" },
+        }))
+        .filter((item) => item.value > 0);
     }
     return Array.from({ length: 12 }, (_, i) => {
       const entry = yearlySales.find((y) => y.month === i + 1);
@@ -544,7 +548,7 @@ export function SalesSection() {
         labelTextStyle: { fontSize: 10, color: "#888" },
         labelWidth: 28,
       };
-    });
+    }).filter((item) => item.value > 0);
   }, [
     nav.period,
     hourlySales,
@@ -630,7 +634,18 @@ export function SalesSection() {
                 ? "Ventas del período"
                 : "Ventas mensuales"}
             </Text>
-            <AdminBarChart data={chartData} lineColor="#60a5fa" />
+            <AdminBarChart
+              data={chartData}
+              lineColor="#60a5fa"
+              xAxisLabel={
+                nav.period === "day"
+                  ? "Hora"
+                  : nav.period === "year"
+                  ? "Mes"
+                  : "Día"
+              }
+              yAxisLabel="Monto ($)"
+            />
           </YStack>
         </Card>
       )}
@@ -690,53 +705,37 @@ export function SalesSection() {
         </Card>
       )}
 
-      {/* Top products */}
+      {/* Top products chart */}
       {topProducts.length > 0 && (
         <Card
           bg="$color1"
           borderWidth={1}
           borderColor="$borderColor"
           style={{ borderRadius: 14 }}
-          overflow="hidden"
+          p="$4"
         >
-          <YStack p="$4" pb="$2">
+          <YStack gap="$3">
             <XStack gap="$2" style={{ alignItems: "center" }}>
               <TrendingUp size={16} color="$yellow10" />
               <Text fontSize="$3" fontWeight="600" color="$color10">
                 Más vendidos
               </Text>
             </XStack>
+            <AdminBarChart
+              data={topProducts.map((tp, idx) => ({
+                value: tp.totalRevenue,
+                label:
+                  tp.productName.length > 8
+                    ? tp.productName.slice(0, 7) + "…"
+                    : tp.productName,
+                frontColor: CHART_PALETTE[idx % CHART_PALETTE.length],
+                labelTextStyle: { fontSize: 9, color: "#888" },
+              }))}
+              showLine={false}
+              xAxisLabel="Producto"
+              yAxisLabel="Ingresos ($)"
+            />
           </YStack>
-          {topProducts.map((tp, idx) => (
-            <YStack key={tp.productId}>
-              {idx > 0 && <Separator />}
-              <XStack px="$4" py="$2" style={{ alignItems: "center" }} gap="$2">
-                <Text
-                  fontSize="$2"
-                  color="$color8"
-                  style={{ width: 22, textAlign: "center" }}
-                >
-                  {idx + 1}
-                </Text>
-                <YStack flex={1}>
-                  <Text
-                    fontSize="$3"
-                    fontWeight="600"
-                    color="$color"
-                    numberOfLines={1}
-                  >
-                    {tp.productName}
-                  </Text>
-                  <Text fontSize="$2" color="$color10">
-                    {tp.totalQty} uds
-                  </Text>
-                </YStack>
-                <Text fontSize="$3" fontWeight="bold" color="$green10">
-                  ${fmtMoney(tp.totalRevenue)}
-                </Text>
-              </XStack>
-            </YStack>
-          ))}
         </Card>
       )}
 
