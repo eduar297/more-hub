@@ -2,6 +2,7 @@ import { StatCard } from "@/components/admin/stat-card";
 import { SearchInput } from "@/components/ui/search-input";
 import { CHART_PALETTE, ICON_BTN_BG } from "@/constants/colors";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
@@ -36,6 +37,7 @@ import {
   X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -152,6 +154,8 @@ function TicketRow({
 // ── Sales Section ─────────────────────────────────────────────────────────────
 
 export function SalesSection() {
+  const db = useSQLiteContext();
+  const { currentStore } = useStore();
   const ticketRepo = useTicketRepository();
   const userRepo = useUserRepository();
   const { user } = useAuth();
@@ -204,6 +208,9 @@ export function SalesSection() {
   // Previous-period data for delta badges
   const [prevTotal, setPrevTotal] = useState(0);
   const [prevTickets, setPrevTickets] = useState(0);
+
+  // Void rate
+  const [voidedCount, setVoidedCount] = useState(0);
 
   // Ticket detail sheet
   const [sheetTicket, setSheetTicket] = useState<Ticket | null>(null);
@@ -447,6 +454,55 @@ export function SalesSection() {
       nav.selectedYear,
       ticketRepo,
       wId,
+    ]),
+  );
+
+  // Load voided ticket count for current period
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          let from: string;
+          let to: string;
+          if (nav.period === "day") {
+            from = nav.selectedDay;
+            to = nav.selectedDay;
+          } else if (nav.period === "week") {
+            from = nav.selectedWeekStart;
+            to = weekEndISO(nav.selectedWeekStart);
+          } else if (nav.period === "month") {
+            const days = daysInMonth(nav.selectedMonth);
+            from = `${nav.selectedMonth}-01`;
+            to = `${nav.selectedMonth}-${String(days).padStart(2, "0")}`;
+          } else if (nav.period === "year") {
+            from = `${nav.selectedYear}-01-01`;
+            to = `${nav.selectedYear}-12-31`;
+          } else {
+            from = nav.dateRange.from;
+            to = nav.dateRange.to;
+          }
+          const sFilter =
+            currentStore?.id !== undefined ? " AND storeId = ?" : "";
+          const params: (string | number)[] = [from, to];
+          if (currentStore?.id !== undefined) params.push(currentStore.id);
+          const row = await db.getFirstAsync<{ cnt: number }>(
+            `SELECT COUNT(*) as cnt FROM tickets WHERE date(createdAt) >= ? AND date(createdAt) <= ? AND status = 'VOIDED'${sFilter}`,
+            params,
+          );
+          setVoidedCount(row?.cnt ?? 0);
+        } catch {
+          setVoidedCount(0);
+        }
+      })();
+    }, [
+      nav.period,
+      nav.selectedDay,
+      nav.selectedWeekStart,
+      nav.selectedMonth,
+      nav.selectedYear,
+      nav.dateRange,
+      db,
+      currentStore?.id,
     ]),
   );
 
@@ -746,6 +802,37 @@ export function SalesSection() {
         </XStack>
       )}
 
+      {/* Void rate card */}
+      {voidedCount > 0 && (
+        <Card
+          bg="$red2"
+          borderWidth={1}
+          borderColor="$red6"
+          style={{ borderRadius: 12 }}
+          p="$3"
+        >
+          <XStack style={{ alignItems: "center" }} gap="$3">
+            <Ban size={18} color="$red10" />
+            <YStack flex={1}>
+              <Text fontSize="$3" fontWeight="bold" color="$red10">
+                {voidedCount} ticket{voidedCount > 1 ? "s" : ""} anulado
+                {voidedCount > 1 ? "s" : ""}
+              </Text>
+              <Text fontSize="$2" color="$color10">
+                Tasa de anulación:{" "}
+                {summaryTickets + voidedCount > 0
+                  ? (
+                      (voidedCount / (summaryTickets + voidedCount)) *
+                      100
+                    ).toFixed(1)
+                  : "0"}
+                %
+              </Text>
+            </YStack>
+          </XStack>
+        </Card>
+      )}
+
       {/* Bar chart */}
       {chartData.length > 0 && !loading && (
         <Card
@@ -824,9 +911,15 @@ export function SalesSection() {
                           p.method === "CASH" ? "#22c55e" : "#a855f7",
                       }}
                     />
-                    <Text flex={1} fontSize="$3" color="$color10">
-                      {p.method === "CASH" ? "Efectivo" : "Tarjeta"}
-                    </Text>
+                    <YStack flex={1}>
+                      <Text fontSize="$3" color="$color10">
+                        {p.method === "CASH" ? "Efectivo" : "Tarjeta"}
+                      </Text>
+                      <Text fontSize="$1" color="$color10">
+                        {p.count} tickets · prom $
+                        {fmtMoney(p.count > 0 ? p.total / p.count : 0)}
+                      </Text>
+                    </YStack>
                     <Text fontSize="$3" fontWeight="600" color="$color">
                       ${fmtMoney(p.total)}
                     </Text>

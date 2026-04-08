@@ -3,6 +3,7 @@ import { StockRow } from "@/components/admin/stock-row";
 import { ProductDetail } from "@/components/product/product-detail";
 import { SearchInput } from "@/components/ui/search-input";
 import { CHART_PALETTE, ICON_BTN_BG } from "@/constants/colors";
+import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
@@ -10,10 +11,16 @@ import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { fmtMoney, fmtMoneyFull } from "@/utils/format";
 import {
+    runPurchaseSuggestions,
+    type PurchaseSuggestion,
+} from "@/utils/purchase-suggestions";
+import {
     AlertTriangle,
     DollarSign,
     Package,
     PackageX,
+    Percent,
+    RefreshCw,
     Ruler,
     Tag,
     TrendingDown,
@@ -21,6 +28,7 @@ import {
     X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import {
     FlatList,
@@ -38,6 +46,8 @@ import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
 export function InventorySection() {
   const productRepo = useProductRepository();
   const unitRepo = useUnitRepository();
+  const db = useSQLiteContext();
+  const { currentStore } = useStore();
   const c = useColors();
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -47,6 +57,7 @@ export function InventorySection() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
+  const [rotationData, setRotationData] = useState<PurchaseSuggestion[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -68,6 +79,24 @@ export function InventorySection() {
     useCallback(() => {
       loadData();
     }, [loadData]),
+  );
+
+  // Load rotation / margin data from purchase-suggestions engine
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const report = await runPurchaseSuggestions(db, 30, currentStore?.id);
+          if (!cancelled) setRotationData(report.suggestions);
+        } catch {
+          /* ignore */
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [db, currentStore?.id]),
   );
 
   const unitMap = useMemo(
@@ -151,6 +180,32 @@ export function InventorySection() {
     [allProducts],
   );
 
+  // Rotation map: productId → PurchaseSuggestion
+  const rotationMap = useMemo(
+    () => new Map(rotationData.map((s) => [s.product.id, s])),
+    [rotationData],
+  );
+
+  // Average margin across all products with cost > 0
+  const avgMargin = useMemo(() => {
+    const withCost = allProducts.filter((p) => p.costPrice > 0);
+    if (withCost.length === 0) return 0;
+    const sum = withCost.reduce((acc, p) => {
+      return acc + ((p.salePrice - p.costPrice) / p.salePrice) * 100;
+    }, 0);
+    return sum / withCost.length;
+  }, [allProducts]);
+
+  // Slow rotation products (>90 days of stock)
+  const slowRotation = useMemo(
+    () =>
+      rotationData
+        .filter((s) => s.daysOfStock > 90 && s.currentStock > 0)
+        .sort((a, b) => b.daysOfStock - a.daysOfStock)
+        .slice(0, 10),
+    [rotationData],
+  );
+
   if (loading) {
     return (
       <YStack
@@ -222,6 +277,29 @@ export function InventorySection() {
                     size={16}
                     color={
                       lowStockProducts.length > 0 ? "$orange10" : "$color8"
+                    }
+                  />
+                }
+              />
+              <StatCard
+                label="Margen prom."
+                value={`${avgMargin.toFixed(1)}%`}
+                color={
+                  avgMargin < 10
+                    ? "$red10"
+                    : avgMargin < 20
+                    ? "$orange10"
+                    : "$green10"
+                }
+                icon={
+                  <Percent
+                    size={16}
+                    color={
+                      avgMargin < 10
+                        ? "$red10"
+                        : avgMargin < 20
+                        ? "$orange10"
+                        : "$green10"
                     }
                   />
                 }
@@ -520,6 +598,95 @@ export function InventorySection() {
               </Card>
             </YStack>
 
+            {/* Slow rotation products */}
+            {slowRotation.length > 0 && (
+              <YStack gap="$3">
+                <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <RefreshCw size={18} color="$purple10" />
+                  <Text fontSize="$4" fontWeight="bold" color="$color">
+                    Rotación lenta (&gt;90 días)
+                  </Text>
+                </XStack>
+                <Card
+                  bg="$color1"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  style={{ borderRadius: 14 }}
+                  overflow="hidden"
+                >
+                  {slowRotation.map((s, idx) => {
+                    const margin = s.marginPct;
+                    const marginColor =
+                      margin < 0
+                        ? "$red10"
+                        : margin < 10
+                        ? "$orange10"
+                        : "$green10";
+                    return (
+                      <YStack key={s.product.id}>
+                        {idx > 0 && <Separator />}
+                        <Pressable
+                          onPress={() => {
+                            setSelectedProduct(s.product);
+                            setShowDetailSheet(true);
+                          }}
+                          style={({ pressed }) => ({
+                            opacity: pressed ? 0.6 : 1,
+                          })}
+                        >
+                          <XStack
+                            px="$4"
+                            py="$3"
+                            style={{ alignItems: "center" }}
+                            gap="$3"
+                          >
+                            <Text
+                              fontSize="$2"
+                              fontWeight="bold"
+                              color="$color10"
+                              width={22}
+                              style={{ textAlign: "center" }}
+                            >
+                              {idx + 1}
+                            </Text>
+                            <YStack flex={1}>
+                              <Text
+                                fontSize="$3"
+                                fontWeight="600"
+                                color="$color"
+                                numberOfLines={1}
+                              >
+                                {s.product.name}
+                              </Text>
+                              <Text fontSize="$2" color="$color10">
+                                {s.currentStock} uds ·{" "}
+                                <Text fontSize="$2" color={marginColor as any}>
+                                  {margin.toFixed(1)}% margen
+                                </Text>
+                              </Text>
+                            </YStack>
+                            <YStack style={{ alignItems: "flex-end" }}>
+                              <Text
+                                fontSize="$3"
+                                fontWeight="bold"
+                                color="$purple10"
+                              >
+                                {Math.round(s.daysOfStock)}d
+                              </Text>
+                              <Text fontSize="$1" color="$color10">
+                                $
+                                {fmtMoney(s.product.costPrice * s.currentStock)}
+                              </Text>
+                            </YStack>
+                          </XStack>
+                        </Pressable>
+                      </YStack>
+                    );
+                  })}
+                </Card>
+              </YStack>
+            )}
+
             {/* All Products header + Search */}
             <XStack gap="$2" style={{ alignItems: "center" }}>
               <Package size={18} color="$blue10" />
@@ -542,6 +709,13 @@ export function InventorySection() {
               : p.stockBaseQty <= 5
               ? "$orange10"
               : "$green10";
+          const margin =
+            p.salePrice > 0
+              ? ((p.salePrice - p.costPrice) / p.salePrice) * 100
+              : 0;
+          const marginColor =
+            margin < 0 ? "$red10" : margin < 10 ? "$orange10" : "$green10";
+          const rotation = rotationMap.get(p.id);
           return (
             <Pressable
               onPress={() => {
@@ -594,9 +768,14 @@ export function InventorySection() {
                   >
                     {p.stockBaseQty} {unit?.symbol ?? "uds"}
                   </Text>
-                  <Text fontSize="$1" color="$color10">
-                    ${fmtMoney(p.costPrice * p.stockBaseQty)}
+                  <Text fontSize="$1" color={marginColor as any}>
+                    {margin.toFixed(1)}% margen
                   </Text>
+                  {rotation && rotation.daysOfStock < Infinity && (
+                    <Text fontSize="$1" color="$color10">
+                      ~{Math.round(rotation.daysOfStock)}d stock
+                    </Text>
+                  )}
                 </YStack>
               </XStack>
             </Pressable>
