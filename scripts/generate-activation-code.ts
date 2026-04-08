@@ -13,6 +13,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { spawnSync } from "child_process";
 import { config } from "dotenv";
 import { resolve } from "path";
 
@@ -54,6 +55,9 @@ function parseArgs() {
   let hours = 720; // default 30 days
   let dataUrl = "";
   let dataAnonKey = "";
+  let copyUrl = false;
+  let copyKey = false;
+  let copyCode = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--business-name" && args[i + 1]) {
@@ -64,6 +68,12 @@ function parseArgs() {
       dataUrl = args[++i];
     } else if (args[i] === "--data-anon-key" && args[i + 1]) {
       dataAnonKey = args[++i];
+    } else if (args[i] === "--copy-url") {
+      copyUrl = true;
+    } else if (args[i] === "--copy-key") {
+      copyKey = true;
+    } else if (args[i] === "--copy-code") {
+      copyCode = true;
     }
   }
 
@@ -74,13 +84,57 @@ function parseArgs() {
     process.exit(1);
   }
 
-  return { businessName, hours, dataUrl, dataAnonKey };
+  return {
+    businessName,
+    hours,
+    dataUrl,
+    dataAnonKey,
+    copyUrl,
+    copyKey,
+    copyCode,
+  };
+}
+
+function maskSecret(secret: string): string {
+  if (secret.length <= 10) return "*".repeat(secret.length);
+  return `${secret.slice(0, 6)}...${secret.slice(-4)}`;
+}
+
+function copyToClipboard(value: string): boolean {
+  if (!value) return false;
+
+  if (process.platform === "darwin") {
+    const res = spawnSync("pbcopy", { input: value });
+    return res.status === 0;
+  }
+  if (process.platform === "win32") {
+    const res = spawnSync("clip", { input: value, shell: true });
+    return res.status === 0;
+  }
+
+  const xclip = spawnSync("xclip", ["-selection", "clipboard"], {
+    input: value,
+  });
+  if (xclip.status === 0) return true;
+
+  const xsel = spawnSync("xsel", ["--clipboard", "--input"], {
+    input: value,
+  });
+  return xsel.status === 0;
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { businessName, hours, dataUrl, dataAnonKey } = parseArgs();
+  const {
+    businessName,
+    hours,
+    dataUrl,
+    dataAnonKey,
+    copyUrl,
+    copyKey,
+    copyCode,
+  } = parseArgs();
 
   // Upsert business (find existing or create)
   let { data: business } = await supabase
@@ -120,6 +174,18 @@ async function main() {
     }
   }
 
+  // Read current saved connection for this business (after optional upsert)
+  const { data: currentConn, error: connReadError } = await supabase
+    .from("business_connections")
+    .select("data_url, data_anon_key")
+    .eq("business_id", business!.id)
+    .maybeSingle();
+
+  if (connReadError) {
+    console.error("Failed to read current connection:", connReadError.message);
+    process.exit(1);
+  }
+
   // Generate and insert code
   const code = generateCode();
   const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
@@ -143,8 +209,36 @@ async function main() {
   console.log(`Code     : ${code}`);
   console.log(`Expires  : ${expiresAt}`);
   console.log(`Hours    : ${hours} (${(hours / 24).toFixed(1)} days)`);
-  if (dataUrl) {
-    console.log(`Data URL : ${dataUrl}`);
+  if (currentConn?.data_url) {
+    console.log(`Data URL : ${currentConn.data_url}`);
+  } else {
+    console.log(`Data URL : (sin configurar)`);
+  }
+  if (currentConn?.data_anon_key) {
+    console.log(`Anon Key : ${maskSecret(currentConn.data_anon_key)}`);
+  } else {
+    console.log(`Anon Key : (sin configurar)`);
+  }
+
+  if (copyCode) {
+    const ok = copyToClipboard(code);
+    console.log(ok ? "Copiado: code" : "No se pudo copiar code");
+  }
+  if (copyUrl) {
+    const ok = copyToClipboard(currentConn?.data_url ?? "");
+    console.log(ok ? "Copiado: data_url" : "No se pudo copiar data_url");
+  }
+  if (copyKey) {
+    const ok = copyToClipboard(currentConn?.data_anon_key ?? "");
+    console.log(
+      ok ? "Copiado: data_anon_key" : "No se pudo copiar data_anon_key",
+    );
+  }
+
+  if (copyCode || copyUrl || copyKey) {
+    console.log(
+      "Tip: usa --copy-code / --copy-url / --copy-key para copiar directo",
+    );
   }
   console.log();
 }

@@ -33,6 +33,32 @@ export const supabase = createClient(
 
 let _dataClient: SupabaseClient | null = null;
 
+function isNetworkFailure(errorMessage: string): boolean {
+  return /network request failed/i.test(errorMessage);
+}
+
+async function canReachDataProject(
+  dataUrl: string,
+  dataAnonKey: string,
+  businessId: string,
+): Promise<boolean> {
+  try {
+    const testClient = createClient(dataUrl, dataAnonKey, supabaseOptions);
+    const { error } = await testClient
+      .from("stores")
+      .select("id")
+      .eq("business_id", businessId)
+      .limit(1);
+
+    // Any non-network error still means the endpoint is reachable.
+    if (!error) return true;
+    return !isNetworkFailure(error.message);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return !isNetworkFailure(message);
+  }
+}
+
 /** Save data connection credentials to SecureStore */
 export async function saveDataConnection(
   dataUrl: string,
@@ -97,6 +123,16 @@ export async function fetchAndSaveDataConnection(
       return { success: false, error: data?.error ?? "unknown" };
     }
 
+    const reachable = await canReachDataProject(
+      data.data_url,
+      data.data_anon_key,
+      businessId,
+    );
+    if (!reachable) {
+      console.warn("[DataConn] Central returned unreachable data credentials");
+      return { success: false, error: "unreachable_data_project" };
+    }
+
     await saveDataConnection(data.data_url, data.data_anon_key);
     console.log("[DataConn] Credentials fetched and saved from Central");
     return { success: true };
@@ -107,23 +143,26 @@ export async function fetchAndSaveDataConnection(
 }
 
 /**
- * Ensure we have a Data client — fetch from Central if missing.
+ * Ensure we have a Data client — always ask Central first.
  * This is the main entry point for cloud sync.
  */
 export async function ensureDataClient(
   businessId: string,
   deviceId: string,
 ): Promise<SupabaseClient | null> {
-  // Try cached/stored first
-  const existing = await getDataClient();
-  if (existing) return existing;
-
-  // Not stored → ask Central
+  // Always try Central first so we pick up rotated credentials.
   const result = await fetchAndSaveDataConnection(businessId, deviceId);
-  if (!result.success) {
-    console.warn("[DataConn] Could not obtain credentials:", result.error);
-    return null;
+  if (result.success) {
+    return getDataClient();
   }
 
-  return getDataClient();
+  // Fallback: if Central is unavailable, reuse stored credentials if present.
+  const existing = await getDataClient();
+  if (existing) {
+    console.warn("[DataConn] Central unavailable, using stored credentials");
+    return existing;
+  }
+
+  console.warn("[DataConn] Could not obtain credentials:", result.error);
+  return null;
 }
