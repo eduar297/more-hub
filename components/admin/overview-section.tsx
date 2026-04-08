@@ -1,39 +1,52 @@
 import { PeriodSelector } from "@/components/admin/period-selector";
 import { StatCard } from "@/components/admin/stat-card";
 import { useStore } from "@/contexts/store-context";
+import { useColors } from "@/hooks/use-colors";
 import { useExpenseRepository } from "@/hooks/use-expense-repository";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtMoneyFull,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shiftMonth,
-    shiftWeek,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtMoneyFull,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shiftMonth,
+  shiftWeek,
+  weekEndISO,
 } from "@/utils/format";
-import { runPurchaseSuggestions } from "@/utils/purchase-suggestions";
-import { runSalesAnalysis } from "@/utils/sales-analysis";
 import {
-    AlertTriangle,
-    Award,
-    BarChart3,
-    DollarSign,
-    PackageX,
-    ShoppingCart,
-    TrendingDown,
-    TrendingUp,
-    Zap,
+  runPurchaseSuggestions,
+  type PurchaseReport,
+} from "@/utils/purchase-suggestions";
+import { runSalesAnalysis, type SalesReport } from "@/utils/sales-analysis";
+import {
+  AlertTriangle,
+  Award,
+  BarChart3,
+  ChevronRight,
+  DollarSign,
+  PackageX,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  X,
+  Zap,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
-import { Image, ScrollView } from "react-native";
-import { Card, Spinner, Text, XStack, YStack } from "tamagui";
+import {
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
 
 export function OverviewSection() {
   const db = useSQLiteContext();
@@ -81,6 +94,11 @@ export function OverviewSection() {
     noSalesCount: number;
     risingCount: number;
   } | null>(null);
+  const [purchReport, setPurchReport] = useState<PurchaseReport | null>(null);
+  const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
+  const [alertModal, setAlertModal] = useState<
+    "critical" | "capital" | "noSales" | "lowMargin" | "rising" | null
+  >(null);
 
   // Mini leaderboard
   const [topWorkers, setTopWorkers] = useState<
@@ -295,21 +313,23 @@ export function OverviewSection() {
       let cancelled = false;
       (async () => {
         try {
-          const [purchReport, salesReport] = await Promise.all([
+          const [pReport, sReport] = await Promise.all([
             runPurchaseSuggestions(db, 15, currentStore?.id),
             runSalesAnalysis(db, currentStore?.id),
           ]);
           if (cancelled) return;
-          const lowMargin = purchReport.suggestions.filter(
+          const lowMargin = pReport.suggestions.filter(
             (s) => s.marginPct < 0.1 && s.marginPct >= 0,
           ).length;
           setBizAlerts({
-            criticalStock: purchReport.criticalCount,
-            capitalLocked: salesReport.totalCapitalLocked,
+            criticalStock: pReport.criticalCount,
+            capitalLocked: sReport.totalCapitalLocked,
             lowMarginCount: lowMargin,
-            noSalesCount: salesReport.noSalesCount,
-            risingCount: purchReport.risingCount,
+            noSalesCount: sReport.noSalesCount,
+            risingCount: pReport.risingCount,
           });
+          setPurchReport(pReport);
+          setSalesReport(sReport);
         } catch {
           /* non-critical */
         }
@@ -410,11 +430,7 @@ export function OverviewSection() {
 
   if (loading) {
     return (
-      <YStack
-        flex={1}
-        style={{ justifyContent: "center", alignItems: "center" }}
-        gap="$3"
-      >
+      <YStack flex={1} justify="center" items="center" gap="$3">
         <Spinner size="large" color="$blue10" />
         <Text color="$color10">Cargando…</Text>
       </YStack>
@@ -530,7 +546,7 @@ export function OverviewSection() {
             >
               <XStack gap="$4" flexWrap="wrap">
                 {outOfStockCount > 0 && (
-                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <XStack gap="$2" items="center">
                     <PackageX size={18} color="$red10" />
                     <Text fontSize="$3" fontWeight="bold" color="$red10">
                       {outOfStockCount}
@@ -541,7 +557,7 @@ export function OverviewSection() {
                   </XStack>
                 )}
                 {lowStockCount > 0 && (
-                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <XStack gap="$2" items="center">
                     <AlertTriangle size={18} color="$orange10" />
                     <Text fontSize="$3" fontWeight="bold" color="$orange10">
                       {lowStockCount}
@@ -565,7 +581,7 @@ export function OverviewSection() {
               p="$4"
             >
               <YStack gap="$3">
-                <XStack gap="$2" style={{ alignItems: "center" }}>
+                <XStack gap="$2" items="center">
                   <Award size={18} color="$yellow10" />
                   <Text fontSize="$4" fontWeight="bold" color="$color">
                     Top vendedores
@@ -577,20 +593,14 @@ export function OverviewSection() {
                       ? ((w.totalSales / lbTotal) * 100).toFixed(0)
                       : "0";
                   return (
-                    <XStack
-                      key={w.workerId}
-                      gap="$3"
-                      style={{ alignItems: "center" }}
-                    >
+                    <XStack key={w.workerId} gap="$3" items="center">
                       <YStack
                         width={26}
                         height={26}
-                        style={{
-                          borderRadius: 13,
-                          justifyContent: "center",
-                          alignItems: "center",
-                          backgroundColor: MEDAL_COLORS[i],
-                        }}
+                        rounded={13}
+                        justify="center"
+                        items="center"
+                        bg={MEDAL_COLORS[i] as any}
                       >
                         <Text fontSize="$2" fontWeight="bold" color="#fff">
                           {i + 1}
@@ -606,11 +616,9 @@ export function OverviewSection() {
                           width={30}
                           height={30}
                           bg="$color4"
-                          style={{
-                            borderRadius: 15,
-                            justifyContent: "center",
-                            alignItems: "center",
-                          }}
+                          rounded={15}
+                          justify="center"
+                          items="center"
                         >
                           <Text
                             fontSize="$3"
@@ -657,7 +665,7 @@ export function OverviewSection() {
                 p="$4"
               >
                 <YStack gap="$3">
-                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <XStack gap="$2" items="center">
                     <Zap size={18} color="$blue10" />
                     <Text fontSize="$4" fontWeight="bold" color="$color">
                       Inteligencia del negocio
@@ -665,149 +673,179 @@ export function OverviewSection() {
                   </XStack>
                   <XStack gap="$3" flexWrap="wrap">
                     {bizAlerts.criticalStock > 0 && (
-                      <Card
-                        flex={1}
-                        minWidth="45%"
-                        bg="$red2"
-                        borderWidth={1}
-                        borderColor="$red6"
-                        style={{ borderRadius: 12 }}
-                        p="$3"
+                      <Pressable
+                        style={{ flex: 1, minWidth: "45%" }}
+                        onPress={() => setAlertModal("critical")}
                       >
-                        <XStack gap="$2" style={{ alignItems: "center" }}>
-                          <ShoppingCart size={14} color="$red10" />
-                          <Text fontSize="$1" color="$red10">
-                            Compra urgente
-                          </Text>
-                        </XStack>
-                        <Text
-                          fontSize="$5"
-                          fontWeight="bold"
-                          color="$red10"
-                          mt="$1"
+                        <Card
+                          bg="$red2"
+                          borderWidth={1}
+                          borderColor="$red6"
+                          style={{ borderRadius: 12 }}
+                          p="$3"
                         >
-                          {bizAlerts.criticalStock}
-                        </Text>
-                        <Text fontSize="$1" color="$color10">
-                          productos con ≤3 días
-                        </Text>
-                      </Card>
+                          <XStack gap="$2" items="center">
+                            <ShoppingCart size={14} color="$red10" />
+                            <Text fontSize="$1" color="$red10">
+                              Compra urgente
+                            </Text>
+                          </XStack>
+                          <Text
+                            fontSize="$5"
+                            fontWeight="bold"
+                            color="$red10"
+                            mt="$1"
+                          >
+                            {bizAlerts.criticalStock}
+                          </Text>
+                          <XStack justify="space-between" items="center">
+                            <Text fontSize="$1" color="$color10">
+                              productos con ≤3 días
+                            </Text>
+                            <ChevronRight size={12} color="$red10" />
+                          </XStack>
+                        </Card>
+                      </Pressable>
                     )}
                     {bizAlerts.capitalLocked > 0 && (
-                      <Card
-                        flex={1}
-                        minWidth="45%"
-                        bg="$orange2"
-                        borderWidth={1}
-                        borderColor="$orange6"
-                        style={{ borderRadius: 12 }}
-                        p="$3"
+                      <Pressable
+                        style={{ flex: 1, minWidth: "45%" }}
+                        onPress={() => setAlertModal("capital")}
                       >
-                        <XStack gap="$2" style={{ alignItems: "center" }}>
-                          <DollarSign size={14} color="$orange10" />
-                          <Text fontSize="$1" color="$orange10">
-                            Capital inmovilizado
-                          </Text>
-                        </XStack>
-                        <Text
-                          fontSize="$5"
-                          fontWeight="bold"
-                          color="$orange10"
-                          mt="$1"
+                        <Card
+                          bg="$orange2"
+                          borderWidth={1}
+                          borderColor="$orange6"
+                          style={{ borderRadius: 12 }}
+                          p="$3"
                         >
-                          ${fmtMoney(bizAlerts.capitalLocked)}
-                        </Text>
-                        <Text fontSize="$1" color="$color10">
-                          en productos estancados
-                        </Text>
-                      </Card>
+                          <XStack gap="$2" items="center">
+                            <DollarSign size={14} color="$orange10" />
+                            <Text fontSize="$1" color="$orange10">
+                              Capital inmovilizado
+                            </Text>
+                          </XStack>
+                          <Text
+                            fontSize="$5"
+                            fontWeight="bold"
+                            color="$orange10"
+                            mt="$1"
+                          >
+                            ${fmtMoney(bizAlerts.capitalLocked)}
+                          </Text>
+                          <XStack justify="space-between" items="center">
+                            <Text fontSize="$1" color="$color10">
+                              en productos estancados
+                            </Text>
+                            <ChevronRight size={12} color="$orange10" />
+                          </XStack>
+                        </Card>
+                      </Pressable>
                     )}
                     {bizAlerts.noSalesCount > 0 && (
-                      <Card
-                        flex={1}
-                        minWidth="45%"
-                        bg="$yellow2"
-                        borderWidth={1}
-                        borderColor="$yellow6"
-                        style={{ borderRadius: 12 }}
-                        p="$3"
+                      <Pressable
+                        style={{ flex: 1, minWidth: "45%" }}
+                        onPress={() => setAlertModal("noSales")}
                       >
-                        <XStack gap="$2" style={{ alignItems: "center" }}>
-                          <PackageX size={14} color="$yellow10" />
-                          <Text fontSize="$1" color="$yellow10">
-                            Sin ventas
-                          </Text>
-                        </XStack>
-                        <Text
-                          fontSize="$5"
-                          fontWeight="bold"
-                          color="$yellow10"
-                          mt="$1"
+                        <Card
+                          bg="$yellow2"
+                          borderWidth={1}
+                          borderColor="$yellow6"
+                          style={{ borderRadius: 12 }}
+                          p="$3"
                         >
-                          {bizAlerts.noSalesCount}
-                        </Text>
-                        <Text fontSize="$1" color="$color10">
-                          productos (+30 días)
-                        </Text>
-                      </Card>
+                          <XStack gap="$2" items="center">
+                            <PackageX size={14} color="$yellow10" />
+                            <Text fontSize="$1" color="$yellow10">
+                              Sin ventas
+                            </Text>
+                          </XStack>
+                          <Text
+                            fontSize="$5"
+                            fontWeight="bold"
+                            color="$yellow10"
+                            mt="$1"
+                          >
+                            {bizAlerts.noSalesCount}
+                          </Text>
+                          <XStack justify="space-between" items="center">
+                            <Text fontSize="$1" color="$color10">
+                              productos (+30 días)
+                            </Text>
+                            <ChevronRight size={12} color="$yellow10" />
+                          </XStack>
+                        </Card>
+                      </Pressable>
                     )}
                     {bizAlerts.lowMarginCount > 0 && (
-                      <Card
-                        flex={1}
-                        minWidth="45%"
-                        bg="$purple2"
-                        borderWidth={1}
-                        borderColor="$purple6"
-                        style={{ borderRadius: 12 }}
-                        p="$3"
+                      <Pressable
+                        style={{ flex: 1, minWidth: "45%" }}
+                        onPress={() => setAlertModal("lowMargin")}
                       >
-                        <XStack gap="$2" style={{ alignItems: "center" }}>
-                          <TrendingDown size={14} color="$purple10" />
-                          <Text fontSize="$1" color="$purple10">
-                            Margen bajo
-                          </Text>
-                        </XStack>
-                        <Text
-                          fontSize="$5"
-                          fontWeight="bold"
-                          color="$purple10"
-                          mt="$1"
+                        <Card
+                          bg="$purple2"
+                          borderWidth={1}
+                          borderColor="$purple6"
+                          style={{ borderRadius: 12 }}
+                          p="$3"
                         >
-                          {bizAlerts.lowMarginCount}
-                        </Text>
-                        <Text fontSize="$1" color="$color10">
-                          productos {"<"}10%
-                        </Text>
-                      </Card>
+                          <XStack gap="$2" items="center">
+                            <TrendingDown size={14} color="$purple10" />
+                            <Text fontSize="$1" color="$purple10">
+                              Margen bajo
+                            </Text>
+                          </XStack>
+                          <Text
+                            fontSize="$5"
+                            fontWeight="bold"
+                            color="$purple10"
+                            mt="$1"
+                          >
+                            {bizAlerts.lowMarginCount}
+                          </Text>
+                          <XStack justify="space-between" items="center">
+                            <Text fontSize="$1" color="$color10">
+                              productos {"<"}10%
+                            </Text>
+                            <ChevronRight size={12} color="$purple10" />
+                          </XStack>
+                        </Card>
+                      </Pressable>
                     )}
                     {bizAlerts.risingCount > 0 && (
-                      <Card
-                        flex={1}
-                        minWidth="45%"
-                        bg="$green2"
-                        borderWidth={1}
-                        borderColor="$green6"
-                        style={{ borderRadius: 12 }}
-                        p="$3"
+                      <Pressable
+                        style={{ flex: 1, minWidth: "45%" }}
+                        onPress={() => setAlertModal("rising")}
                       >
-                        <XStack gap="$2" style={{ alignItems: "center" }}>
-                          <TrendingUp size={14} color="$green10" />
-                          <Text fontSize="$1" color="$green10">
-                            Tendencia ↑
-                          </Text>
-                        </XStack>
-                        <Text
-                          fontSize="$5"
-                          fontWeight="bold"
-                          color="$green10"
-                          mt="$1"
+                        <Card
+                          bg="$green2"
+                          borderWidth={1}
+                          borderColor="$green6"
+                          style={{ borderRadius: 12 }}
+                          p="$3"
                         >
-                          {bizAlerts.risingCount}
-                        </Text>
-                        <Text fontSize="$1" color="$color10">
-                          productos en alza
-                        </Text>
-                      </Card>
+                          <XStack gap="$2" items="center">
+                            <TrendingUp size={14} color="$green10" />
+                            <Text fontSize="$1" color="$green10">
+                              Tendencia ↑
+                            </Text>
+                          </XStack>
+                          <Text
+                            fontSize="$5"
+                            fontWeight="bold"
+                            color="$green10"
+                            mt="$1"
+                          >
+                            {bizAlerts.risingCount}
+                          </Text>
+                          <XStack justify="space-between" items="center">
+                            <Text fontSize="$1" color="$color10">
+                              productos en alza
+                            </Text>
+                            <ChevronRight size={12} color="$green10" />
+                          </XStack>
+                        </Card>
+                      </Pressable>
                     )}
                   </XStack>
                 </YStack>
@@ -815,6 +853,241 @@ export function OverviewSection() {
             )}
         </YStack>
       </ScrollView>
+
+      {/* ── Alert detail modal ── */}
+      <BizAlertModal
+        alertType={alertModal}
+        onClose={() => setAlertModal(null)}
+        purchReport={purchReport}
+        salesReport={salesReport}
+        fmtMoney={fmtMoney}
+      />
     </>
+  );
+}
+
+/* ── Alert detail modal ─────────────────────────────────────────────────── */
+type AlertType = "critical" | "capital" | "noSales" | "lowMargin" | "rising";
+
+const ALERT_META: Record<
+  AlertType,
+  { title: string; accent: string; bg: string }
+> = {
+  critical: { title: "Compra urgente", accent: "$red10", bg: "$red2" },
+  capital: {
+    title: "Capital inmovilizado",
+    accent: "$orange10",
+    bg: "$orange2",
+  },
+  noSales: {
+    title: "Sin ventas (+30 días)",
+    accent: "$yellow10",
+    bg: "$yellow2",
+  },
+  lowMargin: {
+    title: "Margen bajo (<10%)",
+    accent: "$purple10",
+    bg: "$purple2",
+  },
+  rising: { title: "Tendencia en alza", accent: "$green10", bg: "$green2" },
+};
+
+function BizAlertModal({
+  alertType,
+  onClose,
+  purchReport,
+  salesReport,
+  fmtMoney: fmt,
+}: {
+  alertType: AlertType | null;
+  onClose: () => void;
+  purchReport: PurchaseReport | null;
+  salesReport: SalesReport | null;
+  fmtMoney: (n: number) => string;
+}) {
+  const colors = useColors();
+
+  const meta = alertType ? ALERT_META[alertType] : null;
+
+  const rows = useMemo(() => {
+    if (!alertType || (!purchReport && !salesReport)) return [];
+
+    switch (alertType) {
+      case "critical":
+        return (
+          purchReport?.suggestions
+            .filter((s) => s.urgency === "critical")
+            .map((s) => ({
+              key: s.product.id,
+              name: s.product.name,
+              photo: s.product.photoUri,
+              lines: [
+                `${Math.round(s.daysOfStock)} días de stock`,
+                `Comprar ${Math.round(s.suggestedQty)} uds · $${fmt(
+                  s.estimatedCost,
+                )}`,
+                `Venta diaria: ${s.dailySalesRate.toFixed(1)} uds`,
+              ],
+            })) ?? []
+        );
+      case "capital":
+        return (
+          salesReport?.stagnant.map((s) => ({
+            key: s.product.id,
+            name: s.product.name,
+            photo: s.product.photoUri,
+            lines: [
+              `Capital: $${fmt(s.capitalLocked)}`,
+              s.daysSinceLastSale != null
+                ? `Última venta hace ${s.daysSinceLastSale} días`
+                : "Sin ventas registradas",
+              `Stock: ${Math.round(s.product.stockBaseQty)} uds`,
+            ],
+          })) ?? []
+        );
+      case "noSales":
+        return (
+          salesReport?.stagnant
+            .filter(
+              (s) => s.daysSinceLastSale == null || s.daysSinceLastSale > 30,
+            )
+            .map((s) => ({
+              key: s.product.id,
+              name: s.product.name,
+              photo: s.product.photoUri,
+              lines: [
+                s.daysSinceLastSale != null
+                  ? `${s.daysSinceLastSale} días sin vender`
+                  : "Nunca vendido",
+                `Capital: $${fmt(s.capitalLocked)}`,
+                `Stock: ${Math.round(s.product.stockBaseQty)} uds`,
+              ],
+            })) ?? []
+        );
+      case "lowMargin":
+        return (
+          purchReport?.suggestions
+            .filter((s) => s.marginPct < 0.1 && s.marginPct >= 0)
+            .map((s) => ({
+              key: s.product.id,
+              name: s.product.name,
+              photo: s.product.photoUri,
+              lines: [
+                `Margen: ${(s.marginPct * 100).toFixed(1)}%`,
+                `Costo: $${fmt(s.avgUnitCost)} → Venta: $${fmt(
+                  s.product.salePrice,
+                )}`,
+                `Ganancia: $${fmt(s.profitPerUnit)}/ud`,
+              ],
+            })) ?? []
+        );
+      case "rising":
+        return (
+          purchReport?.suggestions
+            .filter((s) => s.salesTrend === "rising")
+            .map((s) => ({
+              key: s.product.id,
+              name: s.product.name,
+              photo: s.product.photoUri,
+              lines: [
+                `Tendencia: ×${s.trendFactor.toFixed(2)}`,
+                `Venta diaria: ${s.dailySalesRate.toFixed(1)} uds`,
+                `Aporte ingresos: ${(s.revenueShare * 100).toFixed(1)}%`,
+              ],
+            })) ?? []
+        );
+      default:
+        return [];
+    }
+  }, [alertType, purchReport, salesReport, fmt]);
+
+  if (!alertType || !meta) return null;
+
+  return (
+    <Modal
+      visible
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView
+        edges={["top"]}
+        style={{ flex: 1, backgroundColor: colors.modalBg }}
+      >
+        {/* Header */}
+        <XStack px="$4" py="$3" items="center" justify="space-between">
+          <Text fontSize="$5" fontWeight="bold" color={meta.accent as any}>
+            {meta.title}
+          </Text>
+          <TouchableOpacity onPress={onClose} hitSlop={12}>
+            <X size={22} color={colors.muted as any} />
+          </TouchableOpacity>
+        </XStack>
+        <Separator />
+
+        {/* Product list */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+        >
+          {rows.length === 0 && (
+            <Text color="$color8" text="center" mt="$4">
+              Sin datos disponibles
+            </Text>
+          )}
+          {rows.map((row) => (
+            <Card
+              key={row.key}
+              bg={meta.bg as any}
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 12 }}
+              p="$3"
+            >
+              <XStack gap="$3" items="center">
+                {row.photo ? (
+                  <Image
+                    source={{ uri: row.photo }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 10,
+                    }}
+                  />
+                ) : (
+                  <YStack
+                    width={44}
+                    height={44}
+                    rounded={10}
+                    bg="$color3"
+                    items="center"
+                    justify="center"
+                  >
+                    <Text fontSize="$2" color="$color8">
+                      📦
+                    </Text>
+                  </YStack>
+                )}
+                <YStack flex={1} gap="$1">
+                  <Text
+                    fontSize="$3"
+                    fontWeight="600"
+                    color="$color"
+                    numberOfLines={1}
+                  >
+                    {row.name}
+                  </Text>
+                  {row.lines.map((line, i) => (
+                    <Text key={i} fontSize="$2" color="$color10">
+                      {line}
+                    </Text>
+                  ))}
+                </YStack>
+              </XStack>
+            </Card>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
 }
