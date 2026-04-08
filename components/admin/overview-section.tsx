@@ -6,6 +6,7 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
+  daysInMonth,
   fmtMoney,
   fmtMoneyFull,
   MONTH_NAMES_SHORT,
@@ -15,16 +16,18 @@ import {
   weekEndISO,
 } from "@/utils/format";
 import {
+  AlertTriangle,
+  Award,
   BarChart3,
   DollarSign,
-  Package,
+  PackageX,
+  TrendingDown,
   TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView } from "react-native";
-import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
-import { AdminBarChart } from "./admin-bar-chart";
+import { Image, ScrollView } from "react-native";
+import { Card, Spinner, Text, XStack, YStack } from "tamagui";
 
 export function OverviewSection() {
   const ticketRepo = useTicketRepository();
@@ -40,15 +43,11 @@ export function OverviewSection() {
   const [ticketCount, setTicketCount] = useState(0);
   const [purchasesTotal, setPurchasesTotal] = useState(0);
   const [expensesTotal, setExpensesTotal] = useState(0);
-  const [productCount, setProductCount] = useState(0);
-  const [inventoryValue, setInventoryValue] = useState(0);
 
   // Previous period data (for delta %)
   const [prevSales, setPrevSales] = useState(0);
   const [prevTickets, setPrevTickets] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prevPurchases, setPrevPurchases] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prevExpenses, setPrevExpenses] = useState(0);
 
   // Chart data
@@ -62,14 +61,68 @@ export function OverviewSection() {
     { month: number; total: number; tickets: number }[]
   >([]);
 
+  // Stock alerts
+  const [outOfStockCount, setOutOfStockCount] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  // Mini leaderboard
+  const [topWorkers, setTopWorkers] = useState<
+    {
+      workerId: number;
+      workerName: string;
+      workerPhotoUri: string | null;
+      totalSales: number;
+      ticketCount: number;
+      avgTicket: number;
+    }[]
+  >([]);
+
+  const periodRange = useMemo(() => {
+    if (nav.period === "day")
+      return { from: nav.selectedDay, to: nav.selectedDay };
+    if (nav.period === "week")
+      return {
+        from: nav.selectedWeekStart,
+        to: weekEndISO(nav.selectedWeekStart),
+      };
+    if (nav.period === "month") {
+      const days = daysInMonth(nav.selectedMonth);
+      return {
+        from: `${nav.selectedMonth}-01`,
+        to: `${nav.selectedMonth}-${String(days).padStart(2, "0")}`,
+      };
+    }
+    if (nav.period === "year")
+      return {
+        from: `${nav.selectedYear}-01-01`,
+        to: `${nav.selectedYear}-12-31`,
+      };
+    return { from: nav.dateRange.from, to: nav.dateRange.to };
+  }, [
+    nav.period,
+    nav.selectedDay,
+    nav.selectedWeekStart,
+    nav.selectedMonth,
+    nav.selectedYear,
+    nav.dateRange,
+  ]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // Stock alerts
       const prods = await productRepo.findAll();
-      setProductCount(prods.length);
-      setInventoryValue(
-        prods.reduce((s, p) => s + p.costPrice * p.stockBaseQty, 0),
+      setOutOfStockCount(prods.filter((p) => p.stockBaseQty <= 0).length);
+      setLowStockCount(
+        prods.filter((p) => p.stockBaseQty > 0 && p.stockBaseQty <= 5).length,
       );
+
+      // Mini leaderboard
+      const lb = await ticketRepo.workerLeaderboard(
+        periodRange.from,
+        periodRange.to,
+      );
+      setTopWorkers(lb.slice(0, 3));
 
       if (nav.period === "day") {
         const prevDay = shiftDay(nav.selectedDay, -1);
@@ -113,7 +166,6 @@ export function OverviewSection() {
         setPrevTickets(pTickets.length);
         setPrevPurchases(pPurch.totalSpent);
         setPrevExpenses(pExp);
-        // Build 7-day daily totals for the week chart
         const weekDailyTotals = Array.from({ length: 7 }, (_, i) => {
           const dayKey = shiftDay(nav.selectedWeekStart, i);
           return {
@@ -180,7 +232,6 @@ export function OverviewSection() {
         setPrevTickets(0);
         setPrevPurchases(0);
         setPrevExpenses(0);
-        // Build daily totals for range chart
         const dayCount =
           Math.round(
             (new Date(nav.dateRange.to + "T12:00:00").getTime() -
@@ -208,6 +259,7 @@ export function OverviewSection() {
     nav.selectedWeekStart,
     nav.selectedYear,
     nav.dateRange,
+    periodRange,
     ticketRepo,
     purchaseRepo,
     expenseRepo,
@@ -220,40 +272,7 @@ export function OverviewSection() {
     }, [loadData]),
   );
 
-  // Balance chart data (3 bars: Ingresos, Compras, Gastos)
-  const balanceChartData = useMemo(() => {
-    const items: {
-      value: number;
-      label: string;
-      frontColor: string;
-      labelTextStyle: object;
-    }[] = [];
-    if (salesTotal > 0)
-      items.push({
-        value: salesTotal,
-        label: "Ingresos",
-        frontColor: "#22c55e",
-        labelTextStyle: { fontSize: 10, color: "#888" },
-      });
-    if (purchasesTotal > 0)
-      items.push({
-        value: purchasesTotal,
-        label: "Compras",
-        frontColor: "#3b82f6",
-        labelTextStyle: { fontSize: 10, color: "#888" },
-      });
-    if (expensesTotal > 0)
-      items.push({
-        value: expensesTotal,
-        label: "Gastos",
-        frontColor: "#ef4444",
-        labelTextStyle: { fontSize: 10, color: "#888" },
-      });
-    return items;
-  }, [salesTotal, purchasesTotal, expensesTotal]);
-
-  const totalEgresos = purchasesTotal + expensesTotal;
-  const profit = salesTotal - totalEgresos;
+  const profit = salesTotal - purchasesTotal - expensesTotal;
   const avgTicket = ticketCount > 0 ? salesTotal / ticketCount : 0;
 
   // Delta % vs previous period
@@ -266,6 +285,8 @@ export function OverviewSection() {
     : undefined;
   const prevAvg = prevTickets > 0 ? prevSales / prevTickets : 0;
   const avgDelta = showDelta ? pctDelta(avgTicket, prevAvg) : undefined;
+  const prevProfit = prevSales - prevPurchases - prevExpenses;
+  const profitDelta = showDelta ? pctDelta(profit, prevProfit) : undefined;
 
   // Best/worst day and peak hour insights
   const insights = useMemo(() => {
@@ -352,6 +373,9 @@ export function OverviewSection() {
     );
   }
 
+  const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
+  const lbTotal = topWorkers.reduce((s, w) => s + w.totalSales, 0);
+
   return (
     <>
       {/* Sticky period selector card */}
@@ -371,7 +395,7 @@ export function OverviewSection() {
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <YStack p="$4" gap="$4" pb="$10">
-          {/* KPI Row */}
+          {/* KPI Row 1 */}
           <XStack gap="$3">
             <StatCard
               label="Ventas"
@@ -398,46 +422,25 @@ export function OverviewSection() {
             />
           </XStack>
 
+          {/* KPI Row 2: Ganancia */}
           <XStack gap="$3">
             <StatCard
-              label="Inventario"
-              value={`$${fmtMoney(inventoryValue)}`}
-              detail={`$${fmtMoneyFull(inventoryValue)}`}
-              color="$purple10"
-              icon={<Package size={16} color="$purple10" />}
-            />
-            <StatCard
-              label="Productos"
-              value={productCount}
-              color="$blue10"
-              icon={<Package size={16} color="$blue10" />}
+              label="Ganancia"
+              value={`${profit >= 0 ? "" : "-"}$${fmtMoney(Math.abs(profit))}`}
+              detail={`${profit >= 0 ? "" : "-"}$${fmtMoneyFull(
+                Math.abs(profit),
+              )}`}
+              color={profit >= 0 ? "$green10" : "$red10"}
+              icon={
+                profit >= 0 ? (
+                  <TrendingUp size={16} color="$green10" />
+                ) : (
+                  <TrendingDown size={16} color="$red10" />
+                )
+              }
+              delta={profitDelta}
             />
           </XStack>
-
-          {/* Balance chart */}
-          {balanceChartData.length > 0 && (
-            <Card
-              bg="$color1"
-              borderWidth={1}
-              borderColor="$borderColor"
-              style={{ borderRadius: 14 }}
-              p="$4"
-            >
-              <YStack gap="$3">
-                <XStack gap="$2" style={{ alignItems: "center" }}>
-                  <BarChart3 size={18} color="$blue10" />
-                  <Text fontSize="$4" fontWeight="bold" color="$color">
-                    Balance
-                  </Text>
-                </XStack>
-                <AdminBarChart
-                  data={balanceChartData}
-                  showLine={false}
-                  yAxisLabel="Monto ($)"
-                />
-              </YStack>
-            </Card>
-          )}
 
           {/* Insights */}
           {insights.length > 0 && (
@@ -468,97 +471,128 @@ export function OverviewSection() {
             </XStack>
           )}
 
-          {/* Balance card */}
-          <Card
-            bg={profit >= 0 ? "$green2" : "$red2"}
-            borderWidth={1}
-            borderColor={profit >= 0 ? "$green6" : "$red6"}
-            style={{ borderRadius: 14 }}
-            p="$4"
-          >
-            <YStack gap="$3">
-              <XStack gap="$2" style={{ alignItems: "center" }}>
-                <TrendingUp
-                  size={18}
-                  color={profit >= 0 ? "$green10" : "$red10"}
-                />
-                <Text fontSize="$5" fontWeight="bold" color="$color">
-                  Balance
-                </Text>
+          {/* Stock alerts */}
+          {(outOfStockCount > 0 || lowStockCount > 0) && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <XStack gap="$4" flexWrap="wrap">
+                {outOfStockCount > 0 && (
+                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                    <PackageX size={18} color="$red10" />
+                    <Text fontSize="$3" fontWeight="bold" color="$red10">
+                      {outOfStockCount}
+                    </Text>
+                    <Text fontSize="$3" color="$color10">
+                      sin stock
+                    </Text>
+                  </XStack>
+                )}
+                {lowStockCount > 0 && (
+                  <XStack gap="$2" style={{ alignItems: "center" }}>
+                    <AlertTriangle size={18} color="$orange10" />
+                    <Text fontSize="$3" fontWeight="bold" color="$orange10">
+                      {lowStockCount}
+                    </Text>
+                    <Text fontSize="$3" color="$color10">
+                      stock bajo
+                    </Text>
+                  </XStack>
+                )}
               </XStack>
+            </Card>
+          )}
 
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text fontSize="$3" color="$color10">
-                  Ingresos (ventas)
-                </Text>
-                <Text fontSize="$3" fontWeight="600" color="$green10">
-                  +${fmtMoneyFull(salesTotal)}
-                </Text>
-              </XStack>
-
-              {purchasesTotal > 0 && (
-                <XStack
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text fontSize="$3" color="$color10">
-                    Compras
-                  </Text>
-                  <Text fontSize="$3" fontWeight="600" color="$red10">
-                    -${fmtMoneyFull(purchasesTotal)}
+          {/* Mini leaderboard (top 3) */}
+          {topWorkers.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <YStack gap="$3">
+                <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <Award size={18} color="$yellow10" />
+                  <Text fontSize="$4" fontWeight="bold" color="$color">
+                    Top vendedores
                   </Text>
                 </XStack>
-              )}
-
-              {expensesTotal > 0 && (
-                <XStack
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text fontSize="$3" color="$color10">
-                    Gastos operativos
-                  </Text>
-                  <Text fontSize="$3" fontWeight="600" color="$red10">
-                    -${fmtMoneyFull(expensesTotal)}
-                  </Text>
-                </XStack>
-              )}
-
-              <Separator />
-
-              <XStack
-                style={{
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text fontSize="$5" fontWeight="bold" color="$color">
-                  {profit >= 0 ? "Ganancia" : "Pérdida"}
-                </Text>
-                <Text
-                  fontSize="$5"
-                  fontWeight="bold"
-                  color={profit >= 0 ? "$green10" : "$red10"}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  flex={1}
-                  text="right"
-                  ml="$2"
-                >
-                  {profit >= 0 ? "+" : "-"}${fmtMoneyFull(Math.abs(profit))}
-                </Text>
-              </XStack>
-            </YStack>
-          </Card>
+                {topWorkers.map((w, i) => {
+                  const pct =
+                    lbTotal > 0
+                      ? ((w.totalSales / lbTotal) * 100).toFixed(0)
+                      : "0";
+                  return (
+                    <XStack
+                      key={w.workerId}
+                      gap="$3"
+                      style={{ alignItems: "center" }}
+                    >
+                      <YStack
+                        width={26}
+                        height={26}
+                        style={{
+                          borderRadius: 13,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: MEDAL_COLORS[i],
+                        }}
+                      >
+                        <Text fontSize="$2" fontWeight="bold" color="#fff">
+                          {i + 1}
+                        </Text>
+                      </YStack>
+                      {w.workerPhotoUri ? (
+                        <Image
+                          source={{ uri: w.workerPhotoUri }}
+                          style={{ width: 30, height: 30, borderRadius: 15 }}
+                        />
+                      ) : (
+                        <YStack
+                          width={30}
+                          height={30}
+                          bg="$color4"
+                          style={{
+                            borderRadius: 15,
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text
+                            fontSize="$3"
+                            fontWeight="bold"
+                            color="$color10"
+                          >
+                            {w.workerName.charAt(0).toUpperCase()}
+                          </Text>
+                        </YStack>
+                      )}
+                      <Text
+                        flex={1}
+                        fontSize="$3"
+                        color="$color"
+                        numberOfLines={1}
+                      >
+                        {w.workerName}
+                      </Text>
+                      <Text fontSize="$3" fontWeight="bold" color="$green10">
+                        ${fmtMoney(w.totalSales)}
+                      </Text>
+                      <Text fontSize="$2" color="$color10">
+                        {pct}%
+                      </Text>
+                    </XStack>
+                  );
+                })}
+              </YStack>
+            </Card>
+          )}
         </YStack>
       </ScrollView>
     </>

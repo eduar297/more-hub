@@ -5,7 +5,7 @@ import { HeaderActions } from "@/components/admin/header-actions";
 import { HapticTab } from "@/components/haptic-tab";
 import { useColors } from "@/hooks/use-colors";
 import {
-  LayoutDashboard,
+  BarChart3,
   PackageSearch,
   Receipt,
   Settings,
@@ -39,9 +39,9 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Inicio",
+          title: "Dashboard",
           tabBarIcon: ({ color }) => (
-            <LayoutDashboard size={26} color={color as any} />
+            <BarChart3 size={26} color={color as any} />
           ),
         }}
       />

@@ -10,53 +10,53 @@ import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import { exportTicketsPDF } from "@/utils/export";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtMoneyFull,
-    fmtTime,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shiftMonth,
-    shiftWeek,
-    shortDayLabel,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtMoneyFull,
+  fmtTime,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shiftMonth,
+  shiftWeek,
+  shortDayLabel,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    Ban,
-    ChevronRight,
-    CreditCard,
-    DollarSign,
-    Printer,
-    Receipt,
-    Search,
-    ShoppingCart,
-    TrendingUp,
-    User,
-    Users,
-    X,
+  Ban,
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  Printer,
+  Receipt,
+  Search,
+  ShoppingCart,
+  TrendingUp,
+  User,
+  Users,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    Button,
-    Card,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { PeriodSelector } from "./period-selector";
@@ -583,6 +583,78 @@ export function SalesSection() {
   const prevAvg = prevTickets > 0 ? prevTotal / prevTickets : 0;
   const avgDelta = showDelta ? pctDelta(summaryAvg, prevAvg) : undefined;
 
+  // Best/worst day and peak hour insights
+  const insights = useMemo(() => {
+    const result: { label: string; value: string; color: string }[] = [];
+    if (nav.period === "day" && hourlySales.length > 0) {
+      const active = hourlySales.filter((h) => h.total > 0);
+      if (active.length > 0) {
+        const best = active.reduce((a, b) => (b.total > a.total ? b : a));
+        result.push({
+          label: "Hora pico",
+          value: `${best.hour}:00 · $${fmtMoney(best.total)}`,
+          color: "$green10",
+        });
+      }
+    }
+    if (
+      (nav.period === "week" || nav.period === "month") &&
+      dailySales.length > 0
+    ) {
+      const active = dailySales.filter((d) => d.total > 0);
+      if (active.length >= 2) {
+        const best = active.reduce((a, b) => (b.total > a.total ? b : a));
+        const worst = active.reduce((a, b) => (b.total < a.total ? b : a));
+        if (nav.period === "week") {
+          const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+          result.push({
+            label: "Mejor día",
+            value: `${DAY_LABELS[best.day - 1]} · $${fmtMoney(best.total)}`,
+            color: "$green10",
+          });
+          result.push({
+            label: "Peor día",
+            value: `${DAY_LABELS[worst.day - 1]} · $${fmtMoney(worst.total)}`,
+            color: "$red10",
+          });
+        } else {
+          result.push({
+            label: "Mejor día",
+            value: `Día ${best.day} · $${fmtMoney(best.total)}`,
+            color: "$green10",
+          });
+          result.push({
+            label: "Peor día",
+            value: `Día ${worst.day} · $${fmtMoney(worst.total)}`,
+            color: "$red10",
+          });
+        }
+      }
+    }
+    if (nav.period === "year" && yearlySales.length > 0) {
+      const active = yearlySales.filter((m) => m.total > 0);
+      if (active.length >= 2) {
+        const best = active.reduce((a, b) => (b.total > a.total ? b : a));
+        const worst = active.reduce((a, b) => (b.total < a.total ? b : a));
+        result.push({
+          label: "Mejor mes",
+          value: `${MONTH_NAMES_SHORT[best.month - 1]} · $${fmtMoney(
+            best.total,
+          )}`,
+          color: "$green10",
+        });
+        result.push({
+          label: "Peor mes",
+          value: `${MONTH_NAMES_SHORT[worst.month - 1]} · $${fmtMoney(
+            worst.total,
+          )}`,
+          color: "$red10",
+        });
+      }
+    }
+    return result;
+  }, [nav.period, hourlySales, dailySales, yearlySales]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   const ListHeader = (
     <YStack gap="$4" px="$4" pb="$2">
@@ -612,6 +684,31 @@ export function SalesSection() {
           delta={avgDelta}
         />
       </XStack>
+
+      {/* Insights */}
+      {insights.length > 0 && (
+        <XStack gap="$3" flexWrap="wrap">
+          {insights.map((ins) => (
+            <Card
+              key={ins.label}
+              flex={1}
+              minWidth="45%"
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 12 }}
+              p="$3"
+            >
+              <Text fontSize="$1" color="$color10">
+                {ins.label}
+              </Text>
+              <Text fontSize="$3" fontWeight="bold" color={ins.color as any}>
+                {ins.value}
+              </Text>
+            </Card>
+          ))}
+        </XStack>
+      )}
 
       {/* Bar chart */}
       {chartData.length > 0 && !loading && (
@@ -950,10 +1047,9 @@ export function SalesSection() {
           <XStack
             px="$4"
             py="$3"
-            alignItems="center"
-            justifyContent="space-between"
+            style={{ alignItems: "center", justifyContent: "space-between" }}
           >
-            <XStack alignItems="center" gap="$2">
+            <XStack style={{ alignItems: "center" }} gap="$2">
               <Receipt size={20} color="$blue10" />
               <Text fontSize="$5" fontWeight="bold" color="$color">
                 {sheetTicket

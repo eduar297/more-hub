@@ -2,27 +2,24 @@ import { FinanceSection } from "@/components/admin/finance-section";
 import { InventorySection } from "@/components/admin/inventory-section";
 import { OverviewSection } from "@/components/admin/overview-section";
 import { SalesSection } from "@/components/admin/sales-section";
-import { WorkersSection } from "@/components/admin/workers-section";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  TrendingUp,
-  Users,
+    BarChart3,
+    Package,
+    ShoppingCart,
+    TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useState } from "react";
 import { YStack } from "tamagui";
 
-type Section = "overview" | "sales" | "inventory" | "finance" | "workers";
+type Section = "overview" | "sales" | "inventory" | "finance";
 
 const SECTIONS: TabDef<Section>[] = [
-  { key: "overview", label: "Resumen", Icon: LayoutDashboard },
+  { key: "overview", label: "Dashboard", Icon: BarChart3 },
   { key: "sales", label: "Ventas", Icon: ShoppingCart },
   { key: "inventory", label: "Inventario", Icon: Package },
   { key: "finance", label: "Finanzas", Icon: TrendingUp },
-  { key: "workers", label: "Equipo", Icon: Users },
 ];
 
 export default function DashboardScreen() {
@@ -37,7 +34,6 @@ export default function DashboardScreen() {
       {section === "sales" && <SalesSection />}
       {section === "inventory" && <InventorySection />}
       {section === "finance" && <FinanceSection />}
-      {section === "workers" && <WorkersSection />}
     </YStack>
   );
 }

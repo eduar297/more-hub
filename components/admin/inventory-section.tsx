@@ -1,29 +1,16 @@
-import { PeriodSelector } from "@/components/admin/period-selector";
 import { StatCard } from "@/components/admin/stat-card";
 import { StockRow } from "@/components/admin/stock-row";
 import { ProductDetail } from "@/components/product/product-detail";
 import { SearchInput } from "@/components/ui/search-input";
 import { CHART_PALETTE, ICON_BTN_BG } from "@/constants/colors";
 import { useColors } from "@/hooks/use-colors";
-import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useProductRepository } from "@/hooks/use-product-repository";
-import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
-import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import { useUnitRepository } from "@/hooks/use-unit-repository";
 import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
-import {
-    fmtMoney,
-    fmtMoneyFull,
-    shiftDay,
-    shiftMonth,
-    shiftWeek,
-    weekEndISO,
-} from "@/utils/format";
+import { fmtMoney, fmtMoneyFull } from "@/utils/format";
 import {
     AlertTriangle,
-    ArrowDownToLine,
-    ArrowUpFromLine,
     DollarSign,
     Package,
     PackageX,
@@ -51,11 +38,7 @@ import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
 export function InventorySection() {
   const productRepo = useProductRepository();
   const unitRepo = useUnitRepository();
-  const purchaseRepo = usePurchaseRepository();
-  const ticketRepo = useTicketRepository();
   const c = useColors();
-
-  const nav = usePeriodNavigation();
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,22 +47,6 @@ export function InventorySection() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
-
-  // Movement data for selected period
-  const [periodSales, setPeriodSales] = useState(0);
-  const [periodPurchases, setPeriodPurchases] = useState(0);
-  const [topMovers, setTopMovers] = useState<
-    {
-      productId: number;
-      productName: string;
-      totalQty: number;
-      totalRevenue: number;
-    }[]
-  >([]);
-
-  // Previous-period data for delta badges
-  const [prevSales, setPrevSales] = useState(0);
-  const [prevPurchases, setPrevPurchases] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -92,139 +59,15 @@ export function InventorySection() {
       setAllProducts(prods);
       setAllUnits(units);
       setAllCategories(cats);
-
-      // Load period movement data
-      if (nav.period === "day") {
-        const [daySumm, dayPurch, top] = await Promise.all([
-          ticketRepo.daySummary(nav.selectedDay),
-          purchaseRepo.daySummary(nav.selectedDay),
-          ticketRepo.topProductsByRange(nav.selectedDay, nav.selectedDay, 10),
-        ]);
-        setPeriodSales(daySumm.totalSales);
-        setPeriodPurchases(dayPurch.totalSpent);
-        setTopMovers(top);
-      } else if (nav.period === "week") {
-        const wkEnd = weekEndISO(nav.selectedWeekStart);
-        const [wkTickets, wkPurch, top] = await Promise.all([
-          ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
-          purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
-          ticketRepo.topProductsByRange(nav.selectedWeekStart, wkEnd, 10),
-        ]);
-        setPeriodSales(wkTickets.reduce((s, t) => s + t.total, 0));
-        setPeriodPurchases(wkPurch.totalSpent);
-        setTopMovers(top);
-      } else if (nav.period === "month") {
-        const [monthSumm, monthPurch, top] = await Promise.all([
-          ticketRepo.monthlySummary(nav.selectedMonth),
-          purchaseRepo.monthlySummary(nav.selectedMonth),
-          ticketRepo.topProducts(nav.selectedMonth, 10),
-        ]);
-        setPeriodSales(monthSumm.totalSales);
-        setPeriodPurchases(monthPurch.totalSpent);
-        setTopMovers(top);
-      } else if (nav.period === "year") {
-        const yearStart = `${nav.selectedYear}-01-01`;
-        const yearEnd = `${nav.selectedYear}-12-31`;
-        const [yearSales, yearPurch, top] = await Promise.all([
-          ticketRepo.monthlySalesForYear(nav.selectedYear),
-          purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
-          ticketRepo.topProductsByRange(yearStart, yearEnd, 10),
-        ]);
-        setPeriodSales(yearSales.reduce((s, y) => s + y.total, 0));
-        setPeriodPurchases(yearPurch.reduce((s, y) => s + y.total, 0));
-        setTopMovers(top);
-      } else {
-        // range
-        const [rangeTickets, rangePurch, top] = await Promise.all([
-          ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to),
-          purchaseRepo.rangeSummary(nav.dateRange.from, nav.dateRange.to),
-          ticketRepo.topProductsByRange(
-            nav.dateRange.from,
-            nav.dateRange.to,
-            10,
-          ),
-        ]);
-        setPeriodSales(rangeTickets.reduce((s, t) => s + t.total, 0));
-        setPeriodPurchases(rangePurch.totalSpent);
-        setTopMovers(top);
-      }
     } finally {
       setLoading(false);
     }
-  }, [
-    nav.period,
-    nav.selectedDay,
-    nav.selectedMonth,
-    nav.selectedWeekStart,
-    nav.selectedYear,
-    nav.dateRange,
-    productRepo,
-    unitRepo,
-    purchaseRepo,
-    ticketRepo,
-  ]);
+  }, [productRepo, unitRepo]);
 
   useFocusEffect(
     useCallback(() => {
       loadData();
     }, [loadData]),
-  );
-
-  // Load previous-period data for delta comparison
-  useFocusEffect(
-    useCallback(() => {
-      (async () => {
-        try {
-          if (nav.period === "day") {
-            const prevDay = shiftDay(nav.selectedDay, -1);
-            const [pSales, pPurch] = await Promise.all([
-              ticketRepo.daySummary(prevDay),
-              purchaseRepo.daySummary(prevDay),
-            ]);
-            setPrevSales(pSales.totalSales);
-            setPrevPurchases(pPurch.totalSpent);
-          } else if (nav.period === "week") {
-            const prevWk = shiftWeek(nav.selectedWeekStart, -1);
-            const prevWkEnd = weekEndISO(prevWk);
-            const [pTkts, pPurch] = await Promise.all([
-              ticketRepo.findByDateRange(prevWk, prevWkEnd),
-              purchaseRepo.rangeSummary(prevWk, prevWkEnd),
-            ]);
-            setPrevSales(pTkts.reduce((s, t) => s + t.total, 0));
-            setPrevPurchases(pPurch.totalSpent);
-          } else if (nav.period === "month") {
-            const prevMo = shiftMonth(nav.selectedMonth, -1);
-            const [pSales, pPurch] = await Promise.all([
-              ticketRepo.monthlySummary(prevMo),
-              purchaseRepo.monthlySummary(prevMo),
-            ]);
-            setPrevSales(pSales.totalSales);
-            setPrevPurchases(pPurch.totalSpent);
-          } else if (nav.period === "year") {
-            const [pYearSales, pYearPurch] = await Promise.all([
-              ticketRepo.monthlySalesForYear(nav.selectedYear - 1),
-              purchaseRepo.monthlyTotalsForYear(nav.selectedYear - 1),
-            ]);
-            setPrevSales(pYearSales.reduce((s, y) => s + y.total, 0));
-            setPrevPurchases(pYearPurch.reduce((s, y) => s + y.total, 0));
-          } else {
-            setPrevSales(0);
-            setPrevPurchases(0);
-          }
-        } catch {
-          setPrevSales(0);
-          setPrevPurchases(0);
-        }
-      })();
-    }, [
-      nav.period,
-      nav.selectedDay,
-      nav.selectedWeekStart,
-      nav.selectedMonth,
-      nav.selectedYear,
-      ticketRepo,
-      purchaseRepo,
-    ]),
   );
 
   const unitMap = useMemo(
@@ -323,21 +166,6 @@ export function InventorySection() {
 
   return (
     <>
-      {/* Sticky period selector card */}
-      <Card
-        mx="$4"
-        mb="$2"
-        p="$3"
-        bg="$color1"
-        borderWidth={1}
-        borderColor="$borderColor"
-        style={{ borderRadius: 16 }}
-      >
-        <YStack gap="$2">
-          <PeriodSelector nav={nav} />
-        </YStack>
-      </Card>
-
       <FlatList
         data={allProducts.filter((p) => {
           if (!searchQuery.trim()) return true;
@@ -349,34 +177,6 @@ export function InventorySection() {
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={
           <YStack p="$4" gap="$4">
-            {/* Movement KPIs */}
-            <XStack gap="$3">
-              <StatCard
-                label="Compras"
-                value={`$${fmtMoney(periodPurchases)}`}
-                detail={`$${fmtMoneyFull(periodPurchases)}`}
-                color="$blue10"
-                icon={<ArrowDownToLine size={16} color="$blue10" />}
-                delta={
-                  nav.period !== "range" && prevPurchases > 0
-                    ? ((periodPurchases - prevPurchases) / prevPurchases) * 100
-                    : undefined
-                }
-              />
-              <StatCard
-                label="Ventas"
-                value={`$${fmtMoney(periodSales)}`}
-                detail={`$${fmtMoneyFull(periodSales)}`}
-                color="$green10"
-                icon={<ArrowUpFromLine size={16} color="$green10" />}
-                delta={
-                  nav.period !== "range" && prevSales > 0
-                    ? ((periodSales - prevSales) / prevSales) * 100
-                    : undefined
-                }
-              />
-            </XStack>
-
             {/* KPI Row 1 */}
             <XStack gap="$3">
               <StatCard
@@ -542,7 +342,7 @@ export function InventorySection() {
                           fontWeight="bold"
                           color="$color10"
                           width={22}
-                          textAlign="center"
+                          style={{ textAlign: "center" }}
                         >
                           {idx + 1}
                         </Text>
@@ -559,58 +359,6 @@ export function InventorySection() {
                         </Text>
                       </XStack>
                     </Pressable>
-                  </YStack>
-                ))}
-              </Card>
-            )}
-
-            {/* Top movers for the period */}
-            {topMovers.length > 0 && (
-              <Card
-                bg="$color1"
-                borderWidth={1}
-                borderColor="$borderColor"
-                style={{ borderRadius: 14 }}
-                overflow="hidden"
-              >
-                <YStack px="$4" pt="$4" pb="$2">
-                  <XStack gap="$2" style={{ alignItems: "center" }}>
-                    <TrendingUp size={16} color="$blue10" />
-                    <Text fontSize="$3" fontWeight="600" color="$color10">
-                      Más vendidos del período
-                    </Text>
-                  </XStack>
-                </YStack>
-                {topMovers.map((m, idx) => (
-                  <YStack key={m.productId}>
-                    {idx > 0 && <Separator />}
-                    <XStack
-                      px="$4"
-                      py="$3"
-                      style={{ alignItems: "center" }}
-                      gap="$3"
-                    >
-                      <Text
-                        fontSize="$2"
-                        fontWeight="bold"
-                        color="$color10"
-                        width={22}
-                        textAlign="center"
-                      >
-                        {idx + 1}
-                      </Text>
-                      <YStack flex={1}>
-                        <Text fontSize="$3" color="$color" numberOfLines={1}>
-                          {m.productName}
-                        </Text>
-                        <Text fontSize="$2" color="$color10">
-                          {m.totalQty} vendidos
-                        </Text>
-                      </YStack>
-                      <Text fontSize="$3" fontWeight="600" color="$blue10">
-                        ${fmtMoney(m.totalRevenue)}
-                      </Text>
-                    </XStack>
                   </YStack>
                 ))}
               </Card>

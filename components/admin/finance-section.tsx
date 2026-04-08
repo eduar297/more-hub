@@ -22,10 +22,11 @@ import {
     ShoppingBag,
     TrendingDown,
     TrendingUp,
+    Users
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView } from "react-native";
+import { Image, ScrollView } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
     Button,
@@ -47,6 +48,18 @@ export function FinanceSection() {
   const nav = usePeriodNavigation();
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+
+  // Leaderboard
+  const [leaderboard, setLeaderboard] = useState<
+    {
+      workerId: number;
+      workerName: string;
+      workerPhotoUri: string | null;
+      totalSales: number;
+      ticketCount: number;
+      avgTicket: number;
+    }[]
+  >([]);
 
   // P&L data
   const [salesTotal, setSalesTotal] = useState(0);
@@ -368,6 +381,48 @@ export function FinanceSection() {
       ticketRepo,
       purchaseRepo,
       expenseRepo,
+    ]),
+  );
+
+  // Load worker leaderboard for the period
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          let from: string;
+          let to: string;
+          if (nav.period === "day") {
+            from = nav.selectedDay;
+            to = nav.selectedDay;
+          } else if (nav.period === "week") {
+            from = nav.selectedWeekStart;
+            to = weekEndISO(nav.selectedWeekStart);
+          } else if (nav.period === "month") {
+            from = `${nav.selectedMonth}-01`;
+            to = `${nav.selectedMonth}-${String(
+              daysInMonth(nav.selectedMonth),
+            ).padStart(2, "0")}`;
+          } else if (nav.period === "year") {
+            from = `${nav.selectedYear}-01-01`;
+            to = `${nav.selectedYear}-12-31`;
+          } else {
+            from = nav.dateRange.from;
+            to = nav.dateRange.to;
+          }
+          const data = await ticketRepo.workerLeaderboard(from, to);
+          setLeaderboard(data);
+        } catch {
+          setLeaderboard([]);
+        }
+      })();
+    }, [
+      nav.period,
+      nav.selectedDay,
+      nav.selectedWeekStart,
+      nav.selectedMonth,
+      nav.selectedYear,
+      nav.dateRange,
+      ticketRepo,
     ]),
   );
 
@@ -1718,6 +1773,144 @@ export function FinanceSection() {
                   </XStack>
                 </YStack>
               ))}
+            </Card>
+          )}
+
+          {/* Worker leaderboard */}
+          {leaderboard.length > 0 && (
+            <Card
+              bg="$color1"
+              borderWidth={1}
+              borderColor="$borderColor"
+              style={{ borderRadius: 14 }}
+              p="$4"
+            >
+              <YStack gap="$3">
+                <XStack gap="$2" style={{ alignItems: "center" }}>
+                  <Users size={18} color="$purple10" />
+                  <Text fontSize="$4" fontWeight="bold" color="$color">
+                    Rendimiento del equipo
+                  </Text>
+                </XStack>
+
+                {leaderboard.map((worker, index) => {
+                  const lbTotal = leaderboard.reduce(
+                    (s, w) => s + w.totalSales,
+                    0,
+                  );
+                  const medal =
+                    index < 3
+                      ? (["#FFD700", "#C0C0C0", "#CD7F32"] as const)[index]
+                      : null;
+                  const pct =
+                    lbTotal > 0
+                      ? ((worker.totalSales / lbTotal) * 100).toFixed(1)
+                      : "0";
+                  return (
+                    <Card
+                      key={worker.workerId}
+                      bg="$color1"
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                      style={{ borderRadius: 12 }}
+                      overflow="hidden"
+                      p="$3"
+                    >
+                      <XStack style={{ alignItems: "center" }} gap="$3">
+                        <YStack
+                          width={32}
+                          height={32}
+                          style={{
+                            borderRadius: 16,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: medal ?? "transparent",
+                          }}
+                          borderWidth={medal ? 0 : 1}
+                          borderColor="$borderColor"
+                        >
+                          <Text
+                            fontSize="$3"
+                            fontWeight="bold"
+                            color={medal ? "#fff" : "$color10"}
+                          >
+                            {index + 1}
+                          </Text>
+                        </YStack>
+
+                        {worker.workerPhotoUri ? (
+                          <Image
+                            source={{ uri: worker.workerPhotoUri }}
+                            style={{ width: 36, height: 36, borderRadius: 18 }}
+                          />
+                        ) : (
+                          <YStack
+                            width={36}
+                            height={36}
+                            bg="$color4"
+                            style={{
+                              borderRadius: 18,
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text
+                              fontSize="$4"
+                              fontWeight="bold"
+                              color="$color10"
+                            >
+                              {worker.workerName.charAt(0).toUpperCase()}
+                            </Text>
+                          </YStack>
+                        )}
+
+                        <YStack flex={1}>
+                          <Text fontSize="$3" fontWeight="bold" color="$color">
+                            {worker.workerName}
+                          </Text>
+                          <Text fontSize="$2" color="$color10">
+                            {worker.ticketCount} tickets · prom $
+                            {fmtMoney(worker.avgTicket)}
+                          </Text>
+                        </YStack>
+
+                        <YStack style={{ alignItems: "flex-end" }}>
+                          <Text
+                            fontSize="$3"
+                            fontWeight="bold"
+                            color="$green10"
+                          >
+                            ${fmtMoney(worker.totalSales)}
+                          </Text>
+                          <Text fontSize="$2" color="$color10">
+                            {pct}%
+                          </Text>
+                        </YStack>
+                      </XStack>
+
+                      <YStack
+                        mt="$2"
+                        height={4}
+                        bg="$color3"
+                        style={{ borderRadius: 2, overflow: "hidden" }}
+                      >
+                        <YStack
+                          height={4}
+                          bg={medal ?? "$blue8"}
+                          style={{
+                            borderRadius: 2,
+                            width: `${
+                              lbTotal > 0
+                                ? (worker.totalSales / lbTotal) * 100
+                                : 0
+                            }%` as any,
+                          }}
+                        />
+                      </YStack>
+                    </Card>
+                  );
+                })}
+              </YStack>
             </Card>
           )}
         </YStack>
