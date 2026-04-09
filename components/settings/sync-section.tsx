@@ -51,6 +51,10 @@ interface SyncHost {
   port: number;
   name: string | null;
   deviceId: string | null;
+  brand: string | null;
+  model: string | null;
+  osVersion: string | null;
+  appVersion: string | null;
   lastUsedAt: string;
 }
 
@@ -115,6 +119,7 @@ export function SyncSection() {
     bumpCatalogVersion,
     pairedServerNameRef,
     pairedDeviceIdRef,
+    pairedDeviceInfoRef,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onSyncCatalogReceived: _onSyncCatalogReceived,
   } = useLan();
@@ -142,15 +147,39 @@ export function SyncSection() {
   }, [db]);
 
   const saveHost = useCallback(
-    async (host: string, port: number, name?: string, devId?: string) => {
+    async (
+      host: string,
+      port: number,
+      name?: string,
+      devId?: string,
+      devInfo?: {
+        brand?: string;
+        model?: string;
+        osVersion?: string;
+        appVersion?: string;
+      },
+    ) => {
       await db.runAsync(
-        `INSERT INTO sync_hosts (host, port, name, deviceId, lastUsedAt)
-         VALUES (?, ?, ?, ?, datetime('now','localtime'))
+        `INSERT INTO sync_hosts (host, port, name, deviceId, brand, model, osVersion, appVersion, lastUsedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))
          ON CONFLICT(host, port) DO UPDATE SET
            name = COALESCE(excluded.name, name),
            deviceId = COALESCE(excluded.deviceId, deviceId),
+           brand = COALESCE(excluded.brand, brand),
+           model = COALESCE(excluded.model, model),
+           osVersion = COALESCE(excluded.osVersion, osVersion),
+           appVersion = COALESCE(excluded.appVersion, appVersion),
            lastUsedAt = datetime('now','localtime')`,
-        [host, port, name ?? null, devId ?? null],
+        [
+          host,
+          port,
+          name ?? null,
+          devId ?? null,
+          devInfo?.brand ?? null,
+          devInfo?.model ?? null,
+          devInfo?.osVersion ?? null,
+          devInfo?.appVersion ?? null,
+        ],
       );
       loadRecentHosts();
     },
@@ -259,6 +288,12 @@ export function SyncSection() {
         entry.port,
         entry.name ?? undefined,
         entry.deviceId ?? undefined,
+        {
+          brand: entry.brand ?? undefined,
+          model: entry.model ?? undefined,
+          osVersion: entry.osVersion ?? undefined,
+          appVersion: entry.appVersion ?? undefined,
+        },
       );
     },
     [saveHost],
@@ -518,12 +553,14 @@ export function SyncSection() {
       // Save worker name from pair_accepted (covers manual IP connections)
       const pName = pairedServerNameRef.current;
       const pDeviceId = pairedDeviceIdRef.current;
+      const pDeviceInfo = pairedDeviceInfoRef.current;
       if (pName || pDeviceId) {
         saveHost(
           worker.server.host,
           worker.server.port,
           pName ?? undefined,
           pDeviceId ?? undefined,
+          pDeviceInfo ?? undefined,
         );
         // Also update the worker entry in the list so the UI shows the real name
         if (pName) {
@@ -743,6 +780,18 @@ export function SyncSection() {
                       {entry.name && (
                         <Text style={[styles.recentName, { color: mutedText }]}>
                           {entry.name}
+                        </Text>
+                      )}
+                      {(entry.model || entry.brand) && (
+                        <Text
+                          style={[
+                            styles.recentName,
+                            { color: mutedText, fontSize: 11 },
+                          ]}
+                        >
+                          {entry.model ?? entry.brand}
+                          {entry.osVersion ? ` · ${entry.osVersion}` : ""}
+                          {entry.appVersion ? ` · v${entry.appVersion}` : ""}
                         </Text>
                       )}
                     </View>

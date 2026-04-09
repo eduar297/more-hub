@@ -252,3 +252,152 @@ CREATE INDEX IF NOT EXISTS idx_expenses_business ON expenses(business_id);
 CREATE INDEX IF NOT EXISTS idx_suppliers_business ON suppliers(business_id);
 CREATE INDEX IF NOT EXISTS idx_users_business ON users(business_id);
 CREATE INDEX IF NOT EXISTS idx_stores_business ON stores(business_id);
+
+-- ── 13. Analytics RPC ────────────────────────────────────────────────────────
+-- Returns all analytics aggregates in a single call.
+-- Accepts p_business_id, p_from, p_to, p_store_id (NULL = all stores).
+
+DROP FUNCTION IF EXISTS get_business_analytics(TEXT, TEXT);
+DROP FUNCTION IF EXISTS get_business_analytics(UUID, TEXT);
+DROP FUNCTION IF EXISTS get_business_analytics(UUID, DATE, DATE);
+DROP FUNCTION IF EXISTS get_business_analytics(UUID, DATE, DATE, BIGINT);
+
+CREATE OR REPLACE FUNCTION get_business_analytics(
+  p_business_id UUID,
+  p_from     DATE    DEFAULT '1970-01-01',
+  p_to       DATE    DEFAULT CURRENT_DATE,
+  p_store_id BIGINT  DEFAULT NULL            -- NULL = all stores
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_from TIMESTAMPTZ;
+  v_to   TIMESTAMPTZ;
+  v_result JSONB;
+BEGIN
+  v_from := p_from::TIMESTAMPTZ;
+  v_to   := (p_to + INTERVAL '1 day')::TIMESTAMPTZ;  -- inclusive end
+
+  SELECT jsonb_build_object(
+    -- ── Stores list (always returned for the selector) ──
+    'stores', COALESCE((
+      SELECT jsonb_agg(row_to_json(r) ORDER BY r.name)
+      FROM (
+        SELECT id, name FROM stores WHERE business_id = p_business_id
+      ) r
+    ), '[]'::JSONB),
+
+    -- ── Summary totals ──
+    'total_income', COALESCE((
+      SELECT SUM(total) FROM tickets
+      WHERE business_id = p_business_id AND status = 'ACTIVE'
+        AND created_at >= v_from AND created_at < v_to
+        AND (p_store_id IS NULL OR store_id = p_store_id)
+    ), 0),
+    'total_expenses', COALESCE((
+      SELECT SUM(amount) FROM expenses
+      WHERE business_id = p_business_id
+        AND date::DATE >= p_from AND date::DATE <= p_to
+        AND (p_store_id IS NULL OR store_id = p_store_id)
+    ), 0),
+    'total_purchases', COALESCE((
+      SELECT SUM(total) FROM purchases
+      WHERE business_id = p_business_id
+        AND created_at >= v_from AND created_at < v_to
+        AND (p_store_id IS NULL OR store_id = p_store_id)
+    ), 0),
+    'ticket_count', COALESCE((
+      SELECT COUNT(*) FROM tickets
+      WHERE business_id = p_business_id AND status = 'ACTIVE'
+        AND created_at >= v_from AND created_at < v_to
+        AND (p_store_id IS NULL OR store_id = p_store_id)
+    ), 0),
+
+    -- ── Daily sales ──
+    'daily_sales', COALESCE((
+      SELECT jsonb_agg(row_to_json(r) ORDER BY r.date)
+      FROM (
+        SELECT created_at::DATE AS date, SUM(total) AS total, COUNT(*) AS count
+        FROM tickets
+        WHERE business_id = p_business_id AND status = 'ACTIVE'
+          AND created_at >= v_from AND created_at < v_to
+          AND (p_store_id IS NULL OR store_id = p_store_id)
+        GROUP BY created_at::DATE
+      ) r
+    ), '[]'::JSONB),
+
+    -- ── Daily purchases ──
+    'daily_purchases', COALESCE((
+      SELECT jsonb_agg(row_to_json(r) ORDER BY r.date)
+      FROM (
+        SELECT created_at::DATE AS date, SUM(total) AS total
+        FROM purchases
+        WHERE business_id = p_business_id
+          AND created_at >= v_from AND created_at < v_to
+          AND (p_store_id IS NULL OR store_id = p_store_id)
+        GROUP BY created_at::DATE
+      ) r
+    ), '[]'::JSONB),
+
+    -- ── Daily expenses ──
+    'daily_expenses', COALESCE((
+      SELECT jsonb_agg(row_to_json(r) ORDER BY r.date)
+      FROM (
+        SELECT date::DATE AS date, SUM(amount) AS total
+        FROM expenses
+        WHERE business_id = p_business_id
+          AND date::DATE >= p_from AND date::DATE <= p_to
+          AND (p_store_id IS NULL OR store_id = p_store_id)
+        GROUP BY date::DATE
+      ) r
+    ), '[]'::JSONB),
+
+    -- ── Expenses by category ──
+    'expenses_by_category', COALESCE((
+      SELECT jsonb_agg(row_to_json(r) ORDER BY r.total DESC)
+      FROM (
+        SELECT category, SUM(amount) AS total
+        FROM expenses
+        WHERE business_id = p_business_id
+          AND date::DATE >= p_from AND date::DATE <= p_to
+          AND (p_store_id IS NULL OR store_id = p_store_id)
+        GROUP BY category
+      ) r
+    ), '[]'::JSONB),
+
+    -- ── Payment methods ──
+    'payment_methods', COALESCE((
+      SELECT jsonb_agg(row_to_json(r))
+      FROM (
+        SELECT payment_method AS method, SUM(total) AS total, COUNT(*) AS count
+        FROM tickets
+        WHERE business_id = p_business_id AND status = 'ACTIVE'
+          AND created_at >= v_from AND created_at < v_to
+          AND (p_store_id IS NULL OR store_id = p_store_id)
+        GROUP BY payment_method
+      ) r
+    ), '[]'::JSONB),
+
+    -- ── Top products (top 10 by revenue) ──
+    'top_products', COALESCE((
+      SELECT jsonb_agg(row_to_json(r))
+      FROM (
+        SELECT ti.product_name AS name, SUM(ti.subtotal) AS revenue, SUM(ti.quantity) AS qty
+        FROM ticket_items ti
+        JOIN tickets t ON t.id = ti.ticket_id AND t.business_id = ti.business_id
+        WHERE ti.business_id = p_business_id AND t.status = 'ACTIVE'
+          AND t.created_at >= v_from AND t.created_at < v_to
+          AND (p_store_id IS NULL OR t.store_id = p_store_id)
+        GROUP BY ti.product_name
+        ORDER BY revenue DESC
+        LIMIT 10
+      ) r
+    ), '[]'::JSONB)
+
+  ) INTO v_result;
+
+  RETURN v_result;
+END;
+$$;

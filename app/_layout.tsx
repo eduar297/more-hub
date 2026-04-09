@@ -63,7 +63,10 @@ function AppStack() {
 
 function AdminProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SQLiteProvider databaseName="elmore.db" onInit={migrateDbIfNeeded}>
+    <SQLiteProvider
+      databaseName={process.env.EXPO_PUBLIC_ADMIN_DB_NAME!}
+      onInit={migrateDbIfNeeded}
+    >
       <StoreProvider>
         <PreferencesProvider>
           <AuthProvider>
@@ -84,7 +87,10 @@ function AdminProviders({ children }: { children: React.ReactNode }) {
 
 function WorkerProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SQLiteProvider databaseName="elmore-worker.db" onInit={migrateWorkerDb}>
+    <SQLiteProvider
+      databaseName={process.env.EXPO_PUBLIC_WORKER_DB_NAME!}
+      onInit={migrateWorkerDb}
+    >
       <StoreProvider>
         <AuthProvider>
           <LanProvider>

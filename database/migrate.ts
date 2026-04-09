@@ -167,6 +167,10 @@ async function ensureTables(db: SQLiteDatabase) {
       port INTEGER NOT NULL DEFAULT 8765,
       name TEXT,
       deviceId TEXT,
+      brand TEXT,
+      model TEXT,
+      osVersion TEXT,
+      appVersion TEXT,
       lastUsedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       UNIQUE(host, port)
     );
@@ -199,7 +203,7 @@ async function ensureTriggers(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 27;
+  const DATABASE_VERSION = 28;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -639,6 +643,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   if (currentVersion === 26) {
     await db.execAsync(`DROP TABLE IF EXISTS sync_metadata;`);
     currentVersion = 27;
+  }
+
+  if (currentVersion === 27) {
+    await db.execAsync(`
+      ALTER TABLE sync_hosts ADD COLUMN brand TEXT;
+      ALTER TABLE sync_hosts ADD COLUMN model TEXT;
+      ALTER TABLE sync_hosts ADD COLUMN osVersion TEXT;
+      ALTER TABLE sync_hosts ADD COLUMN appVersion TEXT;
+    `);
+    currentVersion = 28;
   }
 
   await ensureTriggers(db);

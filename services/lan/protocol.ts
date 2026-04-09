@@ -53,7 +53,15 @@ export type LanMessage =
       paymentMethod: PaymentMethod;
     }
   | { type: "pair_request"; code: string; deviceId: string; role: ClientRole }
-  | { type: "pair_accepted"; deviceId: string; serverName?: string }
+  | {
+      type: "pair_accepted";
+      deviceId: string;
+      serverName?: string;
+      brand?: string;
+      model?: string;
+      osVersion?: string;
+      appVersion?: string;
+    }
   | { type: "pair_rejected"; reason?: string }
   | { type: "ping" }
   | { type: "pong" }

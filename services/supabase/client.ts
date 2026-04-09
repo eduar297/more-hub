@@ -1,3 +1,4 @@
+import { STORAGE_KEYS } from "@/constants/storage-keys";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/constants/supabase";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
@@ -59,9 +60,9 @@ async function canReachDataProject(
 /** Check if cloud sync can reach Central for this activated device. */
 export async function hasDataConnection(): Promise<boolean> {
   try {
-    const businessId = await SecureStore.getItemAsync("morehub_business_id");
-    const activated = await SecureStore.getItemAsync("morehub_activated");
-    const deviceId = await SecureStore.getItemAsync("morehub_device_id");
+    const businessId = await SecureStore.getItemAsync(STORAGE_KEYS.businessId);
+    const activated = await SecureStore.getItemAsync(STORAGE_KEYS.activated);
+    const deviceId = await SecureStore.getItemAsync(STORAGE_KEYS.deviceId);
 
     if (activated !== "true" || !businessId || !deviceId) return false;
 

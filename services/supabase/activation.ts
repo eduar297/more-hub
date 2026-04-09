@@ -9,7 +9,7 @@ interface ValidationResult {
 export async function validateActivationCode(
   code: string,
   deviceId: string,
-  deviceInfo: Record<string, string | null>,
+  deviceInfo: Record<string, unknown>,
 ): Promise<ValidationResult> {
   try {
     const { data, error } = await supabase.rpc("validate_activation_code", {

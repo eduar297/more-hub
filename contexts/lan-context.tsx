@@ -136,6 +136,13 @@ interface LanContextValue {
   pairedServerNameRef: React.MutableRefObject<string | null>;
   /** Ref holding the paired worker's full device ID after pair_accepted */
   pairedDeviceIdRef: React.MutableRefObject<string | null>;
+  /** Ref holding the paired worker's device info (brand, model, etc.) after pair_accepted */
+  pairedDeviceInfoRef: React.MutableRefObject<{
+    brand?: string;
+    model?: string;
+    osVersion?: string;
+    appVersion?: string;
+  } | null>;
 }
 
 const LanContext = createContext<LanContextValue>({
@@ -177,6 +184,7 @@ const LanContext = createContext<LanContextValue>({
   bumpCatalogVersion: () => {},
   pairedServerNameRef: { current: null },
   pairedDeviceIdRef: { current: null },
+  pairedDeviceInfoRef: { current: null },
 });
 
 // Module-level singleton so the server survives React hot-reloads.
@@ -412,6 +420,13 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
   const pairedServerNameRef = useRef<string | null>(null);
   /** Stores the paired worker's full device ID from pair_accepted */
   const pairedDeviceIdRef = useRef<string | null>(null);
+  /** Stores the paired worker's device info from pair_accepted */
+  const pairedDeviceInfoRef = useRef<{
+    brand?: string;
+    model?: string;
+    osVersion?: string;
+    appVersion?: string;
+  } | null>(null);
 
   const handleServerMessage = useCallback((msg: LanMessage) => {
     switch (msg.type) {
@@ -461,10 +476,17 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       case "pair_accepted":
         pairedServerNameRef.current = msg.serverName ?? null;
         pairedDeviceIdRef.current = msg.deviceId ?? null;
+        pairedDeviceInfoRef.current = {
+          brand: msg.brand,
+          model: msg.model,
+          osVersion: msg.osVersion,
+          appVersion: msg.appVersion,
+        };
         break;
       case "pair_rejected":
         pairedServerNameRef.current = null;
         pairedDeviceIdRef.current = null;
+        pairedDeviceInfoRef.current = null;
         break;
       default:
         break;
@@ -657,6 +679,7 @@ export function LanProvider({ children }: { children: React.ReactNode }) {
       bumpCatalogVersion,
       pairedServerNameRef,
       pairedDeviceIdRef,
+      pairedDeviceInfoRef,
     }),
     [
       workerName,

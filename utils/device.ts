@@ -1,17 +1,17 @@
+import { STORAGE_KEYS } from "@/constants/storage-keys";
 import { clearDataConnection } from "@/services/supabase/client";
 import * as Application from "expo-application";
 import * as Crypto from "expo-crypto";
+import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 export type DeviceRole = "ADMIN" | "WORKER" | "DISPLAY";
 
-const KEYS = {
-  deviceId: "morehub_device_id",
-  deviceRole: "morehub_device_role",
-  activated: "morehub_activated",
-  businessId: "morehub_business_id",
-} as const;
+// Re-export so existing consumers keep working
+export { STORAGE_KEYS } from "@/constants/storage-keys";
+
+const KEYS = STORAGE_KEYS;
 
 // ── Device ID ────────────────────────────────────────────────────────────────
 
@@ -65,14 +65,45 @@ export async function clearActivation(): Promise<void> {
   await clearDataConnection();
 }
 
-// ── Device Info (for Supabase metadata) ──────────────────────────────────────
+// ── Device Info (for Supabase metadata + LAN identification) ─────────────────
 
-export async function getDeviceInfo(): Promise<Record<string, string | null>> {
+export interface DeviceInfo {
+  os: string;
+  osVersion: string | null;
+  brand: string | null;
+  manufacturer: string | null;
+  modelName: string | null;
+  deviceYearClass: number | null;
+  totalMemory: number | null;
+  appName: string | null;
+  appVersion: string | null;
+  buildVersion: string | null;
+}
+
+export async function getDeviceInfo(): Promise<DeviceInfo> {
   return {
     os: Platform.OS,
     osVersion: Platform.Version?.toString() ?? null,
+    brand: Device.brand ?? null,
+    manufacturer: Device.manufacturer ?? null,
+    modelName: Device.modelName ?? null,
+    deviceYearClass: Device.deviceYearClass ?? null,
+    totalMemory: Device.totalMemory ?? null,
     appName: Application.applicationName,
     appVersion: Application.nativeApplicationVersion,
     buildVersion: Application.nativeBuildVersion,
   };
+}
+
+/** Short human-readable label, e.g. "Samsung Galaxy S24 · Android 14" */
+export function formatDeviceLabel(info: Partial<DeviceInfo>): string {
+  const parts: string[] = [];
+  const model = info.modelName ?? info.brand;
+  if (model) parts.push(model);
+  if (info.os && info.osVersion) {
+    const osName = info.os === "ios" ? "iOS" : "Android";
+    parts.push(`${osName} ${info.osVersion}`);
+  }
+  if (info.appVersion) parts.push(`v${info.appVersion}`);
+  return parts.join(" · ") || "Dispositivo desconocido";
 }

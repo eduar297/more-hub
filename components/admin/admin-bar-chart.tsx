@@ -1,3 +1,4 @@
+import { useColors } from "@/hooks/use-colors";
 import { fmtMoney } from "@/utils/format";
 import React from "react";
 import { Text, View } from "react-native";
@@ -24,12 +25,9 @@ export type BarDataItem = {
 type AdminBarChartProps = {
   data: BarDataItem[];
   showLine?: boolean;
-  lineColor?: string;
   noOfSections?: number;
   stepValue?: number;
   mostNegativeValue?: number;
-  xAxisThickness?: number;
-  xAxisColor?: string;
   xAxisLabel?: string;
   yAxisLabel?: string;
 };
@@ -37,22 +35,21 @@ type AdminBarChartProps = {
 export function AdminBarChart({
   data,
   showLine = true,
-  lineColor = "#888",
   noOfSections = 3,
   stepValue,
   mostNegativeValue,
-  xAxisThickness = 0,
-  xAxisColor,
   xAxisLabel,
   yAxisLabel,
 }: AdminBarChartProps) {
+  const colors = useColors();
+
   return (
     <View>
       {yAxisLabel ? (
         <Text
           style={{
             fontSize: 10,
-            color: "#888",
+            color: colors.text,
             marginBottom: 2,
             fontWeight: "500",
           }}
@@ -67,17 +64,18 @@ export function AdminBarChart({
         showScrollIndicator={true}
         noOfSections={noOfSections}
         hideRules={true}
-        yAxisTextStyle={{ fontSize: 10, color: "#888" }}
+        yAxisTextStyle={{ fontSize: 10, color: colors.muted }}
         formatYLabel={fmtYLabel}
-        yAxisThickness={0}
-        xAxisThickness={xAxisThickness}
-        xAxisColor={xAxisColor}
+        yAxisThickness={1}
+        xAxisThickness={1}
         isAnimated
         animationDuration={400}
         showLine={showLine}
         lineConfig={{
-          color: lineColor,
+          color: colors.text,
           hideDataPoints: true,
+          curvature: 0.2,
+          curved: true,
         }}
         stepValue={stepValue}
         mostNegativeValue={mostNegativeValue}
@@ -85,7 +83,7 @@ export function AdminBarChart({
         renderTooltip={(item: BarDataItem) => (
           <View
             style={{
-              backgroundColor: "#333",
+              backgroundColor: colors.card,
               paddingHorizontal: 8,
               paddingVertical: 4,
               borderRadius: 6,
@@ -95,7 +93,7 @@ export function AdminBarChart({
           >
             <Text
               style={{
-                color: "#fff",
+                color: colors.text,
                 fontSize: 10,
                 fontWeight: "600",
               }}
@@ -109,7 +107,7 @@ export function AdminBarChart({
         <Text
           style={{
             fontSize: 10,
-            color: "#888",
+            color: colors.text,
             textAlign: "center",
             marginTop: 2,
             fontWeight: "500",

@@ -1,4 +1,7 @@
+import * as Application from "expo-application";
+import * as Device from "expo-device";
 import * as Network from "expo-network";
+import { Platform } from "react-native";
 import TcpSocket from "react-native-tcp-socket";
 import Zeroconf from "react-native-zeroconf";
 
@@ -165,6 +168,10 @@ export class LanServer {
       type: "pair_accepted",
       deviceId: client.deviceId,
       serverName: this._storeName || undefined,
+      brand: Device.brand ?? undefined,
+      model: Device.modelName ?? undefined,
+      osVersion: Platform.Version?.toString() ?? undefined,
+      appVersion: Application.nativeApplicationVersion ?? undefined,
     };
     try {
       client.socket.write(serialize(msg));
@@ -292,6 +299,10 @@ export class LanServer {
               type: "pair_accepted",
               deviceId,
               serverName: this._storeName || undefined,
+              brand: Device.brand ?? undefined,
+              model: Device.modelName ?? undefined,
+              osVersion: Platform.Version?.toString() ?? undefined,
+              appVersion: Application.nativeApplicationVersion ?? undefined,
             }),
           );
           console.log(`[LanServer] Auto-accepted known device ${deviceId}`);
