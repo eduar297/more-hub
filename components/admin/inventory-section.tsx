@@ -39,9 +39,9 @@ import {
     StyleSheet,
     TouchableOpacity,
 } from "react-native";
-import { PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
+import { AdminPieChart } from "./admin-pie-chart";
 
 export function InventorySection() {
   const productRepo = useProductRepository();
@@ -163,8 +163,12 @@ export function InventorySection() {
   const categoryPieData = useMemo(
     () =>
       categoryStats
-        .filter((c) => c.value > 0)
-        .map((c) => ({ value: c.value, color: c.color })),
+        .filter((cs) => cs.value > 0)
+        .map((cs) => ({
+          value: cs.value,
+          color: cs.color,
+          label: cs.category.name,
+        })),
     [categoryStats],
   );
 
@@ -322,62 +326,15 @@ export function InventorySection() {
                       Valor por categoría
                     </Text>
                   </XStack>
-                  <XStack style={{ alignItems: "center" }} gap="$4">
-                    <PieChart
-                      data={categoryPieData}
-                      donut
-                      radius={60}
-                      innerRadius={35}
-                      centerLabelComponent={() => (
-                        <YStack
-                          style={{
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Text fontSize={10} color="$color10">
-                            Total
-                          </Text>
-                          <Text fontSize={13} fontWeight="bold" color="$color">
-                            ${fmtMoney(inventoryValue)}
-                          </Text>
-                        </YStack>
-                      )}
-                      isAnimated
-                      animationDuration={400}
-                    />
-                    <YStack gap="$1.5" flex={1}>
-                      {categoryStats
-                        .filter((c) => c.value > 0)
-                        .map((c) => (
-                          <XStack
-                            key={c.category.id}
-                            style={{ alignItems: "center" }}
-                            gap="$2"
-                          >
-                            <YStack
-                              width={10}
-                              height={10}
-                              style={{
-                                borderRadius: 5,
-                                backgroundColor: c.color,
-                              }}
-                            />
-                            <Text
-                              flex={1}
-                              fontSize="$2"
-                              color="$color10"
-                              numberOfLines={1}
-                            >
-                              {c.category.name}
-                            </Text>
-                            <Text fontSize="$2" fontWeight="600" color="$color">
-                              ${fmtMoney(c.value)}
-                            </Text>
-                          </XStack>
-                        ))}
-                    </YStack>
-                  </XStack>
+                  <AdminPieChart
+                    data={categoryPieData}
+                    radius={60}
+                    innerRadius={35}
+                    centerLabel={{
+                      title: "Total",
+                      value: `$${fmtMoney(inventoryValue)}`,
+                    }}
+                  />
                 </YStack>
               </Card>
             )}

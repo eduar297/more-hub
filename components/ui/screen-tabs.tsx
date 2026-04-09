@@ -98,11 +98,11 @@ export function ScreenTabs<T extends string>({
               <tab.Icon size={15} color={isActive ? accent : inactiveText} />
               <Text
                 fontSize={10}
-                fontWeight={isActive ? "700" : "400"}
+                fontWeight={"400"}
                 numberOfLines={1}
                 style={{
                   color: isActive ? accent : inactiveText,
-                  letterSpacing: isActive ? 0.1 : 0,
+                  letterSpacing: 0,
                 }}
               >
                 {tab.label}

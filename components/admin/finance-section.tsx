@@ -28,7 +28,6 @@ import {
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Image, ScrollView } from "react-native";
-import { PieChart } from "react-native-gifted-charts";
 import {
   Button,
   Card,
@@ -39,6 +38,7 @@ import {
   YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
+import { AdminPieChart } from "./admin-pie-chart";
 import { PeriodSelector } from "./period-selector";
 
 export function FinanceSection() {
@@ -466,7 +466,6 @@ export function FinanceSection() {
   ]);
 
   const pieTotalEgresos = egresoItems.reduce((s, i) => s + i.value, 0);
-  const pieData = egresoItems.map((i) => ({ value: i.value, color: i.color }));
 
   // Yearly trend data
   const yearlyTrendData = useMemo(() => {
@@ -1062,7 +1061,7 @@ export function FinanceSection() {
           </Button>
 
           {/* Expense breakdown pie */}
-          {pieData.length > 0 && (
+          {egresoItems.length > 0 && (
             <Card
               bg="$color1"
               borderWidth={1}
@@ -1080,61 +1079,16 @@ export function FinanceSection() {
                     ${fmtMoney(pieTotalEgresos)}
                   </Text>
                 </XStack>
-                <YStack style={{ alignItems: "center" }}>
-                  <PieChart
-                    data={pieData}
-                    donut
-                    radius={80}
-                    innerRadius={48}
-                    centerLabelComponent={() => (
-                      <YStack
-                        style={{
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Text fontSize={11} color="$color10">
-                          Total
-                        </Text>
-                        <Text fontSize={16} fontWeight="bold" color="$color">
-                          ${fmtMoney(pieTotalEgresos)}
-                        </Text>
-                      </YStack>
-                    )}
-                    isAnimated
-                    animationDuration={400}
-                  />
-                </YStack>
-                <YStack gap="$2">
-                  {egresoItems.map((item, idx) => {
-                    const pct =
-                      pieTotalEgresos > 0
-                        ? ((item.value / pieTotalEgresos) * 100).toFixed(0)
-                        : "0";
-                    return (
-                      <XStack
-                        key={idx}
-                        style={{ alignItems: "center" }}
-                        gap="$2"
-                      >
-                        <YStack
-                          width={12}
-                          height={12}
-                          style={{
-                            borderRadius: 6,
-                            backgroundColor: item.color,
-                          }}
-                        />
-                        <Text flex={1} fontSize="$3" color="$color10">
-                          {item.label}
-                        </Text>
-                        <Text fontSize="$3" fontWeight="600" color="$color">
-                          ${fmtMoney(item.value)} · {pct}%
-                        </Text>
-                      </XStack>
-                    );
-                  })}
-                </YStack>
+                <AdminPieChart
+                  data={egresoItems}
+                  legendLayout="vertical"
+                  radius={80}
+                  innerRadius={48}
+                  centerLabel={{
+                    title: "Total",
+                    value: `$${fmtMoney(pieTotalEgresos)}`,
+                  }}
+                />
               </YStack>
             </Card>
           )}

@@ -49,7 +49,6 @@ import {
     StyleSheet,
     TouchableOpacity,
 } from "react-native";
-import { PieChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
     Button,
@@ -61,6 +60,7 @@ import {
     YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
+import { AdminPieChart } from "./admin-pie-chart";
 import { PeriodSelector } from "./period-selector";
 
 // ── TicketRow ─────────────────────────────────────────────────────────────────
@@ -621,6 +621,10 @@ export function SalesSection() {
     return paymentBreakdown.map((p) => ({
       value: p.total,
       color: p.method === "CASH" ? c.green : c.purple,
+      label: p.method === "CASH" ? "Efectivo" : "Tarjeta",
+      subtitle: `${p.count} tickets · prom $${fmtMoney(
+        p.count > 0 ? p.total / p.count : 0,
+      )}`,
     }));
   }, [paymentBreakdown, c.green, c.purple]);
 
@@ -887,47 +891,12 @@ export function SalesSection() {
                 Métodos de pago
               </Text>
             </XStack>
-            <XStack style={{ alignItems: "center" }} gap="$4">
-              <PieChart
-                data={paymentPieData}
-                donut
-                radius={50}
-                innerRadius={30}
-                isAnimated
-                animationDuration={400}
-              />
-              <YStack gap="$2" flex={1}>
-                {paymentBreakdown.map((p) => (
-                  <XStack
-                    key={p.method}
-                    style={{ alignItems: "center" }}
-                    gap="$2"
-                  >
-                    <YStack
-                      width={10}
-                      height={10}
-                      style={{
-                        borderRadius: 5,
-                        backgroundColor:
-                          p.method === "CASH" ? c.green : c.purple,
-                      }}
-                    />
-                    <YStack flex={1}>
-                      <Text fontSize="$3" color="$color10">
-                        {p.method === "CASH" ? "Efectivo" : "Tarjeta"}
-                      </Text>
-                      <Text fontSize="$1" color="$color10">
-                        {p.count} tickets · prom $
-                        {fmtMoney(p.count > 0 ? p.total / p.count : 0)}
-                      </Text>
-                    </YStack>
-                    <Text fontSize="$3" fontWeight="600" color="$color">
-                      ${fmtMoney(p.total)}
-                    </Text>
-                  </XStack>
-                ))}
-              </YStack>
-            </XStack>
+            <AdminPieChart
+              data={paymentPieData}
+              radius={50}
+              innerRadius={30}
+              showPercentage={false}
+            />
           </YStack>
         </Card>
       )}
