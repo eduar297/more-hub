@@ -69,15 +69,12 @@ CREATE TABLE IF NOT EXISTS web_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     business_id UUID NOT NULL REFERENCES businesses (id) ON DELETE CASCADE,
     -- Branding
-    logo_url TEXT,
-    banner_url TEXT,
     primary_color TEXT NOT NULL DEFAULT '#3b82f6',
     -- Content
     tagline TEXT,
     description TEXT,
     phone TEXT,
     whatsapp TEXT,
-    address TEXT,
     -- Social
     instagram TEXT,
     facebook TEXT,
@@ -270,20 +267,17 @@ BEGIN
 
   -- Upsert web_configs
   INSERT INTO web_configs (
-    business_id, logo_url, banner_url, primary_color,
-    tagline, description, phone, whatsapp, address,
+    business_id, primary_color,
+    tagline, description, phone, whatsapp,
     instagram, facebook, tiktok,
     show_prices, show_stock, theme, updated_at
   ) VALUES (
     p_business_id,
-    p_config->>'logo_url',
-    p_config->>'banner_url',
     COALESCE(p_config->>'primary_color', '#3b82f6'),
     p_config->>'tagline',
     p_config->>'description',
     p_config->>'phone',
     p_config->>'whatsapp',
-    p_config->>'address',
     p_config->>'instagram',
     p_config->>'facebook',
     p_config->>'tiktok',
@@ -293,14 +287,11 @@ BEGIN
     now()
   )
   ON CONFLICT (business_id) DO UPDATE SET
-    logo_url      = EXCLUDED.logo_url,
-    banner_url    = EXCLUDED.banner_url,
     primary_color = EXCLUDED.primary_color,
     tagline       = EXCLUDED.tagline,
     description   = EXCLUDED.description,
     phone         = EXCLUDED.phone,
     whatsapp      = EXCLUDED.whatsapp,
-    address       = EXCLUDED.address,
     instagram     = EXCLUDED.instagram,
     facebook      = EXCLUDED.facebook,
     tiktok        = EXCLUDED.tiktok,
@@ -542,20 +533,17 @@ BEGIN
 
   -- Upsert web_configs
   INSERT INTO web_configs (
-    business_id, logo_url, banner_url, primary_color,
-    tagline, description, phone, whatsapp, address,
+    business_id, primary_color,
+    tagline, description, phone, whatsapp,
     instagram, facebook, tiktok,
     show_prices, show_stock, theme, updated_at
   ) VALUES (
     p_business_id,
-    p_config->>'logo_url',
-    p_config->>'banner_url',
     COALESCE(p_config->>'primary_color', '#3b82f6'),
     p_config->>'tagline',
     p_config->>'description',
     p_config->>'phone',
     p_config->>'whatsapp',
-    p_config->>'address',
     p_config->>'instagram',
     p_config->>'facebook',
     p_config->>'tiktok',
@@ -565,14 +553,11 @@ BEGIN
     now()
   )
   ON CONFLICT (business_id) DO UPDATE SET
-    logo_url      = EXCLUDED.logo_url,
-    banner_url    = EXCLUDED.banner_url,
     primary_color = EXCLUDED.primary_color,
     tagline       = EXCLUDED.tagline,
     description   = EXCLUDED.description,
     phone         = EXCLUDED.phone,
     whatsapp      = EXCLUDED.whatsapp,
-    address       = EXCLUDED.address,
     instagram     = EXCLUDED.instagram,
     facebook      = EXCLUDED.facebook,
     tiktok        = EXCLUDED.tiktok,
@@ -636,14 +621,11 @@ BEGIN
     'config',        CASE WHEN v_wc.id IS NOT NULL THEN jsonb_build_object(
       'id',            v_wc.id,
       'business_id',   v_wc.business_id,
-      'logo_url',      v_wc.logo_url,
-      'banner_url',    v_wc.banner_url,
       'primary_color', v_wc.primary_color,
       'tagline',       v_wc.tagline,
       'description',   v_wc.description,
       'phone',         v_wc.phone,
       'whatsapp',      v_wc.whatsapp,
-      'address',       v_wc.address,
       'instagram',     v_wc.instagram,
       'facebook',      v_wc.facebook,
       'tiktok',        v_wc.tiktok,

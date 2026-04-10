@@ -15,7 +15,7 @@ import {
     Save,
     Share2,
     Store as StoreIcon,
-    Sun
+    Sun,
 } from "@tamagui/lucide-icons";
 import * as Clipboard from "expo-clipboard";
 import * as WebBrowser from "expo-web-browser";
@@ -576,17 +576,6 @@ export function WebSection({ visible }: { visible?: boolean }) {
               value={config.whatsapp ?? ""}
               onChangeText={(t) => patch({ whatsapp: t })}
               keyboardType="phone-pad"
-            />
-          </Field>
-
-          <Field label="Dirección" c={c}>
-            <TextInput
-              style={[styles.input, { color: c.text, borderColor: c.border }]}
-              placeholderTextColor={c.muted}
-              placeholder="Av. Principal, Centro Comercial…"
-              value={config.address ?? ""}
-              onChangeText={(t) => patch({ address: t })}
-              maxLength={200}
             />
           </Field>
         </View>
