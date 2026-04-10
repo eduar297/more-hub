@@ -104,8 +104,8 @@ export class ProductRepository extends BaseRepository<
 
   async create(input: CreateProductInput): Promise<Product> {
     await this.db.runAsync(
-      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, storeId)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, details, storeId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       input.name,
       input.code,
       input.costPrice,
@@ -116,6 +116,7 @@ export class ProductRepository extends BaseRepository<
       input.stockBaseQty,
       input.saleMode,
       input.photoUri ?? null,
+      input.details ?? null,
       this.storeId ?? 1,
     );
     const created = await this.findByCode(input.code);
@@ -150,6 +151,7 @@ export class ProductRepository extends BaseRepository<
       stockBaseQty: "stockBaseQty",
       saleMode: "saleMode",
       photoUri: "photoUri",
+      details: "details",
     };
 
     for (const [key, col] of Object.entries(map)) {

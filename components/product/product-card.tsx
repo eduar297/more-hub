@@ -86,6 +86,7 @@ export function ProductCard({
   );
   const [visible, setVisible] = useState(product.visible);
   const [stockQty, setStockQty] = useState("");
+  const [details, setDetails] = useState(product.details ?? "");
 
   // Reset form fields when switching into edit mode or product changes
   useEffect(() => {
@@ -97,6 +98,7 @@ export function ProductCard({
     setPhotoUri(product.photoUri ?? null);
     setVisible(product.visible);
     setStockQty("");
+    setDetails(product.details ?? "");
   }, [product, editing]);
 
   const parsedCost = parseFloat(costPrice);
@@ -125,6 +127,7 @@ export function ProductCard({
       saleMode,
       baseUnitId: parseInt(unitId, 10),
       photoUri,
+      details: details.trim() || null,
     });
   };
 
@@ -217,6 +220,22 @@ export function ProductCard({
           <Separator />
           <InfoRow label="Margen" value={margin ? `${margin}%` : "—"} />
         </YStack>
+
+        {product.details ? (
+          <YStack
+            bg="$color2"
+            style={{ borderRadius: 14, overflow: "hidden" }}
+            px="$4"
+            py="$3"
+          >
+            <Text color="$color10" fontSize="$3" mb="$1">
+              Detalles
+            </Text>
+            <Text color="$color" fontSize="$3" lineHeight={20}>
+              {product.details}
+            </Text>
+          </YStack>
+        ) : null}
 
         <YStack
           bg="$color2"
@@ -319,6 +338,23 @@ export function ProductCard({
           onChangeText={setName}
           returnKeyType="done"
           size="$4"
+        />
+      </YStack>
+
+      {/* Details */}
+      <YStack gap="$1">
+        <Label htmlFor={`${uid}-details`} color="$color10" fontSize="$3">
+          Detalles
+        </Label>
+        <Input
+          id={`${uid}-details`}
+          placeholder="Descripción, ingredientes, notas…"
+          value={details}
+          onChangeText={setDetails}
+          multiline
+          numberOfLines={3}
+          size="$4"
+          style={{ minHeight: 80, textAlignVertical: "top" }}
         />
       </YStack>
 

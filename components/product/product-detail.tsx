@@ -170,6 +170,20 @@ export function ProductDetail({
           value={product.visible ? "Sí" : "No — oculto"}
         />
 
+        {product.details ? (
+          <>
+            <Separator />
+            <YStack py="$2" gap="$1">
+              <Text color="$color10" fontSize="$3">
+                Detalles
+              </Text>
+              <Text color="$color" fontSize="$3" lineHeight={20}>
+                {product.details}
+              </Text>
+            </YStack>
+          </>
+        ) : null}
+
         {/* Action buttons */}
         {(onEdit || onAddStock || onDelete) && (
           <XStack

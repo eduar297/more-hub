@@ -562,8 +562,8 @@ export async function applyReceivedCatalog(
       }
       await tx.runAsync(
         `INSERT OR REPLACE INTO products
-         (id, name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, photoHash, cloudPhotoPath, storeId, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, photoHash, cloudPhotoPath, details, storeId, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           product.id,
           product.name,
@@ -578,6 +578,7 @@ export async function applyReceivedCatalog(
           localPhotoUri,
           product.photoHash ?? null,
           product.cloudPhotoPath ?? null,
+          product.details ?? null,
           product.storeId,
           product.createdAt ?? null,
           product.updatedAt ?? product.createdAt ?? null,

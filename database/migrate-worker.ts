@@ -50,6 +50,7 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       photoUri TEXT,
       photoHash TEXT,
       cloudPhotoPath TEXT,
+      details TEXT,
       storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),

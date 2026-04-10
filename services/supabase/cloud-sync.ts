@@ -97,6 +97,7 @@ const TABLE_MAPPINGS: TableMapping[] = [
       photoUri: "photo_uri",
       photoHash: "photo_hash",
       cloudPhotoPath: "cloud_photo_path",
+      details: "details",
       storeId: "store_id",
       createdAt: "created_at",
       updatedAt: "updated_at",

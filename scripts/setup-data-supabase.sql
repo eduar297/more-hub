@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS products (
     photo_uri TEXT,
     photo_hash TEXT,
     cloud_photo_path TEXT,
+    details TEXT,
     store_id BIGINT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,

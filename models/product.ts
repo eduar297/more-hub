@@ -20,6 +20,8 @@ export interface Product {
   photoHash: string | null;
   /** Path in Supabase Storage (e.g. "products/42.jpg") — null if not yet uploaded */
   cloudPhotoPath: string | null;
+  /** Optional product description / details shown in catalog. */
+  details: string | null;
   storeId: number;
   createdAt: string;
   updatedAt: string;

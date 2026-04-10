@@ -59,6 +59,7 @@ export function ProductForm({
     isEdit ? product.photoUri ?? null : null,
   );
   const [visible, setVisible] = useState(isEdit ? product.visible : true);
+  const [details, setDetails] = useState(isEdit ? product.details ?? "" : "");
 
   const parsedCost = parseFloat(costPrice);
   const parsedSale = parseFloat(salePrice);
@@ -82,6 +83,7 @@ export function ProductForm({
       saleMode,
       baseUnitId: parseInt(unitId, 10),
       photoUri,
+      details: details.trim() || null,
     });
   };
 
@@ -159,6 +161,23 @@ export function ProductForm({
           onChangeText={setName}
           returnKeyType="done"
           size="$4"
+        />
+      </YStack>
+
+      {/* Details */}
+      <YStack gap="$1">
+        <Label htmlFor={`${uid}-details`} color="$color10" fontSize="$3">
+          Detalles
+        </Label>
+        <Input
+          id={`${uid}-details`}
+          placeholder="Descripción, ingredientes, notas…"
+          value={details}
+          onChangeText={setDetails}
+          multiline
+          numberOfLines={3}
+          size="$4"
+          style={{ minHeight: 80, textAlignVertical: "top" }}
         />
       </YStack>
 

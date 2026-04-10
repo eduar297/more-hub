@@ -49,6 +49,7 @@ async function ensureTables(db: SQLiteDatabase) {
       photoUri TEXT,
       photoHash TEXT,
       cloudPhotoPath TEXT,
+      details TEXT,
       storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -209,7 +210,7 @@ async function ensureTriggers(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 29;
+  const DATABASE_VERSION = 30;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -671,6 +672,13 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE stores ADD COLUMN cloudLogoPath TEXT;
     `);
     currentVersion = 29;
+  }
+
+  if (currentVersion === 29) {
+    await db.execAsync(`
+      ALTER TABLE products ADD COLUMN details TEXT;
+    `);
+    currentVersion = 30;
   }
 
   await ensureTriggers(db);
