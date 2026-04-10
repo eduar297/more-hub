@@ -61,7 +61,7 @@ ADD COLUMN IF NOT EXISTS web_url TEXT;
 
 -- Backfill web_url for existing businesses that don't have one
 UPDATE businesses
-SET web_url = 'https://morehub.app/' || id::TEXT
+SET web_url = 'https://morehub-webpage.vercel.app/' || id::TEXT
 WHERE web_url IS NULL;
 
 -- 1e. Web configs — per-business customisation for the public web page
@@ -386,7 +386,7 @@ BEGIN
 
   -- Set web_url with the actual generated id
   UPDATE businesses
-  SET web_url = 'https://morehub.app/' || v_row.id::TEXT
+  SET web_url = 'https://morehub-webpage.vercel.app/' || v_row.id::TEXT
   WHERE id = v_row.id
   RETURNING * INTO v_row;
 
