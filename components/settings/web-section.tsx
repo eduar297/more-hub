@@ -109,24 +109,42 @@ export function WebSection({ visible }: { visible?: boolean }) {
     }
   }, [businessId, deviceId, webEnabled, config]);
 
-  const handleToggleEnabled = useCallback((val: boolean) => {
-    if (val) {
-      setWebEnabled(true);
-    } else {
-      Alert.alert(
-        "Desactivar página web",
-        "Tu página web dejará de ser accesible. ¿Continuar?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Desactivar",
-            style: "destructive",
-            onPress: () => setWebEnabled(false),
-          },
-        ],
-      );
-    }
-  }, []);
+  const handleToggleEnabled = useCallback(
+    (val: boolean) => {
+      const doToggle = async (newVal: boolean) => {
+        if (!businessId || !deviceId) return;
+        const prev = savedWebEnabled.current;
+        setWebEnabled(newVal);
+        savedWebEnabled.current = newVal;
+        try {
+          await updateWebConfig(businessId, deviceId, newVal, config);
+        } catch (e) {
+          // revert on failure
+          setWebEnabled(prev);
+          savedWebEnabled.current = prev;
+          setError((e as Error).message ?? "Error al actualizar");
+        }
+      };
+
+      if (val) {
+        doToggle(true);
+      } else {
+        Alert.alert(
+          "Desactivar página web",
+          "Tu página web dejará de ser accesible. ¿Continuar?",
+          [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Desactivar",
+              style: "destructive",
+              onPress: () => doToggle(false),
+            },
+          ],
+        );
+      }
+    },
+    [businessId, deviceId, config],
+  );
 
   if (loading) {
     return (
