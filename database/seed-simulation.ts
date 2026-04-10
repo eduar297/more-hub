@@ -76,6 +76,7 @@ const BASIC_PRODUCTS = [
     price: 18,
     unit: 7,
     mode: "UNIT" as const,
+    details: "Refresco de cola carbonatado, botella PET 600ml. Servir frío.",
   },
   {
     name: "Agua 1L",
@@ -83,6 +84,7 @@ const BASIC_PRODUCTS = [
     price: 14,
     unit: 7,
     mode: "UNIT" as const,
+    details: "Agua purificada natural, botella de 1 litro.",
   },
   {
     name: "Papas 45g",
@@ -90,6 +92,7 @@ const BASIC_PRODUCTS = [
     price: 20,
     unit: 8,
     mode: "UNIT" as const,
+    details: "Papas fritas crujientes sabor original, bolsa individual 45g.",
   },
   {
     name: "Galletas 6pz",
@@ -97,6 +100,7 @@ const BASIC_PRODUCTS = [
     price: 16,
     unit: 8,
     mode: "UNIT" as const,
+    details: "Paquete de 6 galletas de vainilla con relleno de crema.",
   },
   {
     name: "Pan de caja chico",
@@ -104,6 +108,7 @@ const BASIC_PRODUCTS = [
     price: 38,
     unit: 8,
     mode: "UNIT" as const,
+    details: "Pan blanco de caja tamaño chico, ideal para sándwiches.",
   },
 ];
 
@@ -155,6 +160,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Refresco de cola original, botella PET 600ml.",
   },
   {
     name: "Coca-Cola 2L",
@@ -163,6 +169,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Refresco de cola original, botella familiar 2 litros.",
   },
   {
     name: "Pepsi 600ml",
@@ -171,6 +178,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Refresco de cola Pepsi, botella PET 600ml.",
   },
   {
     name: "Agua Bonafont 1L",
@@ -179,6 +187,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Agua purificada natural Bonafont, 1 litro.",
   },
   {
     name: "Agua Bonafont 1.5L",
@@ -187,6 +196,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Agua purificada natural Bonafont, 1.5 litros.",
   },
   {
     name: "Jugo Del Valle 1L Manzana",
@@ -195,6 +205,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Jugo de manzana Del Valle, envase Tetra Pak 1 litro.",
   },
   {
     name: "Gatorade 600ml",
@@ -203,6 +214,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Bebida hidratante con electrolitos, botella 600ml.",
   },
   {
     name: "Sprite 600ml",
@@ -211,6 +223,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Refresco de lima-limón, botella PET 600ml.",
   },
   {
     name: "Fanta Naranja 600ml",
@@ -219,6 +232,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Refresco sabor naranja, botella PET 600ml.",
   },
   {
     name: "Red Bull 250ml",
@@ -227,6 +241,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 4,
+    details: "Bebida energética con taurina y cafeína, lata 250ml.",
   },
 
   // ── Snacks y Dulces (supplier 2 = Dulces y Snacks del Norte) ──
@@ -237,6 +252,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Papas fritas sabor original, bolsa individual 45g.",
   },
   {
     name: "Doritos Nacho 62g",
@@ -245,6 +261,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Totopos de maíz sabor nacho, bolsa 62g.",
   },
   {
     name: "Cheetos Flamin Hot 52g",
@@ -253,6 +270,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Botana de maíz horneada extra picante, bolsa 52g.",
   },
   {
     name: "Ruffles Queso 45g",
@@ -261,6 +279,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Papas fritas onduladas sabor queso, bolsa 45g.",
   },
   {
     name: "Galletas Marías Gamesa",
@@ -269,6 +288,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Galletas clásicas tipo María, paquete individual.",
   },
   {
     name: "Galletas Oreo 6pz",
@@ -277,6 +297,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Galletas de chocolate con relleno de crema, 6 piezas.",
   },
   {
     name: "Chocolate Carlos V",
@@ -285,6 +306,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Barra de chocolate con leche, pieza individual.",
   },
   {
     name: "Chicles Trident 18pz",
@@ -293,6 +315,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Chicle sin azúcar sabor menta, paquete de 18 piezas.",
   },
   {
     name: "Mazapán De La Rosa",
@@ -301,6 +324,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Dulce tradicional mexicano de cacahuate, pieza individual.",
   },
   {
     name: "Paleta Payaso",
@@ -309,6 +333,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 2,
+    details: "Malvavisco cubierto de chocolate con gomitas, pieza.",
   },
 
   // ── Lácteos (supplier 3 = Lácteos Frescos SA) ──
@@ -319,6 +344,7 @@ const PRODUCTS_DATA = [
     unit: 3,
     mode: "UNIT" as const,
     supplier: 3,
+    details: "Leche entera pasteurizada Lala, envase 1 litro.",
   },
   {
     name: "Leche Lala Light 1L",
@@ -327,6 +353,7 @@ const PRODUCTS_DATA = [
     unit: 3,
     mode: "UNIT" as const,
     supplier: 3,
+    details: "Leche semidescremada Lala Light, envase 1 litro.",
   },
   {
     name: "Yogurt Yoplait Fresa 1kg",
@@ -335,6 +362,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 3,
+    details: "Yogurt batido sabor fresa Yoplait, envase 1kg.",
   },
   {
     name: "Queso Oaxaca 400g",
@@ -343,6 +371,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "VARIABLE" as const,
     supplier: 3,
+    details: "Queso Oaxaca tipo hebra, paquete de 400g. Se vende por peso.",
   },
   {
     name: "Crema Lala 200ml",
@@ -351,6 +380,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 3,
+    details: "Crema ácida Lala, envase de 200ml.",
   },
   {
     name: "Mantequilla Gloria 90g",
@@ -359,6 +389,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 3,
+    details: "Mantequilla con sal Gloria, barra de 90g.",
   },
 
   // ── Abarrotes básicos (supplier 0 = Distribuidora El Sol) ──
@@ -369,6 +400,7 @@ const PRODUCTS_DATA = [
     unit: 3,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Aceite vegetal comestible 123, botella de 1 litro.",
   },
   {
     name: "Arroz Verde Valle 1kg",
@@ -377,6 +409,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Arroz blanco grano largo Verde Valle, bolsa de 1kg.",
   },
   {
     name: "Frijol Negro 1kg",
@@ -385,6 +418,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Frijol negro seleccionado, bolsa de 1kg.",
   },
   {
     name: "Azúcar Morena 1kg",
@@ -393,6 +427,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Azúcar morena estándar, bolsa de 1kg.",
   },
   {
     name: "Sal de Mesa 1kg",
@@ -401,6 +436,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Sal de mesa refinada y yodada, bolsa de 1kg.",
   },
   {
     name: "Harina de Maíz Maseca 1kg",
@@ -409,6 +445,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Harina de maíz nixtamalizado Maseca, bolsa de 1kg.",
   },
   {
     name: "Pasta Spaghetti La Moderna",
@@ -417,6 +454,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Pasta tipo spaghetti La Moderna, paquete individual.",
   },
   {
     name: "Atún Dolores en Agua",
@@ -425,6 +463,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Atún en trozos en agua Dolores, lata individual.",
   },
   {
     name: "Salsa Valentina 370ml",
@@ -433,6 +472,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Salsa picante Valentina etiqueta amarilla, botella 370ml.",
   },
   {
     name: "Papel Higiénico Regio 4 rollos",
@@ -441,6 +481,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Papel higiénico Regio, paquete de 4 rollos.",
   },
   {
     name: "Jabón Zote en Barra",
@@ -449,6 +490,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Jabón de lavandería Zote rosa, barra individual.",
   },
   {
     name: "Detergente Roma 500g",
@@ -457,6 +499,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 0,
+    details: "Detergente en polvo Roma multiusos, bolsa 500g.",
   },
 
   // ── Mayoreo / granel (supplier 1 = Abarrotes Mayoreo MX) ──
@@ -467,6 +510,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "VARIABLE" as const,
     supplier: 1,
+    details: "Huevo blanco fresco, se vende por kilogramo.",
   },
   {
     name: "Tortillas de Maíz 1kg",
@@ -475,6 +519,7 @@ const PRODUCTS_DATA = [
     unit: 1,
     mode: "UNIT" as const,
     supplier: 1,
+    details: "Tortillas de maíz hechas del día, paquete de 1kg.",
   },
   {
     name: "Pan Blanco Bimbo Grande",
@@ -483,6 +528,7 @@ const PRODUCTS_DATA = [
     unit: 8,
     mode: "UNIT" as const,
     supplier: 1,
+    details: "Pan blanco de caja Bimbo tamaño grande, ideal para sándwiches.",
   },
   {
     name: "Café Nescafé Clásico 120g",
@@ -491,6 +537,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 1,
+    details: "Café soluble Nescafé Clásico, frasco de vidrio 120g.",
   },
   {
     name: "Cereal Zucaritas 490g",
@@ -499,6 +546,7 @@ const PRODUCTS_DATA = [
     unit: 7,
     mode: "UNIT" as const,
     supplier: 1,
+    details: "Cereal de hojuelas de maíz azucaradas Zucaritas, caja 490g.",
   },
 ];
 
@@ -912,8 +960,8 @@ export async function seedBasicSimulation(
     const costPrice = Math.round(p.price * 0.72 * 100) / 100;
     const salePrice = Math.round(p.price * 1.22 * 100) / 100;
     const result = await db.runAsync(
-      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, storeId)
-       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?)`,
+      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, details, storeId)
+       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
       p.name,
       p.code,
       p.price,
@@ -921,6 +969,7 @@ export async function seedBasicSimulation(
       salePrice,
       p.unit,
       p.mode,
+      p.details ?? null,
       storeId,
     );
     productIds.push(result.lastInsertRowId);
@@ -1143,8 +1192,8 @@ export async function seedSimulation(
     const costPx = Math.round(salePx * profile.costPct * 100) / 100;
 
     const result = await db.runAsync(
-      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, storeId)
-       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?)`,
+      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, details, storeId)
+       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
       p.name,
       p.code,
       p.price,
@@ -1152,6 +1201,7 @@ export async function seedSimulation(
       salePx,
       p.unit,
       p.mode,
+      p.details ?? null,
       storeId,
     );
     productIds.push(result.lastInsertRowId);

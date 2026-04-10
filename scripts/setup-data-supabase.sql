@@ -435,16 +435,20 @@ INSERT INTO
 VALUES ('photos', 'photos', true) ON CONFLICT (id) DO NOTHING;
 
 -- Anyone can read (public thumbnails for web portal)
+DROP POLICY IF EXISTS "photos_public_read" ON storage.objects;
 CREATE POLICY "photos_public_read" ON storage.objects FOR
 SELECT USING (bucket_id = 'photos');
 
 -- App can upload/update/delete via anon key
+DROP POLICY IF EXISTS "photos_app_write" ON storage.objects;
 CREATE POLICY "photos_app_write" ON storage.objects FOR
 INSERT
 WITH
     CHECK (bucket_id = 'photos');
 
+DROP POLICY IF EXISTS "photos_app_update" ON storage.objects;
 CREATE POLICY "photos_app_update" ON storage.objects FOR
 UPDATE USING (bucket_id = 'photos');
 
+DROP POLICY IF EXISTS "photos_app_delete" ON storage.objects;
 CREATE POLICY "photos_app_delete" ON storage.objects FOR DELETE USING (bucket_id = 'photos');
