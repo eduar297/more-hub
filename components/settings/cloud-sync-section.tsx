@@ -12,7 +12,7 @@ import {
     ArrowDownToLine,
     ArrowUpFromLine,
     CheckCircle,
-    CloudOff
+    CloudOff,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
@@ -88,8 +88,16 @@ export function CloudSyncSection() {
 
             if (res.success) {
               setState("done");
+              const photoInfo =
+                (res.photosUploaded ?? 0) > 0
+                  ? `\n📷 ${res.photosUploaded} foto(s) subida(s)`
+                  : "";
+              const skippedInfo =
+                (res.photosSkipped ?? 0) > 0
+                  ? ` (${res.photosSkipped} sin cambios)`
+                  : "";
               setResult(
-                `Respaldo exitoso: ${res.rowsUploaded} registros en ${res.tablesUploaded} tablas`,
+                `Respaldo exitoso: ${res.rowsUploaded} registros en ${res.tablesUploaded} tablas${photoInfo}${skippedInfo}`,
               );
             } else {
               setState("error");
@@ -134,8 +142,16 @@ export function CloudSyncSection() {
             if (res.success) {
               await refreshStores();
               setState("done");
+              const photoInfo =
+                (res.photosDownloaded ?? 0) > 0
+                  ? `\n📷 ${res.photosDownloaded} foto(s) descargada(s)`
+                  : "";
+              const skippedInfo =
+                (res.photosSkipped ?? 0) > 0
+                  ? ` (${res.photosSkipped} sin cambios)`
+                  : "";
               setResult(
-                `Restauración exitosa: ${res.rowsDownloaded} registros de ${res.tablesDownloaded} tablas`,
+                `Restauración exitosa: ${res.rowsDownloaded} registros de ${res.tablesDownloaded} tablas${photoInfo}${skippedInfo}`,
               );
             } else {
               setState("error");

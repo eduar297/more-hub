@@ -462,13 +462,15 @@ export async function applyReceivedCatalog(
       );
       if (!existing) summary.newStores++;
       await tx.runAsync(
-        "INSERT OR REPLACE INTO stores (id, name, address, phone, logoUri, color, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO stores (id, name, address, phone, logoUri, logoHash, cloudLogoPath, color, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           store.id,
           store.name,
           store.address,
           store.phone,
           store.logoUri,
+          store.logoHash ?? null,
+          store.cloudLogoPath ?? null,
           store.color,
           store.createdAt,
           store.updatedAt ?? store.createdAt,
@@ -492,13 +494,15 @@ export async function applyReceivedCatalog(
       if (!existing) {
         summary.newWorkers++;
         await tx.runAsync(
-          "INSERT INTO users (id, name, role, pinHash, photoUri, storeId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO users (id, name, role, pinHash, photoUri, photoHash, cloudPhotoPath, storeId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             worker.id,
             worker.name,
             worker.role,
             worker.pinHash,
             remappedPhoto,
+            worker.photoHash ?? null,
+            worker.cloudPhotoPath ?? null,
             worker.storeId,
             worker.createdAt,
             worker.updatedAt ?? worker.createdAt,
@@ -511,12 +515,14 @@ export async function applyReceivedCatalog(
         const keepPin = existing.pinHash;
         const keepPhoto = existing.photoUri ?? remappedPhoto;
         await tx.runAsync(
-          "UPDATE users SET name = ?, role = ?, pinHash = ?, photoUri = ?, storeId = ?, createdAt = ?, updatedAt = ? WHERE id = ?",
+          "UPDATE users SET name = ?, role = ?, pinHash = ?, photoUri = ?, photoHash = ?, cloudPhotoPath = ?, storeId = ?, createdAt = ?, updatedAt = ? WHERE id = ?",
           [
             worker.name,
             worker.role,
             keepPin,
             keepPhoto,
+            worker.photoHash ?? null,
+            worker.cloudPhotoPath ?? null,
             worker.storeId,
             worker.createdAt,
             worker.updatedAt ?? worker.createdAt,
@@ -556,8 +562,8 @@ export async function applyReceivedCatalog(
       }
       await tx.runAsync(
         `INSERT OR REPLACE INTO products
-         (id, name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, storeId, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, photoHash, cloudPhotoPath, storeId, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           product.id,
           product.name,
@@ -570,6 +576,8 @@ export async function applyReceivedCatalog(
           product.stockBaseQty,
           product.saleMode,
           localPhotoUri,
+          product.photoHash ?? null,
+          product.cloudPhotoPath ?? null,
           product.storeId,
           product.createdAt ?? null,
           product.updatedAt ?? product.createdAt ?? null,

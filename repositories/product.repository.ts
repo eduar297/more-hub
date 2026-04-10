@@ -3,6 +3,7 @@ import type {
     Product,
     UpdateProductInput,
 } from "@/models/product";
+import { File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { BaseRepository } from "./base.repository";
 
@@ -13,6 +14,17 @@ export class ProductRepository extends BaseRepository<
 > {
   constructor(db: SQLiteDatabase, storeId?: number) {
     super(db, "products", storeId);
+  }
+
+  /** Compute MD5 hash of a local photo file. Returns null if file is missing. */
+  private computePhotoHash(uri: string): string | null {
+    try {
+      const file = new File(uri);
+      if (!file.exists) return null;
+      return file.md5;
+    } catch {
+      return null;
+    }
   }
 
   /** Map SQLite integer (0/1) to boolean for `visible` field. */
@@ -108,6 +120,19 @@ export class ProductRepository extends BaseRepository<
     );
     const created = await this.findByCode(input.code);
     if (!created) throw new Error("Producto creado pero no encontrado");
+
+    // If a photo was provided, compute its hash and clear cloud path
+    if (created.photoUri) {
+      const hash = this.computePhotoHash(created.photoUri);
+      if (hash) {
+        await this.db.runAsync(
+          "UPDATE products SET photoHash = ?, cloudPhotoPath = NULL WHERE id = ?",
+          hash,
+          created.id,
+        );
+        return { ...created, photoHash: hash, cloudPhotoPath: null };
+      }
+    }
     return created;
   }
 
@@ -137,6 +162,17 @@ export class ProductRepository extends BaseRepository<
     if (input.visible !== undefined) {
       sets.push("visible = ?");
       vals.push(input.visible ? 1 : 0);
+    }
+
+    // When photo changes, recompute hash and clear cloud path
+    if (input.photoUri !== undefined) {
+      const hash = input.photoUri
+        ? this.computePhotoHash(input.photoUri)
+        : null;
+      sets.push("photoHash = ?");
+      vals.push(hash);
+      sets.push("cloudPhotoPath = ?");
+      vals.push(null);
     }
 
     // Keep pricePerBaseUnit in sync with costPrice for backward compat

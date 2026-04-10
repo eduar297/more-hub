@@ -14,6 +14,8 @@ async function ensureTables(db: SQLiteDatabase) {
       address TEXT,
       phone TEXT,
       logoUri TEXT,
+      logoHash TEXT,
+      cloudLogoPath TEXT,
       color TEXT NOT NULL DEFAULT '#3b82f6',
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -45,6 +47,8 @@ async function ensureTables(db: SQLiteDatabase) {
       stockBaseQty REAL NOT NULL DEFAULT 0,
       saleMode TEXT CHECK (saleMode IN ('UNIT','VARIABLE')) NOT NULL,
       photoUri TEXT,
+      photoHash TEXT,
+      cloudPhotoPath TEXT,
       storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -140,6 +144,8 @@ async function ensureTables(db: SQLiteDatabase) {
       role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
       pinHash TEXT NOT NULL,
       photoUri TEXT,
+      photoHash TEXT,
+      cloudPhotoPath TEXT,
       storeId INTEGER REFERENCES stores(id),
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -203,7 +209,7 @@ async function ensureTriggers(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 28;
+  const DATABASE_VERSION = 29;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -653,6 +659,18 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE sync_hosts ADD COLUMN appVersion TEXT;
     `);
     currentVersion = 28;
+  }
+
+  if (currentVersion === 28) {
+    await db.execAsync(`
+      ALTER TABLE products ADD COLUMN photoHash TEXT;
+      ALTER TABLE products ADD COLUMN cloudPhotoPath TEXT;
+      ALTER TABLE users ADD COLUMN photoHash TEXT;
+      ALTER TABLE users ADD COLUMN cloudPhotoPath TEXT;
+      ALTER TABLE stores ADD COLUMN logoHash TEXT;
+      ALTER TABLE stores ADD COLUMN cloudLogoPath TEXT;
+    `);
+    currentVersion = 29;
   }
 
   await ensureTriggers(db);

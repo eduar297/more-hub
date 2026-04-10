@@ -16,6 +16,10 @@ export interface Product {
   stockBaseQty: number;
   saleMode: SaleMode;
   photoUri: string | null;
+  /** MD5 hash of the local photo file — used for cloud sync change detection */
+  photoHash: string | null;
+  /** Path in Supabase Storage (e.g. "products/42.jpg") — null if not yet uploaded */
+  cloudPhotoPath: string | null;
   storeId: number;
   createdAt: string;
   updatedAt: string;
@@ -23,8 +27,16 @@ export interface Product {
 
 export type CreateProductInput = Omit<
   Product,
-  "id" | "storeId" | "createdAt" | "updatedAt"
+  "id" | "storeId" | "createdAt" | "updatedAt" | "photoHash" | "cloudPhotoPath"
 >;
 export type UpdateProductInput = Partial<
-  Omit<Product, "id" | "storeId" | "createdAt" | "updatedAt">
+  Omit<
+    Product,
+    | "id"
+    | "storeId"
+    | "createdAt"
+    | "updatedAt"
+    | "photoHash"
+    | "cloudPhotoPath"
+  >
 >;

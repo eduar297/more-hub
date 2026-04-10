@@ -1,6 +1,11 @@
 import type { SQLiteBindValue, SQLiteDatabase } from "expo-sqlite";
 
 import { ensureDataClient, hasDataConnection } from "./client";
+import {
+  cleanupOrphanedCloudPhotos,
+  downloadPhotosFromCloud,
+  uploadPhotosToCloud,
+} from "./photo-sync";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +23,9 @@ export interface CloudSyncResult {
   rowsUploaded?: number;
   tablesDownloaded?: number;
   rowsDownloaded?: number;
+  photosUploaded?: number;
+  photosSkipped?: number;
+  photosDownloaded?: number;
   error?: string;
 }
 
@@ -43,6 +51,8 @@ const TABLE_MAPPINGS: TableMapping[] = [
       address: "address",
       phone: "phone",
       logoUri: "logo_uri",
+      logoHash: "logo_hash",
+      cloudLogoPath: "cloud_logo_path",
       color: "color",
       createdAt: "created_at",
       updatedAt: "updated_at",
@@ -85,6 +95,8 @@ const TABLE_MAPPINGS: TableMapping[] = [
       stockBaseQty: "stock_base_qty",
       saleMode: "sale_mode",
       photoUri: "photo_uri",
+      photoHash: "photo_hash",
+      cloudPhotoPath: "cloud_photo_path",
       storeId: "store_id",
       createdAt: "created_at",
       updatedAt: "updated_at",
@@ -100,6 +112,8 @@ const TABLE_MAPPINGS: TableMapping[] = [
       role: "role",
       pinHash: "pin_hash",
       photoUri: "photo_uri",
+      photoHash: "photo_hash",
+      cloudPhotoPath: "cloud_photo_path",
       storeId: "store_id",
       createdAt: "created_at",
       updatedAt: "updated_at",
@@ -279,6 +293,21 @@ export async function uploadToCloud(
   let totalRows = 0;
 
   try {
+    // Phase 0: Upload photos to Storage (updates photoHash/cloudPhotoPath in SQLite)
+    onProgress?.({
+      phase: "uploading",
+      current: 0,
+      total: 0,
+      message: "Subiendo fotos a la nube...",
+    });
+
+    const photoResult = await uploadPhotosToCloud(
+      db,
+      businessId,
+      deviceId,
+      onProgress,
+    );
+
     // Phase 1: Delete ALL cloud tables in reverse order (respect FKs)
     onProgress?.({
       phase: "uploading",
@@ -354,6 +383,9 @@ export async function uploadToCloud(
       );
     }
 
+    // Phase 3: Cleanup orphaned photos in Storage
+    await cleanupOrphanedCloudPhotos(db, businessId, deviceId);
+
     onProgress?.({
       phase: "done",
       current: totalTables,
@@ -365,6 +397,8 @@ export async function uploadToCloud(
       success: true,
       tablesUploaded: totalTables,
       rowsUploaded: totalRows,
+      photosUploaded: photoResult.uploaded,
+      photosSkipped: photoResult.skipped,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -472,6 +506,21 @@ export async function downloadFromCloud(
       );
     }
 
+    // Phase 3: Download photos from Storage (uses cloudPhotoPath from downloaded rows)
+    onProgress?.({
+      phase: "downloading",
+      current: 0,
+      total: 0,
+      message: "Descargando fotos de la nube...",
+    });
+
+    const photoResult = await downloadPhotosFromCloud(
+      db,
+      businessId,
+      deviceId,
+      onProgress,
+    );
+
     onProgress?.({
       phase: "done",
       current: totalTables,
@@ -483,6 +532,8 @@ export async function downloadFromCloud(
       success: true,
       tablesDownloaded: totalTables,
       rowsDownloaded: totalRows,
+      photosDownloaded: photoResult.downloaded,
+      photosSkipped: photoResult.skipped,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
