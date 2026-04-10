@@ -3,28 +3,30 @@ import { useColors } from "@/hooks/use-colors";
 import { DEFAULT_WEB_CONFIG, type WebConfig } from "@/models/web-config";
 import { getWebConfig, updateWebConfig } from "@/services/supabase/web-config";
 import {
-    ExternalLink,
-    Eye,
-    Globe,
-    Instagram,
-    Link,
-    MessageCircle,
-    Palette,
-    Phone,
-    Save,
-    Type,
+  ExternalLink,
+  Eye,
+  Globe,
+  Instagram,
+  Link,
+  MessageCircle,
+  Moon,
+  Palette,
+  Phone,
+  Save,
+  Sun,
+  Type,
 } from "@tamagui/lucide-icons";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { settingStyles as styles } from "./shared";
 
@@ -387,6 +389,73 @@ export function WebSection({ visible }: { visible?: boolean }) {
           <Text style={[styles.cardTitle, { color: c.text }]}>
             Opciones de visualización
           </Text>
+        </View>
+
+        <View style={styles.prefRow}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.workerName, { color: c.text }]}>
+              Tema de la página
+            </Text>
+            <Text style={[styles.workerMeta, { color: c.muted }]}>
+              Elige si tu página se muestra en modo claro u oscuro
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            <TouchableOpacity
+              onPress={() => patch({ theme: "light" })}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 8,
+                backgroundColor: config.theme === "light" ? c.blue : c.border,
+              }}
+            >
+              <Sun
+                size={14}
+                color={config.theme === "light" ? "#fff" : (c.muted as any)}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: config.theme === "light" ? "#fff" : c.muted,
+                }}
+              >
+                Light
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => patch({ theme: "dark" })}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 8,
+                backgroundColor: config.theme === "dark" ? c.blue : c.border,
+              }}
+            >
+              <Moon
+                size={14}
+                color={config.theme === "dark" ? "#fff" : (c.muted as any)}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: config.theme === "dark" ? "#fff" : c.muted,
+                }}
+              >
+                Dark
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.prefRow}>

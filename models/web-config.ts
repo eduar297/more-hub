@@ -12,6 +12,7 @@ export interface WebConfig {
   tiktok: string | null;
   showPrices: boolean;
   showStock: boolean;
+  theme: "light" | "dark";
 }
 
 export const DEFAULT_WEB_CONFIG: WebConfig = {
@@ -28,6 +29,7 @@ export const DEFAULT_WEB_CONFIG: WebConfig = {
   tiktok: null,
   showPrices: true,
   showStock: false,
+  theme: "light",
 };
 
 /** Convert snake_case DB row → camelCase model */
@@ -46,6 +48,7 @@ export function parseWebConfig(row: Record<string, unknown>): WebConfig {
     tiktok: (row.tiktok as string) ?? null,
     showPrices: row.show_prices !== false,
     showStock: row.show_stock === true,
+    theme: row.theme === "dark" ? "dark" : "light",
   };
 }
 
@@ -65,5 +68,6 @@ export function serializeWebConfig(c: WebConfig): Record<string, unknown> {
     tiktok: c.tiktok,
     show_prices: c.showPrices,
     show_stock: c.showStock,
+    theme: c.theme,
   };
 }

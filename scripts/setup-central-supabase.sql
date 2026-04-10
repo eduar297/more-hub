@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS web_configs (
     -- Layout
     show_prices BOOLEAN NOT NULL DEFAULT true,
     show_stock BOOLEAN NOT NULL DEFAULT false,
+    theme TEXT NOT NULL DEFAULT 'light',
     -- Meta
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -272,7 +273,7 @@ BEGIN
     business_id, logo_url, banner_url, primary_color,
     tagline, description, phone, whatsapp, address,
     instagram, facebook, tiktok,
-    show_prices, show_stock, updated_at
+    show_prices, show_stock, theme, updated_at
   ) VALUES (
     p_business_id,
     p_config->>'logo_url',
@@ -288,6 +289,7 @@ BEGIN
     p_config->>'tiktok',
     COALESCE((p_config->>'show_prices')::BOOLEAN, true),
     COALESCE((p_config->>'show_stock')::BOOLEAN, false),
+    COALESCE(p_config->>'theme', 'light'),
     now()
   )
   ON CONFLICT (business_id) DO UPDATE SET
@@ -304,6 +306,7 @@ BEGIN
     tiktok        = EXCLUDED.tiktok,
     show_prices   = EXCLUDED.show_prices,
     show_stock    = EXCLUDED.show_stock,
+    theme         = EXCLUDED.theme,
     updated_at    = now();
 
   RETURN jsonb_build_object('success', true);
@@ -485,3 +488,74 @@ DO $$ BEGIN
       ON web_configs FOR ALL USING (false);
   END IF;
 END $$;
+
+-- ── 5. Public storefront RPC (anonymous — no auth required) ─────────────────
+-- Returns business info + web_config + data center creds for rendering the
+-- public storefront page. Only works if the business has web_enabled = true.
+
+CREATE OR REPLACE FUNCTION get_public_storefront(p_business_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_biz businesses%ROWTYPE;
+  v_dc  data_centers%ROWTYPE;
+  v_wc  web_configs%ROWTYPE;
+BEGIN
+  SELECT * INTO v_biz FROM businesses WHERE id = p_business_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_found');
+  END IF;
+
+  IF NOT v_biz.web_enabled THEN
+    RETURN jsonb_build_object('success', false, 'error', 'not_enabled');
+  END IF;
+
+  -- Fetch data center
+  IF v_biz.data_center_id IS NOT NULL THEN
+    SELECT * INTO v_dc FROM data_centers WHERE id = v_biz.data_center_id;
+  END IF;
+
+  IF NOT FOUND OR v_biz.data_center_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'no_data_center');
+  END IF;
+
+  -- Fetch web config
+  SELECT * INTO v_wc FROM web_configs WHERE business_id = p_business_id;
+
+  RETURN jsonb_build_object(
+    'success',       true,
+    'business',      jsonb_build_object(
+      'id',              v_biz.id,
+      'name',            v_biz.name,
+      'data_center_id',  v_biz.data_center_id,
+      'web_enabled',     v_biz.web_enabled,
+      'web_url',         v_biz.web_url,
+      'created_at',      v_biz.created_at
+    ),
+    'config',        CASE WHEN v_wc.id IS NOT NULL THEN jsonb_build_object(
+      'id',            v_wc.id,
+      'business_id',   v_wc.business_id,
+      'logo_url',      v_wc.logo_url,
+      'banner_url',    v_wc.banner_url,
+      'primary_color', v_wc.primary_color,
+      'tagline',       v_wc.tagline,
+      'description',   v_wc.description,
+      'phone',         v_wc.phone,
+      'whatsapp',      v_wc.whatsapp,
+      'address',       v_wc.address,
+      'instagram',     v_wc.instagram,
+      'facebook',      v_wc.facebook,
+      'tiktok',        v_wc.tiktok,
+      'show_prices',   v_wc.show_prices,
+      'show_stock',    v_wc.show_stock,
+      'theme',         v_wc.theme
+    ) ELSE NULL END,
+    'data_url',      v_dc.data_url,
+    'data_anon_key', v_dc.data_anon_key
+  );
+END;
+$$;
