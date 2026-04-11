@@ -18,7 +18,10 @@
           "_pdl-datastream._tcp.",
           "_ipp._tcp."
         ],
-        "NSLocalNetworkUsageDescription": "Esta app usa la red local para descubrir impresoras y otros dispositivos."
+        "NSLocalNetworkUsageDescription": "Esta app usa la red local para descubrir impresoras y otros dispositivos.",
+        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para guardar las coordenadas de tu tienda en el mapa.",
+        "NSCameraUsageDescription": "Usamos la cámara para escanear códigos de barras y tomar fotos de productos.",
+        "NSPhotoLibraryUsageDescription": "Accedemos a tu galería para seleccionar fotos de productos y tiendas."
       }
     },
     "android": {
@@ -27,7 +30,13 @@
         "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.eduar297.el_more_hub"
+      "package": "com.eduar297.el_more_hub",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "output": "static",
@@ -51,7 +60,25 @@
       "expo-font",
       "expo-image",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Usamos la cámara para escanear códigos de barras y tomar fotos de productos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Accedemos a tu galería para seleccionar fotos de productos y tiendas."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

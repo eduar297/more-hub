@@ -29,9 +29,11 @@ export class StoreRepository extends BaseRepository<
 
   async create(input: CreateStoreInput): Promise<Store> {
     const result = await this.db.runAsync(
-      `INSERT INTO stores (name, address, phone, logoUri, color) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO stores (name, address, latitude, longitude, phone, logoUri, color) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       input.name,
       input.address ?? null,
+      input.latitude ?? null,
+      input.longitude ?? null,
       input.phone ?? null,
       input.logoUri ?? null,
       input.color ?? "#3b82f6",

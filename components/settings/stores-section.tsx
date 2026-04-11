@@ -12,18 +12,22 @@ import {
     AlertCircle,
     Check,
     Edit3,
+    MapPin,
     Plus,
     Store,
     Trash2,
     X,
 } from "@tamagui/lucide-icons";
+import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     Image,
+    Linking,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -48,6 +52,9 @@ export function StoresSection() {
   const [phone, setPhone] = useState("");
   const [logoUri, setLogoUri] = useState<string | null>(null);
   const [color, setColor] = useState("#3b82f6");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
@@ -66,6 +73,8 @@ export function StoresSection() {
     setPhone("");
     setLogoUri(null);
     setColor("#3b82f6");
+    setLatitude(null);
+    setLongitude(null);
     setFormError("");
     setSheetOpen(true);
   }, []);
@@ -77,6 +86,8 @@ export function StoresSection() {
     setPhone(s.phone ?? "");
     setLogoUri(s.logoUri ?? null);
     setColor(s.color ?? "#3b82f6");
+    setLatitude(s.latitude ?? null);
+    setLongitude(s.longitude ?? null);
     setFormError("");
     setSheetOpen(true);
   }, []);
@@ -93,6 +104,8 @@ export function StoresSection() {
       const data: CreateStoreInput = {
         name: trimName,
         address: address.trim() || null,
+        latitude,
+        longitude,
         phone: phone.trim() || null,
         logoUri,
         color,
@@ -109,7 +122,18 @@ export function StoresSection() {
     } finally {
       setSaving(false);
     }
-  }, [name, address, phone, logoUri, color, editing, storeRepo, refreshStores]);
+  }, [
+    name,
+    address,
+    latitude,
+    longitude,
+    phone,
+    logoUri,
+    color,
+    editing,
+    storeRepo,
+    refreshStores,
+  ]);
 
   const verifyAdminPin = useCallback(
     async (pin: string): Promise<boolean> => {
@@ -154,6 +178,53 @@ export function StoresSection() {
     },
     [setCurrentStore],
   );
+
+  const handleGetLocation = useCallback(async () => {
+    setLocating(true);
+    try {
+      const { status: current } =
+        await Location.getForegroundPermissionsAsync();
+      if (current === "denied") {
+        Alert.alert(
+          "Permiso de ubicación",
+          "Para obtener tu ubicación necesitas habilitar el permiso en Ajustes.",
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Abrir Ajustes", onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+      if (current !== "granted") {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permiso denegado",
+            "Necesitamos acceso a tu ubicación para obtener las coordenadas.",
+          );
+          return;
+        }
+      }
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      setLatitude(loc.coords.latitude);
+      setLongitude(loc.coords.longitude);
+    } catch {
+      Alert.alert("Error", "No se pudo obtener la ubicación.");
+    } finally {
+      setLocating(false);
+    }
+  }, []);
+
+  const openInMaps = useCallback((lat: number, lng: number, label?: string) => {
+    const encoded = encodeURIComponent(label ?? "Tienda");
+    const url = Platform.select({
+      ios: `maps:0,0?q=${encoded}@${lat},${lng}`,
+      default: `geo:${lat},${lng}?q=${lat},${lng}(${encoded})`,
+    });
+    Linking.openURL(url);
+  }, []);
 
   return (
     <View style={styles.sectionRoot}>
@@ -276,6 +347,25 @@ export function StoresSection() {
                           {s.address}
                         </Text>
                       ) : null}
+                      {s.latitude != null && s.longitude != null && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            openInMaps(s.latitude!, s.longitude!, s.name)
+                          }
+                          activeOpacity={0.7}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            marginTop: 2,
+                          }}
+                        >
+                          <MapPin size={12} color={c.blue as any} />
+                          <Text style={{ fontSize: 12, color: c.blue }}>
+                            Ver en mapa
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                     <View style={styles.rowActions}>
                       <TouchableOpacity
@@ -442,6 +532,88 @@ export function StoresSection() {
                   returnKeyType="next"
                   size="$4"
                 />
+              </YStack>
+
+              <YStack gap="$1">
+                <TText
+                  fontSize="$2"
+                  fontWeight="600"
+                  color="$color10"
+                  textTransform="uppercase"
+                  letterSpacing={0.5}
+                >
+                  Ubicación en mapa
+                </TText>
+
+                {latitude != null && longitude != null ? (
+                  <YStack gap="$2">
+                    <XStack
+                      alignItems="center"
+                      gap="$2"
+                      backgroundColor="$green2"
+                      borderRadius="$2"
+                      px="$3"
+                      py="$2"
+                    >
+                      <MapPin size={14} color="$green10" />
+                      <TText fontSize="$2" color="$green10" flex={1}>
+                        {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                      </TText>
+                    </XStack>
+                    <XStack gap="$2">
+                      <Button
+                        flex={1}
+                        size="$3"
+                        icon={
+                          locating ? (
+                            <ActivityIndicator size="small" />
+                          ) : (
+                            <MapPin size={14} />
+                          )
+                        }
+                        disabled={locating}
+                        onPress={handleGetLocation}
+                      >
+                        Actualizar
+                      </Button>
+                      <Button
+                        flex={1}
+                        size="$3"
+                        icon={<MapPin size={14} />}
+                        onPress={() =>
+                          openInMaps(latitude!, longitude!, name || "Tienda")
+                        }
+                      >
+                        Ver en mapa
+                      </Button>
+                      <Button
+                        size="$3"
+                        theme="red"
+                        onPress={() => {
+                          setLatitude(null);
+                          setLongitude(null);
+                        }}
+                      >
+                        Quitar
+                      </Button>
+                    </XStack>
+                  </YStack>
+                ) : (
+                  <Button
+                    size="$3"
+                    icon={
+                      locating ? (
+                        <ActivityIndicator size="small" />
+                      ) : (
+                        <MapPin size={14} />
+                      )
+                    }
+                    disabled={locating}
+                    onPress={handleGetLocation}
+                  >
+                    {locating ? "Obteniendo…" : "Usar ubicación actual"}
+                  </Button>
+                )}
               </YStack>
 
               <YStack gap="$1">

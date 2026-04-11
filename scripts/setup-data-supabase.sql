@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS stores (
     business_id UUID NOT NULL,
     name TEXT NOT NULL,
     address TEXT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     phone TEXT,
     logo_uri TEXT,
     logo_hash TEXT,

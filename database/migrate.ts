@@ -12,6 +12,8 @@ async function ensureTables(db: SQLiteDatabase) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       address TEXT,
+      latitude REAL,
+      longitude REAL,
       phone TEXT,
       logoUri TEXT,
       logoHash TEXT,
@@ -210,7 +212,7 @@ async function ensureTriggers(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 30;
+  const DATABASE_VERSION = 31;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -679,6 +681,14 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       ALTER TABLE products ADD COLUMN details TEXT;
     `);
     currentVersion = 30;
+  }
+
+  if (currentVersion === 30) {
+    await db.execAsync(`
+      ALTER TABLE stores ADD COLUMN latitude REAL;
+      ALTER TABLE stores ADD COLUMN longitude REAL;
+    `);
+    currentVersion = 31;
   }
 
   await ensureTriggers(db);

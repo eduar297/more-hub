@@ -49,6 +49,8 @@ const TABLE_MAPPINGS: TableMapping[] = [
       id: "id",
       name: "name",
       address: "address",
+      latitude: "latitude",
+      longitude: "longitude",
       phone: "phone",
       logoUri: "logo_uri",
       logoHash: "logo_hash",

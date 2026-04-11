@@ -462,11 +462,13 @@ export async function applyReceivedCatalog(
       );
       if (!existing) summary.newStores++;
       await tx.runAsync(
-        "INSERT OR REPLACE INTO stores (id, name, address, phone, logoUri, logoHash, cloudLogoPath, color, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO stores (id, name, address, latitude, longitude, phone, logoUri, logoHash, cloudLogoPath, color, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           store.id,
           store.name,
           store.address,
+          store.latitude ?? null,
+          store.longitude ?? null,
           store.phone,
           store.logoUri,
           store.logoHash ?? null,

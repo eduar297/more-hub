@@ -13,6 +13,8 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       address TEXT,
+      latitude REAL,
+      longitude REAL,
       phone TEXT,
       logoUri TEXT,
       logoHash TEXT,
