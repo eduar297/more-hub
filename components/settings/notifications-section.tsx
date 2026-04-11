@@ -2,39 +2,39 @@ import { useNotifications } from "@/components/ui/notification-provider";
 import { ICON_BTN_BG, OVERLAY_HEAVY } from "@/constants/colors";
 import { useColors } from "@/hooks/use-colors";
 import type {
-  NotificationPrefKey,
-  ScheduledReminder,
+    NotificationPrefKey,
+    ScheduledReminder,
 } from "@/services/notifications/types";
 import { Picker } from "@react-native-picker/picker";
 import {
-  Bell,
-  BellOff,
-  Clock,
-  Package,
-  Plus,
-  RefreshCw,
-  Trash2,
-  X,
+    Bell,
+    BellOff,
+    Clock,
+    Package,
+    Plus,
+    RefreshCw,
+    Trash2,
+    X,
 } from "@tamagui/lucide-icons";
 import * as Crypto from "expo-crypto";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import {
-  Button,
-  Input,
-  Text as TText,
-  TextArea,
-  XStack,
-  YStack,
+    Button,
+    Input,
+    Text as TText,
+    TextArea,
+    XStack,
+    YStack,
 } from "tamagui";
 import { settingStyles as styles } from "./shared";
 
@@ -452,6 +452,7 @@ export function NotificationCards() {
                     value={formLabel}
                     onChangeText={(v: string) => setFormLabel(v)}
                     autoCapitalize="sentences"
+                    returnKeyType="next"
                     size="$4"
                   />
                 </YStack>

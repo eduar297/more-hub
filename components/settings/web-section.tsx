@@ -448,6 +448,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
               placeholder="La mejor tienda del barrio"
               value={config.tagline ?? ""}
               onChangeText={(t) => patch({ tagline: t })}
+              returnKeyType="next"
               maxLength={80}
             />
           </Field>
@@ -583,6 +584,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
               value={config.phone ?? ""}
               onChangeText={(t) => patch({ phone: t })}
               keyboardType="phone-pad"
+              returnKeyType="next"
             />
           </Field>
 
@@ -594,6 +596,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
               value={config.whatsapp ?? ""}
               onChangeText={(t) => patch({ whatsapp: t })}
               keyboardType="phone-pad"
+              returnKeyType="done"
             />
           </Field>
         </View>
@@ -620,6 +623,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
               value={config.instagram ?? ""}
               onChangeText={(t) => patch({ instagram: t })}
               autoCapitalize="none"
+              returnKeyType="next"
             />
           </Field>
 
@@ -631,6 +635,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
               value={config.facebook ?? ""}
               onChangeText={(t) => patch({ facebook: t })}
               autoCapitalize="none"
+              returnKeyType="next"
             />
           </Field>
 
@@ -642,6 +647,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
               value={config.tiktok ?? ""}
               onChangeText={(t) => patch({ tiktok: t })}
               autoCapitalize="none"
+              returnKeyType="done"
             />
           </Field>
         </View>

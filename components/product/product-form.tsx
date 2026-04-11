@@ -166,7 +166,7 @@ export function ProductForm({
               placeholder="Nombre del producto"
               value={name}
               onChangeText={setName}
-              returnKeyType="done"
+              returnKeyType="next"
               size="$4"
             />
           </YStack>

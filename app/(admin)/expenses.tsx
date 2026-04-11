@@ -231,7 +231,7 @@ function ExpenseForm({
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="decimal-pad"
-                returnKeyType="done"
+                returnKeyType="next"
                 size="$4"
               />
             </YStack>

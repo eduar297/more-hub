@@ -228,6 +228,7 @@ export function ActivationGate({
                     placeholderTextColor={c.muted}
                     autoCapitalize="characters"
                     autoCorrect={false}
+                    returnKeyType="done"
                     maxLength={CODE_LENGTH}
                     editable={!loading}
                     style={[

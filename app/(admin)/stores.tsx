@@ -85,6 +85,7 @@ function StoreForm({ initial, onSubmit, loading, onCancel }: StoreFormProps) {
               value={name}
               onChangeText={setName}
               returnKeyType="next"
+              autoCapitalize="words"
               size="$4"
             />
           </YStack>

@@ -146,6 +146,7 @@ export default function WorkerProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         {/* Avatar */}
         <View style={styles.avatarSection}>
@@ -279,6 +280,7 @@ export default function WorkerProfileScreen() {
               secureTextEntry
               keyboardType="numeric"
               maxLength={8}
+              returnKeyType="next"
             />
           </View>
 
@@ -306,6 +308,7 @@ export default function WorkerProfileScreen() {
               secureTextEntry
               keyboardType="numeric"
               maxLength={8}
+              returnKeyType="next"
             />
           </View>
 

@@ -1,43 +1,43 @@
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG } from "@/constants/colors";
 import {
-  Bluetooth,
-  Building2,
-  Check,
-  ChevronRight,
-  Package,
-  Plus,
-  ScanLine,
-  Search,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
-  X,
+    Bluetooth,
+    Building2,
+    Check,
+    ChevronRight,
+    Package,
+    Plus,
+    ScanLine,
+    Search,
+    ShoppingBag,
+    ShoppingCart,
+    Trash2,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Button,
-  Card,
-  Input,
-  Separator,
-  Spinner,
-  Text,
-  TextArea,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Separator,
+    Spinner,
+    Text,
+    TextArea,
+    XStack,
+    YStack,
 } from "tamagui";
 
 import { PeriodSelector } from "@/components/admin/period-selector";
@@ -804,6 +804,7 @@ export default function PurchasesScreen() {
           {/* Scrollable content */}
           <ScrollView
             keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
           >

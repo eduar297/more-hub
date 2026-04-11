@@ -146,6 +146,7 @@ export function ProfileSection() {
       <ScrollView
         contentContainerStyle={styles.profileContent}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         {/* Avatar */}
         <View style={styles.profileAvatarRow}>
@@ -226,6 +227,7 @@ export function ProfileSection() {
               placeholder="Nombre del administrador"
               placeholderTextColor={c.muted}
               autoCapitalize="words"
+              returnKeyType="done"
               accessibilityLabel="Nombre de administrador"
             />
           </View>
@@ -268,6 +270,7 @@ export function ProfileSection() {
               secureTextEntry
               keyboardType="numeric"
               maxLength={8}
+              returnKeyType="next"
               accessibilityLabel="PIN actual"
             />
           </View>
@@ -295,6 +298,7 @@ export function ProfileSection() {
               secureTextEntry
               keyboardType="numeric"
               maxLength={8}
+              returnKeyType="next"
               accessibilityLabel="Nuevo PIN"
             />
           </View>

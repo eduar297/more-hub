@@ -378,7 +378,7 @@ export function ProductCard({
               placeholder="Nombre del producto"
               value={name}
               onChangeText={setName}
-              returnKeyType="done"
+              returnKeyType="next"
               size="$4"
             />
           </YStack>
@@ -412,7 +412,7 @@ export function ProductCard({
                 value={costPrice}
                 onChangeText={setCostPrice}
                 keyboardType="decimal-pad"
-                returnKeyType="done"
+                returnKeyType="next"
                 size="$4"
               />
             </YStack>

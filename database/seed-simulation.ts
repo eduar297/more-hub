@@ -1,6 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { Directory, Paths } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
+import { seedUnits } from "./seed";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ const BASIC_PRODUCTS = [
     name: "Refresco Cola 600ml",
     code: "900000000001",
     price: 18,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     details: "Refresco de cola carbonatado, botella PET 600ml. Servir frío.",
   },
@@ -82,7 +83,7 @@ const BASIC_PRODUCTS = [
     name: "Agua 1L",
     code: "900000000002",
     price: 14,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     details: "Agua purificada natural, botella de 1 litro.",
   },
@@ -90,7 +91,7 @@ const BASIC_PRODUCTS = [
     name: "Papas 45g",
     code: "900000000003",
     price: 20,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     details: "Papas fritas crujientes sabor original, bolsa individual 45g.",
   },
@@ -98,7 +99,7 @@ const BASIC_PRODUCTS = [
     name: "Galletas 6pz",
     code: "900000000004",
     price: 16,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     details: "Paquete de 6 galletas de vainilla con relleno de crema.",
   },
@@ -106,7 +107,7 @@ const BASIC_PRODUCTS = [
     name: "Pan de caja chico",
     code: "900000000005",
     price: 38,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     details: "Pan blanco de caja tamaño chico, ideal para sándwiches.",
   },
@@ -157,7 +158,7 @@ const PRODUCTS_DATA = [
     name: "Coca-Cola 600ml",
     code: "7501055300120",
     price: 18,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Refresco de cola original, botella PET 600ml.",
@@ -166,7 +167,7 @@ const PRODUCTS_DATA = [
     name: "Coca-Cola 2L",
     code: "7501055300228",
     price: 35,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Refresco de cola original, botella familiar 2 litros.",
@@ -175,7 +176,7 @@ const PRODUCTS_DATA = [
     name: "Pepsi 600ml",
     code: "7501031310227",
     price: 17,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Refresco de cola Pepsi, botella PET 600ml.",
@@ -184,7 +185,7 @@ const PRODUCTS_DATA = [
     name: "Agua Bonafont 1L",
     code: "7501013130519",
     price: 14,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Agua purificada natural Bonafont, 1 litro.",
@@ -193,7 +194,7 @@ const PRODUCTS_DATA = [
     name: "Agua Bonafont 1.5L",
     code: "7501013130526",
     price: 18,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Agua purificada natural Bonafont, 1.5 litros.",
@@ -202,7 +203,7 @@ const PRODUCTS_DATA = [
     name: "Jugo Del Valle 1L Manzana",
     code: "7501055301103",
     price: 28,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Jugo de manzana Del Valle, envase Tetra Pak 1 litro.",
@@ -211,7 +212,7 @@ const PRODUCTS_DATA = [
     name: "Gatorade 600ml",
     code: "7501031311101",
     price: 22,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Bebida hidratante con electrolitos, botella 600ml.",
@@ -220,7 +221,7 @@ const PRODUCTS_DATA = [
     name: "Sprite 600ml",
     code: "7501055300330",
     price: 17,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Refresco de lima-limón, botella PET 600ml.",
@@ -229,7 +230,7 @@ const PRODUCTS_DATA = [
     name: "Fanta Naranja 600ml",
     code: "7501055300440",
     price: 17,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Refresco sabor naranja, botella PET 600ml.",
@@ -238,7 +239,7 @@ const PRODUCTS_DATA = [
     name: "Red Bull 250ml",
     code: "9002490100070",
     price: 38,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 4,
     details: "Bebida energética con taurina y cafeína, lata 250ml.",
@@ -249,7 +250,7 @@ const PRODUCTS_DATA = [
     name: "Sabritas Original 45g",
     code: "7501011115001",
     price: 20,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Papas fritas sabor original, bolsa individual 45g.",
@@ -258,7 +259,7 @@ const PRODUCTS_DATA = [
     name: "Doritos Nacho 62g",
     code: "7501011115100",
     price: 22,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Totopos de maíz sabor nacho, bolsa 62g.",
@@ -267,7 +268,7 @@ const PRODUCTS_DATA = [
     name: "Cheetos Flamin Hot 52g",
     code: "7501011115200",
     price: 20,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Botana de maíz horneada extra picante, bolsa 52g.",
@@ -276,7 +277,7 @@ const PRODUCTS_DATA = [
     name: "Ruffles Queso 45g",
     code: "7501011115300",
     price: 20,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Papas fritas onduladas sabor queso, bolsa 45g.",
@@ -285,7 +286,7 @@ const PRODUCTS_DATA = [
     name: "Galletas Marías Gamesa",
     code: "7501000611201",
     price: 16,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Galletas clásicas tipo María, paquete individual.",
@@ -294,7 +295,7 @@ const PRODUCTS_DATA = [
     name: "Galletas Oreo 6pz",
     code: "7622210100108",
     price: 18,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Galletas de chocolate con relleno de crema, 6 piezas.",
@@ -303,7 +304,7 @@ const PRODUCTS_DATA = [
     name: "Chocolate Carlos V",
     code: "7501000912301",
     price: 12,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Barra de chocolate con leche, pieza individual.",
@@ -312,7 +313,7 @@ const PRODUCTS_DATA = [
     name: "Chicles Trident 18pz",
     code: "7622210300201",
     price: 25,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Chicle sin azúcar sabor menta, paquete de 18 piezas.",
@@ -321,7 +322,7 @@ const PRODUCTS_DATA = [
     name: "Mazapán De La Rosa",
     code: "7501000403011",
     price: 8,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Dulce tradicional mexicano de cacahuate, pieza individual.",
@@ -330,7 +331,7 @@ const PRODUCTS_DATA = [
     name: "Paleta Payaso",
     code: "7501000404018",
     price: 15,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 2,
     details: "Malvavisco cubierto de chocolate con gomitas, pieza.",
@@ -341,7 +342,7 @@ const PRODUCTS_DATA = [
     name: "Leche Lala Entera 1L",
     code: "7501055900107",
     price: 28,
-    unit: 3,
+    unit: "L",
     mode: "UNIT" as const,
     supplier: 3,
     details: "Leche entera pasteurizada Lala, envase 1 litro.",
@@ -350,7 +351,7 @@ const PRODUCTS_DATA = [
     name: "Leche Lala Light 1L",
     code: "7501055900114",
     price: 30,
-    unit: 3,
+    unit: "L",
     mode: "UNIT" as const,
     supplier: 3,
     details: "Leche semidescremada Lala Light, envase 1 litro.",
@@ -359,7 +360,7 @@ const PRODUCTS_DATA = [
     name: "Yogurt Yoplait Fresa 1kg",
     code: "7501055900200",
     price: 42,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 3,
     details: "Yogurt batido sabor fresa Yoplait, envase 1kg.",
@@ -368,7 +369,7 @@ const PRODUCTS_DATA = [
     name: "Queso Oaxaca 400g",
     code: "7501055900307",
     price: 75,
-    unit: 1,
+    unit: "kg",
     mode: "VARIABLE" as const,
     supplier: 3,
     details: "Queso Oaxaca tipo hebra, paquete de 400g. Se vende por peso.",
@@ -377,7 +378,7 @@ const PRODUCTS_DATA = [
     name: "Crema Lala 200ml",
     code: "7501055900404",
     price: 22,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 3,
     details: "Crema ácida Lala, envase de 200ml.",
@@ -386,7 +387,7 @@ const PRODUCTS_DATA = [
     name: "Mantequilla Gloria 90g",
     code: "7501055900501",
     price: 28,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 3,
     details: "Mantequilla con sal Gloria, barra de 90g.",
@@ -397,7 +398,7 @@ const PRODUCTS_DATA = [
     name: "Aceite 123 1L",
     code: "7501003332103",
     price: 42,
-    unit: 3,
+    unit: "L",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Aceite vegetal comestible 123, botella de 1 litro.",
@@ -406,7 +407,7 @@ const PRODUCTS_DATA = [
     name: "Arroz Verde Valle 1kg",
     code: "7501003340108",
     price: 32,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Arroz blanco grano largo Verde Valle, bolsa de 1kg.",
@@ -415,7 +416,7 @@ const PRODUCTS_DATA = [
     name: "Frijol Negro 1kg",
     code: "7501003340201",
     price: 38,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Frijol negro seleccionado, bolsa de 1kg.",
@@ -424,7 +425,7 @@ const PRODUCTS_DATA = [
     name: "Azúcar Morena 1kg",
     code: "7501003340304",
     price: 30,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Azúcar morena estándar, bolsa de 1kg.",
@@ -433,7 +434,7 @@ const PRODUCTS_DATA = [
     name: "Sal de Mesa 1kg",
     code: "7501003340407",
     price: 12,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Sal de mesa refinada y yodada, bolsa de 1kg.",
@@ -442,7 +443,7 @@ const PRODUCTS_DATA = [
     name: "Harina de Maíz Maseca 1kg",
     code: "7501003340500",
     price: 25,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Harina de maíz nixtamalizado Maseca, bolsa de 1kg.",
@@ -451,7 +452,7 @@ const PRODUCTS_DATA = [
     name: "Pasta Spaghetti La Moderna",
     code: "7501003340603",
     price: 14,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Pasta tipo spaghetti La Moderna, paquete individual.",
@@ -460,7 +461,7 @@ const PRODUCTS_DATA = [
     name: "Atún Dolores en Agua",
     code: "7501003340706",
     price: 24,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Atún en trozos en agua Dolores, lata individual.",
@@ -469,7 +470,7 @@ const PRODUCTS_DATA = [
     name: "Salsa Valentina 370ml",
     code: "7501003340809",
     price: 16,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Salsa picante Valentina etiqueta amarilla, botella 370ml.",
@@ -478,7 +479,7 @@ const PRODUCTS_DATA = [
     name: "Papel Higiénico Regio 4 rollos",
     code: "7501003340902",
     price: 35,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Papel higiénico Regio, paquete de 4 rollos.",
@@ -487,7 +488,7 @@ const PRODUCTS_DATA = [
     name: "Jabón Zote en Barra",
     code: "7501003341009",
     price: 18,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Jabón de lavandería Zote rosa, barra individual.",
@@ -496,7 +497,7 @@ const PRODUCTS_DATA = [
     name: "Detergente Roma 500g",
     code: "7501003341102",
     price: 22,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 0,
     details: "Detergente en polvo Roma multiusos, bolsa 500g.",
@@ -507,7 +508,7 @@ const PRODUCTS_DATA = [
     name: "Huevo Blanco (kg)",
     code: "7501003350101",
     price: 55,
-    unit: 1,
+    unit: "kg",
     mode: "VARIABLE" as const,
     supplier: 1,
     details: "Huevo blanco fresco, se vende por kilogramo.",
@@ -516,7 +517,7 @@ const PRODUCTS_DATA = [
     name: "Tortillas de Maíz 1kg",
     code: "7501003350204",
     price: 22,
-    unit: 1,
+    unit: "kg",
     mode: "UNIT" as const,
     supplier: 1,
     details: "Tortillas de maíz hechas del día, paquete de 1kg.",
@@ -525,7 +526,7 @@ const PRODUCTS_DATA = [
     name: "Pan Blanco Bimbo Grande",
     code: "7501003350307",
     price: 58,
-    unit: 8,
+    unit: "paq",
     mode: "UNIT" as const,
     supplier: 1,
     details: "Pan blanco de caja Bimbo tamaño grande, ideal para sándwiches.",
@@ -534,7 +535,7 @@ const PRODUCTS_DATA = [
     name: "Café Nescafé Clásico 120g",
     code: "7501003350400",
     price: 85,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 1,
     details: "Café soluble Nescafé Clásico, frasco de vidrio 120g.",
@@ -543,7 +544,7 @@ const PRODUCTS_DATA = [
     name: "Cereal Zucaritas 490g",
     code: "7501003350503",
     price: 68,
-    unit: 7,
+    unit: "u",
     mode: "UNIT" as const,
     supplier: 1,
     details: "Cereal de hojuelas de maíz azucaradas Zucaritas, caja 490g.",
@@ -897,6 +898,8 @@ export async function resetDatabase(db: SQLiteDatabase) {
     DELETE FROM stores;
     DELETE FROM notification_history;
     DELETE FROM app_settings;
+    DELETE FROM units;
+    DELETE FROM unit_categories;
   `);
 
   const storeCount = await db.getFirstAsync<{ count: number }>(
@@ -910,6 +913,9 @@ export async function resetDatabase(db: SQLiteDatabase) {
       "#3b82f6",
     );
   }
+
+  // Re-seed units and categories so they exist for future operations
+  await seedUnits(db);
 }
 
 export async function seedBasicSimulation(
@@ -921,6 +927,12 @@ export async function seedBasicSimulation(
   const startDate = new Date(now);
   startDate.setDate(startDate.getDate() - 10);
   startDate.setHours(8, 0, 0, 0);
+
+  // Build symbol → id map from the units table
+  const unitRows = await db.getAllAsync<{ id: number; symbol: string }>(
+    "SELECT id, symbol FROM units",
+  );
+  const unitIdBySymbol = new Map(unitRows.map((r) => [r.symbol, r.id]));
 
   onProgress?.("Creando vendedor...");
   const workerPinHash = await Crypto.digestStringAsync(
@@ -967,7 +979,7 @@ export async function seedBasicSimulation(
       p.price,
       costPrice,
       salePrice,
-      p.unit,
+      unitIdBySymbol.get(p.unit) ?? 1,
       p.mode,
       p.details ?? null,
       storeId,
@@ -1139,6 +1151,12 @@ export async function seedSimulation(
 
   onProgress?.("Creando trabajadores...");
 
+  // Build symbol → id map from the units table
+  const unitRows = await db.getAllAsync<{ id: number; symbol: string }>(
+    "SELECT id, symbol FROM units",
+  );
+  const unitIdBySymbol = new Map(unitRows.map((r) => [r.symbol, r.id]));
+
   // ── 1. Create workers ──────────────────────────────────────────────────────
   const workerIds: number[] = [];
   for (const w of WORKERS) {
@@ -1199,7 +1217,7 @@ export async function seedSimulation(
       p.price,
       costPx,
       salePx,
-      p.unit,
+      unitIdBySymbol.get(p.unit) ?? 1,
       p.mode,
       p.details ?? null,
       storeId,

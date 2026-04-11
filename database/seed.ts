@@ -8,28 +8,47 @@ export async function seedUnits(db: SQLiteDatabase) {
 
   if ((count?.count ?? 0) > 0) return;
 
-  await db.execAsync(`
-    INSERT INTO unit_categories (name) VALUES
-    ('Peso'),
-    ('Volumen'),
-    ('Longitud'),
-    ('Unidad');
+  // Insert categories individually to capture their actual IDs
+  const { lastInsertRowId: pesoId } = await db.runAsync(
+    "INSERT INTO unit_categories (name) VALUES (?)",
+    "Peso",
+  );
+  const { lastInsertRowId: volumenId } = await db.runAsync(
+    "INSERT INTO unit_categories (name) VALUES (?)",
+    "Volumen",
+  );
+  const { lastInsertRowId: longitudId } = await db.runAsync(
+    "INSERT INTO unit_categories (name) VALUES (?)",
+    "Longitud",
+  );
+  const { lastInsertRowId: unidadId } = await db.runAsync(
+    "INSERT INTO unit_categories (name) VALUES (?)",
+    "Unidad",
+  );
 
-    INSERT INTO units (name, symbol, categoryId, toBaseFactor) VALUES
-    ('kilogramo','kg',1,1),
-    ('gramo','g',1,0.001),
+  // Use the real category IDs for each unit
+  const units: [string, string, number, number][] = [
+    ["kilogramo", "kg", pesoId, 1],
+    ["gramo", "g", pesoId, 0.001],
+    ["litro", "L", volumenId, 1],
+    ["mililitro", "ml", volumenId, 0.001],
+    ["metro", "m", longitudId, 1],
+    ["centimetro", "cm", longitudId, 0.01],
+    ["unidad", "u", unidadId, 1],
+    ["paquete", "paq", unidadId, 1],
+    ["saco", "sac", unidadId, 1],
+    ["rollo", "roll", unidadId, 1],
+  ];
 
-    ('litro','L',2,1),
-    ('mililitro','ml',2,0.001),
-
-    ('metro','m',3,1),
-    ('centimetro','cm',3,0.01),
-
-    ('unidad','u',4,1),
-    ('paquete','paq',4,1),
-    ('saco','sac',4,1),
-    ('rollo','roll',4,1);
-  `);
+  for (const [name, symbol, categoryId, toBaseFactor] of units) {
+    await db.runAsync(
+      "INSERT INTO units (name, symbol, categoryId, toBaseFactor) VALUES (?, ?, ?, ?)",
+      name,
+      symbol,
+      categoryId,
+      toBaseFactor,
+    );
+  }
 }
 
 export async function seedDefaultStore(db: SQLiteDatabase) {

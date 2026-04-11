@@ -99,6 +99,7 @@ function SupplierForm({
               value={name}
               onChangeText={setName}
               returnKeyType="next"
+              autoCapitalize="words"
               size="$4"
             />
           </YStack>
@@ -113,6 +114,7 @@ function SupplierForm({
               value={contactName}
               onChangeText={setContactName}
               returnKeyType="next"
+              autoCapitalize="words"
               size="$4"
             />
           </YStack>
