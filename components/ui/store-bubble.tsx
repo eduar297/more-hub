@@ -110,7 +110,7 @@ export function StoreBubble() {
   ).current;
 
   useEffect(() => {
-    if (!user || !showStoreBubble || !currentStore) {
+    if (!user || !showStoreBubble || !currentStore || stores.length <= 1) {
       if (fadeTimer.current) clearTimeout(fadeTimer.current);
       opacity.setValue(1);
       return;
@@ -119,9 +119,17 @@ export function StoreBubble() {
     return () => {
       if (fadeTimer.current) clearTimeout(fadeTimer.current);
     };
-  }, [user, showStoreBubble, currentStore, resetFadeTimer, opacity]);
+  }, [
+    user,
+    showStoreBubble,
+    currentStore,
+    stores.length,
+    resetFadeTimer,
+    opacity,
+  ]);
 
-  if (!user || !showStoreBubble || !currentStore) return null;
+  if (!user || !showStoreBubble || !currentStore || stores.length <= 1)
+    return null;
 
   const storeColor = currentStore.color ?? "#3b82f6";
   const isDark = colorScheme === "dark";
