@@ -1,43 +1,46 @@
+import { AdminSales } from "@/components/admin/admin-sales";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG } from "@/constants/colors";
 import {
-    Bluetooth,
-    Building2,
-    Check,
-    ChevronRight,
-    Package,
-    Plus,
-    ScanLine,
-    Search,
-    ShoppingBag,
-    ShoppingCart,
-    Trash2,
-    X,
+  Bluetooth,
+  Building2,
+  Check,
+  ChevronRight,
+  DollarSign,
+  Package,
+  Plus,
+  Receipt,
+  ScanLine,
+  Search,
+  ShoppingBag,
+  ShoppingCart,
+  Trash2,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    Button,
-    Card,
-    Input,
-    Separator,
-    Spinner,
-    Text,
-    TextArea,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Input,
+  Separator,
+  Spinner,
+  Text,
+  TextArea,
+  XStack,
+  YStack,
 } from "tamagui";
 
 import { PeriodSelector } from "@/components/admin/period-selector";
@@ -54,14 +57,17 @@ import type { Product } from "@/models/product";
 import type { Purchase, PurchaseItem } from "@/models/purchase";
 import type { Supplier } from "@/models/supplier";
 import { weekEndISO } from "@/utils/format";
+import ExpensesScreen from "./expenses";
 import SuppliersScreen from "./suppliers";
 
 // ── Sub-tab types ────────────────────────────────────────────────────────────
 
-type PTab = "purchases" | "suppliers";
+type PTab = "purchases" | "sales" | "expenses" | "suppliers";
 
 const PURCHASE_TABS: TabDef<PTab>[] = [
   { key: "purchases", label: "Compras", Icon: ShoppingBag },
+  { key: "sales", label: "Ventas", Icon: DollarSign },
+  { key: "expenses", label: "Gastos", Icon: Receipt },
   { key: "suppliers", label: "Proveedores", Icon: Building2 },
 ];
 
@@ -494,6 +500,10 @@ export default function PurchasesScreen() {
       />
 
       {activeTab === "suppliers" && <SuppliersScreen />}
+
+      {activeTab === "sales" && <AdminSales />}
+
+      {activeTab === "expenses" && <ExpensesScreen />}
 
       {activeTab === "purchases" && (
         <>

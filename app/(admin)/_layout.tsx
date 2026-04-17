@@ -7,7 +7,6 @@ import { useColors } from "@/hooks/use-colors";
 import {
   BarChart3,
   PackageSearch,
-  Receipt,
   Settings,
   ShoppingBag,
 } from "@tamagui/lucide-icons";
@@ -48,7 +47,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="products"
         options={{
-          title: "Catálogo",
+          title: "Inventario",
           tabBarIcon: ({ color }) => (
             <PackageSearch size={26} color={color as any} />
           ),
@@ -57,19 +56,13 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="purchases"
         options={{
-          title: "Compras",
+          title: "Comercio",
           tabBarIcon: ({ color }) => (
             <ShoppingBag size={26} color={color as any} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="expenses"
-        options={{
-          title: "Gastos",
-          tabBarIcon: ({ color }) => <Receipt size={26} color={color as any} />,
-        }}
-      />
+      <Tabs.Screen name="expenses" options={{ href: null }} />
       <Tabs.Screen
         name="settings"
         options={{

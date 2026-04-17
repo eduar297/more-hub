@@ -5,10 +5,10 @@ import { SalesSection } from "@/components/admin/sales-section";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import {
-    BarChart3,
-    Package,
-    ShoppingCart,
-    TrendingUp,
+  BarChart3,
+  Package,
+  ShoppingCart,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useState } from "react";
 import { YStack } from "tamagui";
@@ -16,7 +16,7 @@ import { YStack } from "tamagui";
 type Section = "overview" | "sales" | "inventory" | "finance";
 
 const SECTIONS: TabDef<Section>[] = [
-  { key: "overview", label: "Dashboard", Icon: BarChart3 },
+  { key: "overview", label: "Resumen", Icon: BarChart3 },
   { key: "sales", label: "Ventas", Icon: ShoppingCart },
   { key: "inventory", label: "Inventario", Icon: Package },
   { key: "finance", label: "Finanzas", Icon: TrendingUp },
