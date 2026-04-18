@@ -295,7 +295,7 @@ export function AdminSales() {
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 4 }}
+            contentContainerStyle={{ paddingBottom: 100 }}
             ListFooterComponent={
               stockErrors.length > 0 ? (
                 <YStack px="$3" py="$2" gap="$1">

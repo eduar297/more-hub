@@ -341,6 +341,7 @@ export function ProfileSection() {
         style={{
           paddingHorizontal: 16,
           paddingVertical: 12,
+          paddingBottom: 100,
           borderTopWidth: 1,
           borderTopColor: c.border,
           backgroundColor: c.card,

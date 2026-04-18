@@ -1,3 +1,4 @@
+import type { DeviceInfo } from "@/utils/device";
 import { supabase } from "./client";
 
 interface ValidationResult {
@@ -9,7 +10,7 @@ interface ValidationResult {
 export async function validateActivationCode(
   code: string,
   deviceId: string,
-  deviceInfo: Record<string, unknown>,
+  deviceInfo: DeviceInfo,
 ): Promise<ValidationResult> {
   try {
     const { data, error } = await supabase.rpc("validate_activation_code", {

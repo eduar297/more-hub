@@ -745,7 +745,7 @@ export function InventorySection() {
             <Text color="$color10">Sin productos</Text>
           </YStack>
         }
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         style={{ flex: 1 }}
       />
 

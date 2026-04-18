@@ -247,7 +247,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── SuppliersScreen ───────────────────────────────────────────────────────────
 
-export default function SuppliersScreen() {
+export function SuppliersSection() {
   const supplierRepo = useSupplierRepository();
   const c = useColors();
 
@@ -363,7 +363,7 @@ export default function SuppliersScreen() {
         <FlatList
           data={suppliers}
           keyExtractor={(s) => String(s.id)}
-          contentContainerStyle={{ padding: 16, gap: 8 }}
+          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
           renderItem={({ item }) => (
             <Card
               pressStyle={{ opacity: 0.9, scale: 0.98 }}

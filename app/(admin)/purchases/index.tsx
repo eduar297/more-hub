@@ -2,48 +2,50 @@ import { AdminSales } from "@/components/admin/admin-sales";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG } from "@/constants/colors";
 import {
-  Bluetooth,
-  Building2,
-  Check,
-  ChevronRight,
-  DollarSign,
-  Package,
-  Plus,
-  Receipt,
-  ScanLine,
-  Search,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
-  X,
+    Bluetooth,
+    Building2,
+    Check,
+    ChevronRight,
+    DollarSign,
+    Package,
+    Plus,
+    Receipt,
+    ScanLine,
+    Search,
+    ShoppingBag,
+    ShoppingCart,
+    Trash2,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useId, useMemo, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Button,
-  Card,
-  Input,
-  Separator,
-  Spinner,
-  Text,
-  TextArea,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Input,
+    Separator,
+    Spinner,
+    Text,
+    TextArea,
+    XStack,
+    YStack,
 } from "tamagui";
 
+import { ExpensesSection } from "@/components/admin/expenses-section";
 import { PeriodSelector } from "@/components/admin/period-selector";
+import { SuppliersSection } from "@/components/admin/suppliers-section";
 import { ScreenTabs, type TabDef } from "@/components/ui/screen-tabs";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -57,8 +59,6 @@ import type { Product } from "@/models/product";
 import type { Purchase, PurchaseItem } from "@/models/purchase";
 import type { Supplier } from "@/models/supplier";
 import { weekEndISO } from "@/utils/format";
-import ExpensesScreen from "./expenses";
-import SuppliersScreen from "./suppliers";
 
 // ── Sub-tab types ────────────────────────────────────────────────────────────
 
@@ -499,11 +499,11 @@ export default function PurchasesScreen() {
         onSelect={setActiveTab}
       />
 
-      {activeTab === "suppliers" && <SuppliersScreen />}
+      {activeTab === "suppliers" && <SuppliersSection />}
 
       {activeTab === "sales" && <AdminSales />}
 
-      {activeTab === "expenses" && <ExpensesScreen />}
+      {activeTab === "expenses" && <ExpensesSection />}
 
       {activeTab === "purchases" && (
         <>
@@ -547,7 +547,7 @@ export default function PurchasesScreen() {
             <FlatList
               data={purchases}
               keyExtractor={(p) => String(p.id)}
-              contentContainerStyle={{ padding: 16, gap: 8 }}
+              contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
               renderItem={({ item }) => (
                 <Card
                   pressStyle={{ opacity: 0.9, scale: 0.98 }}

@@ -790,8 +790,8 @@ export function FinanceSection() {
         </YStack>
       </Card>
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack p="$4" gap="$4" pb="$10">
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
+        <YStack p="$4" gap="$4">
           {/* P&L card */}
           <Card
             bg={profit >= 0 ? "$green2" : "$red2"}

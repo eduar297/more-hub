@@ -432,13 +432,8 @@ export function StoresSection() {
           edges={["top"]}
           style={[stStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
-          <XStack
-            px="$4"
-            py="$3"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <XStack alignItems="center" gap="$2">
+          <XStack px="$4" py="$3" items="center" justify="space-between">
+            <XStack items="center" gap="$2">
               <Store size={20} color="$blue10" />
               <TText fontSize="$5" fontWeight="bold" color="$color">
                 {editing ? "Editar tienda" : "Nueva tienda"}
@@ -556,10 +551,10 @@ export function StoresSection() {
                 {latitude != null && longitude != null ? (
                   <YStack gap="$2">
                     <XStack
-                      alignItems="center"
+                      items="center"
                       gap="$2"
-                      backgroundColor="$green2"
-                      borderRadius="$2"
+                      bg="$green2"
+                      rounded="$2"
                       px="$3"
                       py="$2"
                     >

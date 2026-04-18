@@ -201,7 +201,7 @@ export default function HomeScreen() {
 
   // If device already has a role, redirect to the corresponding panel
   useEffect(() => {
-    if (deviceRole === "ADMIN") router.replace("/(admin)" as any);
+    if (deviceRole === "ADMIN") router.replace("/(admin)/dashboard" as any);
     else if (deviceRole === "WORKER") router.replace("/(worker)" as any);
     else if (deviceRole === "DISPLAY") router.replace("/(display)" as any);
   }, [deviceRole, router]);

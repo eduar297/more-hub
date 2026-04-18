@@ -1067,7 +1067,7 @@ export function SalesSection() {
               </>
             )
           }
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           renderItem={({ item }) => (
             <Card
               bg="$color1"
@@ -1098,7 +1098,7 @@ export function SalesSection() {
               ListHeader
             )
           }
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           renderItem={() => null}
         />
       )}

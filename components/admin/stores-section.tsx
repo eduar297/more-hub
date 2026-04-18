@@ -1,32 +1,32 @@
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG } from "@/constants/colors";
 import {
-    Edit3,
-    Plus,
-    Store as StoreIcon,
-    Trash2,
-    X,
+  Edit3,
+  Plus,
+  Store as StoreIcon,
+  Trash2,
+  X,
 } from "@tamagui/lucide-icons";
 import { useCallback, useEffect, useId, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    Button,
-    Card,
-    Input,
-    Label,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Input,
+  Label,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 import { useStore } from "@/contexts/store-context";
@@ -152,6 +152,8 @@ function StoreForm({ initial, onSubmit, loading, onCancel }: StoreFormProps) {
                 address: address.trim() || null,
                 phone: phone.trim() || null,
                 logoUri: null,
+                latitude: null,
+                longitude: null,
                 color: "#3b82f6",
               })
             }
@@ -186,7 +188,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── StoresScreen ─────────────────────────────────────────────────────────────
 
-export default function StoresScreen() {
+export function StoresSection() {
   const storeRepo = useStoreRepository();
   const { stores, refreshStores, currentStore } = useStore();
   const c = useColors();
@@ -367,13 +369,8 @@ export default function StoresScreen() {
           edges={["top"]}
           style={[storeStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
-          <XStack
-            px="$4"
-            py="$3"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <XStack alignItems="center" gap="$2">
+          <XStack px="$4" py="$3" items="center" justify="space-between">
+            <XStack items="center" gap="$2">
               <StoreIcon size={20} color="$blue10" />
               <Text fontSize="$5" fontWeight="bold" color="$color">
                 Nueva tienda
@@ -405,13 +402,8 @@ export default function StoresScreen() {
           edges={["top"]}
           style={[storeStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
-          <XStack
-            px="$4"
-            py="$3"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <XStack alignItems="center" gap="$2">
+          <XStack px="$4" py="$3" items="center" justify="space-between">
+            <XStack items="center" gap="$2">
               <StoreIcon size={20} color="$blue10" />
               <Text fontSize="$5" fontWeight="bold" color="$color">
                 Tienda
@@ -499,13 +491,8 @@ export default function StoresScreen() {
           edges={["top"]}
           style={[storeStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
-          <XStack
-            px="$4"
-            py="$3"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <XStack alignItems="center" gap="$2">
+          <XStack px="$4" py="$3" items="center" justify="space-between">
+            <XStack items="center" gap="$2">
               <Edit3 size={20} color="$blue10" />
               <Text fontSize="$5" fontWeight="bold" color="$color">
                 Editar tienda

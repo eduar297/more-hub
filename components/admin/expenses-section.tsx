@@ -294,7 +294,7 @@ function ExpenseForm({
 
 // ── ExpensesScreen ────────────────────────────────────────────────────────────
 
-export default function ExpensesScreen() {
+export function ExpensesSection() {
   const expenseRepo = useExpenseRepository();
   const c = useColors();
 
@@ -443,7 +443,7 @@ export default function ExpensesScreen() {
         <FlatList
           data={expenses}
           keyExtractor={(e) => String(e.id)}
-          contentContainerStyle={{ padding: 16, gap: 8 }}
+          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
           renderItem={({ item }) => (
             <TouchableOpacity
               activeOpacity={0.7}

@@ -38,7 +38,7 @@ export const settingStyles = StyleSheet.create({
     borderRadius: 10,
   },
   addBtnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  listContent: { padding: 16, flexGrow: 1 },
+  listContent: { padding: 16, flexGrow: 1, paddingBottom: 100 },
   centerBox: {
     flex: 1,
     alignItems: "center",
@@ -89,7 +89,7 @@ export const settingStyles = StyleSheet.create({
   },
 
   // Profile
-  profileContent: { paddingHorizontal: 16, gap: 14, paddingBottom: 44 },
+  profileContent: { paddingHorizontal: 16, gap: 14, paddingBottom: 100 },
   profileAvatarRow: { alignItems: "center", gap: 8, paddingVertical: 12 },
   avatarLarge: {
     width: 76,

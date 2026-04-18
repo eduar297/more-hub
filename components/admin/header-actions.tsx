@@ -42,7 +42,14 @@ export function HeaderActions() {
 
   return (
     <>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 18,
+          marginHorizontal: 8,
+        }}
+      >
         <TouchableOpacity
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -59,11 +66,7 @@ export function HeaderActions() {
         >
           <RefreshCw size={20} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={openHistory}
-          hitSlop={8}
-          style={{ marginRight: 12, position: "relative" }}
-        >
+        <TouchableOpacity onPress={openHistory} hitSlop={8}>
           <Bell size={24} color={c.text as any} />
           {unseenCount > 0 && (
             <View

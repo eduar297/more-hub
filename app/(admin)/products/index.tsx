@@ -554,6 +554,7 @@ export default function ProductsScreen() {
               )}
               SectionSeparatorComponent={null}
               stickySectionHeadersEnabled={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
             />
           )}
         </>

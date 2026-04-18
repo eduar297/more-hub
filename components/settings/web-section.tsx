@@ -772,6 +772,7 @@ export function WebSection({ visible }: { visible?: boolean }) {
         style={{
           paddingHorizontal: 16,
           paddingVertical: 12,
+          paddingBottom: 100,
           borderTopWidth: 1,
           borderTopColor: c.border,
           backgroundColor: c.bg,

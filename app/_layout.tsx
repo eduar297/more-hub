@@ -10,14 +10,14 @@ import { migrateWorkerDb } from "@/database/migrate-worker";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { config } from "@/tamagui.config";
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider,
 } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { ActivityIndicator, LogBox } from "react-native";
 import "react-native-reanimated";
 import { TamaguiProvider, Text, Theme, YStack } from "tamagui";
@@ -53,19 +53,36 @@ function AppStack() {
           name="(display)"
           options={{ title: "Panel Visualización" }}
         />
+        <Stack.Screen name="+not-found" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
     </ThemeProvider>
   );
 }
 
+// ── DB error handler (prevents crash on hot-reload / teardown race) ─────────
+
+function useDbErrorHandler() {
+  return useCallback((error: Error) => {
+    if (error.message?.includes("closed resource")) {
+      // Benign: DB was closed while a statement was still finalizing (hot-reload / remount)
+      console.warn("[SQLite] Ignored closed-resource error during teardown");
+      return;
+    }
+    // Re-throw unexpected errors so they surface properly
+    throw error;
+  }, []);
+}
+
 // ── Admin providers: full DB + all contexts ─────────────────────────────────
 
 function AdminProviders({ children }: { children: React.ReactNode }) {
+  const onError = useDbErrorHandler();
   return (
     <SQLiteProvider
       databaseName={process.env.EXPO_PUBLIC_ADMIN_DB_NAME!}
       onInit={migrateDbIfNeeded}
+      onError={onError}
     >
       <StoreProvider>
         <PreferencesProvider>
@@ -86,10 +103,12 @@ function AdminProviders({ children }: { children: React.ReactNode }) {
 // ── Worker providers: light DB + minimal contexts ───────────────────────────
 
 function WorkerProviders({ children }: { children: React.ReactNode }) {
+  const onError = useDbErrorHandler();
   return (
     <SQLiteProvider
       databaseName={process.env.EXPO_PUBLIC_WORKER_DB_NAME!}
       onInit={migrateWorkerDb}
+      onError={onError}
     >
       <StoreProvider>
         <AuthProvider>
