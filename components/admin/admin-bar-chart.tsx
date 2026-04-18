@@ -1,6 +1,6 @@
 import { useColors } from "@/hooks/use-colors";
 import { fmtMoney } from "@/utils/format";
-import React from "react";
+import React, { useMemo } from "react";
 import { Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 
@@ -47,6 +47,9 @@ export function AdminBarChart({
 }: AdminBarChartProps) {
   const colors = useColors();
 
+  // Force remount when data changes so animations re-trigger
+  const chartKey = useMemo(() => data.map((d) => d.value).join(","), [data]);
+
   return (
     <View style={{ overflow: "hidden" }}>
       {yAxisLabel ? (
@@ -62,6 +65,7 @@ export function AdminBarChart({
         </Text>
       ) : null}
       <BarChart
+        key={chartKey}
         data={data}
         showVerticalLines={showVerticalLines}
         barBorderRadius={4}

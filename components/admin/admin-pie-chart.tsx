@@ -1,6 +1,6 @@
 import { useColors } from "@/hooks/use-colors";
 import { fmtMoney } from "@/utils/format";
-import React from "react";
+import React, { useMemo } from "react";
 import { PieChart } from "react-native-gifted-charts";
 import { Text, XStack, YStack } from "tamagui";
 
@@ -54,8 +54,15 @@ export function AdminPieChart({
 
   const chartData = data.map((d) => ({ value: d.value, color: d.color }));
 
+  // Force remount when data changes so animations re-trigger
+  const chartKey = useMemo(
+    () => chartData.map((d) => d.value).join(","),
+    [chartData],
+  );
+
   const chart = (
     <PieChart
+      key={chartKey}
       data={chartData}
       donut
       radius={radius}
