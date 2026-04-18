@@ -7,6 +7,7 @@ import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { SearchInput } from "@/components/ui/search-input";
 import { ICON_BTN_BG } from "@/constants/colors";
+import { useStore } from "@/contexts/store-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColors } from "@/hooks/use-colors";
 import { useProductRepository } from "@/hooks/use-product-repository";
@@ -197,6 +198,7 @@ export default function ProductsScreen() {
   const products = useProductRepository();
   const units = useUnitRepository();
   const c = useColors();
+  const { syncVersion } = useStore();
 
   const [section, setSection] = useState<Section>("catalog");
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,7 +291,7 @@ export default function ProductsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [products, units]);
+  }, [products, units, syncVersion]);
 
   useFocusEffect(
     useCallback(() => {

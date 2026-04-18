@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG } from "@/constants/colors";
+import { useStore } from "@/contexts/store-context";
 import { Building2, Edit3, Plus, Trash2, X } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useId, useState } from "react";
@@ -250,6 +251,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 export function SuppliersSection() {
   const supplierRepo = useSupplierRepository();
   const c = useColors();
+  const { syncVersion } = useStore();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,7 +269,7 @@ export function SuppliersSection() {
     } finally {
       setLoading(false);
     }
-  }, [supplierRepo]);
+  }, [supplierRepo, syncVersion]);
 
   useFocusEffect(
     useCallback(() => {

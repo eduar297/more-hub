@@ -1,29 +1,30 @@
+import { useAuth } from "@/contexts/auth-context";
 import { useDevice } from "@/contexts/device-context";
 import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
 import type { CloudSyncProgress } from "@/services/supabase/cloud-sync";
 import {
-    downloadFromCloud,
-    isCloudSyncAvailable,
-    uploadToCloud,
+  downloadFromCloud,
+  isCloudSyncAvailable,
+  uploadToCloud,
 } from "@/services/supabase/cloud-sync";
 import {
-    AlertCircle,
-    ArrowDownToLine,
-    ArrowUpFromLine,
-    CheckCircle,
-    CloudOff,
+  AlertCircle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CheckCircle,
+  CloudOff,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 type SyncState =
@@ -38,7 +39,8 @@ export function CloudSyncSection() {
   const c = useColors();
   const db = useSQLiteContext();
   const { businessId, deviceId } = useDevice();
-  const { refreshStores, setCurrentStore } = useStore();
+  const { refreshStores, setCurrentStore, bumpSyncVersion } = useStore();
+  const { setUser } = useAuth();
 
   const [available, setAvailable] = useState<boolean | null>(null);
   const [state, setState] = useState<SyncState>("idle");
@@ -141,6 +143,33 @@ export function CloudSyncSection() {
 
             if (res.success) {
               await refreshStores();
+
+              // Refresh auth user from DB so profile/images update immediately
+              try {
+                const admins = await db.getAllAsync<{
+                  id: number;
+                  name: string;
+                  role: string;
+                  photoUri: string | null;
+                }>(
+                  "SELECT id, name, role, photoUri FROM users WHERE role = 'ADMIN' LIMIT 1",
+                );
+                if (admins.length > 0) {
+                  const a = admins[0];
+                  setUser({
+                    id: a.id,
+                    name: a.name,
+                    role: a.role as "ADMIN",
+                    photoUri: a.photoUri,
+                  });
+                }
+              } catch {
+                /* best-effort */
+              }
+
+              // Signal all screens to reload data from DB
+              bumpSyncVersion();
+
               setState("done");
               const photoInfo =
                 (res.photosDownloaded ?? 0) > 0
@@ -168,6 +197,8 @@ export function CloudSyncSection() {
     handleProgress,
     refreshStores,
     setCurrentStore,
+    bumpSyncVersion,
+    setUser,
   ]);
 
   const isBusy =

@@ -47,6 +47,7 @@ import { ExpensesSection } from "@/components/admin/expenses-section";
 import { PeriodSelector } from "@/components/admin/period-selector";
 import { SuppliersSection } from "@/components/admin/suppliers-section";
 import { ScreenTabs, type TabDef } from "@/components/ui/screen-tabs";
+import { useStore } from "@/contexts/store-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useColors } from "@/hooks/use-colors";
@@ -176,6 +177,7 @@ export default function PurchasesScreen() {
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
   const c = useColors();
+  const { syncVersion } = useStore();
   const [activeTab, setActiveTab] = useState<PTab>("purchases");
 
   // ── history ──────────────────────────────────────────────────────────────
@@ -344,6 +346,7 @@ export default function PurchasesScreen() {
     nav.selectedYear,
     nav.selectedWeekStart,
     nav.dateRange,
+    syncVersion,
   ]);
 
   useFocusEffect(

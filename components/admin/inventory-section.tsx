@@ -47,7 +47,7 @@ export function InventorySection() {
   const productRepo = useProductRepository();
   const unitRepo = useUnitRepository();
   const db = useSQLiteContext();
-  const { currentStore } = useStore();
+  const { currentStore, syncVersion } = useStore();
   const c = useColors();
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -73,7 +73,7 @@ export function InventorySection() {
     } finally {
       setLoading(false);
     }
-  }, [productRepo, unitRepo]);
+  }, [productRepo, unitRepo, syncVersion]);
 
   useFocusEffect(
     useCallback(() => {

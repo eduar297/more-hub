@@ -155,7 +155,7 @@ function TicketRow({
 
 export function SalesSection() {
   const db = useSQLiteContext();
-  const { currentStore } = useStore();
+  const { currentStore, syncVersion } = useStore();
   const ticketRepo = useTicketRepository();
   const userRepo = useUserRepository();
   const { user } = useAuth();
@@ -397,6 +397,7 @@ export function SalesSection() {
     nav.dateRange,
     ticketRepo,
     wId,
+    syncVersion,
   ]);
 
   useFocusEffect(

@@ -19,6 +19,10 @@ interface StoreContextValue {
   setCurrentStore: (store: Store | null) => void;
   /** Reload the stores list from DB. */
   refreshStores: () => Promise<void>;
+  /** Incremented after a cloud sync to signal screens to reload data. */
+  syncVersion: number;
+  /** Call after a successful cloud sync to trigger all screens to refresh. */
+  bumpSyncVersion: () => void;
 }
 
 const StoreContext = createContext<StoreContextValue>({
@@ -26,6 +30,8 @@ const StoreContext = createContext<StoreContextValue>({
   currentStore: null,
   setCurrentStore: () => {},
   refreshStores: async () => {},
+  syncVersion: 0,
+  bumpSyncVersion: () => {},
 });
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -34,6 +40,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const [stores, setStores] = useState<Store[]>([]);
   const [currentStore, setCurrentStoreState] = useState<Store | null>(null);
+  const [syncVersion, setSyncVersion] = useState(0);
+
+  const bumpSyncVersion = useCallback(() => {
+    setSyncVersion((v) => v + 1);
+  }, []);
 
   const refreshStores = useCallback(async () => {
     const list = await repo.findAll();
@@ -58,8 +69,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ stores, currentStore, setCurrentStore, refreshStores }),
-    [stores, currentStore, setCurrentStore, refreshStores],
+    () => ({
+      stores,
+      currentStore,
+      setCurrentStore,
+      refreshStores,
+      syncVersion,
+      bumpSyncVersion,
+    }),
+    [
+      stores,
+      currentStore,
+      setCurrentStore,
+      refreshStores,
+      syncVersion,
+      bumpSyncVersion,
+    ],
   );
 
   return (

@@ -3,6 +3,7 @@ import { CheckoutSheet } from "@/components/worker/checkout-sheet";
 import { ProductSearchModal } from "@/components/worker/product-search-modal";
 import type { CartItem } from "@/components/worker/types";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
@@ -28,6 +29,7 @@ export function AdminSales() {
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
   const { user } = useAuth();
+  const { syncVersion } = useStore();
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -41,7 +43,7 @@ export function AdminSales() {
   useFocusEffect(
     useCallback(() => {
       productRepo.findAllVisible().then(setVisibleProducts);
-    }, [productRepo]),
+    }, [productRepo, syncVersion]),
   );
 
   // ── Add to cart ────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/ui/empty-state";
 import { ICON_BTN_BG } from "@/constants/colors";
+import { useStore } from "@/contexts/store-context";
 import { ChevronDown, Plus, Receipt, Trash2, X } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useId, useState } from "react";
@@ -297,6 +298,7 @@ function ExpenseForm({
 export function ExpensesSection() {
   const expenseRepo = useExpenseRepository();
   const c = useColors();
+  const { syncVersion } = useStore();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -355,6 +357,7 @@ export function ExpensesSection() {
     nav.selectedWeekStart,
     nav.selectedYear,
     nav.dateRange,
+    syncVersion,
   ]);
 
   useFocusEffect(
