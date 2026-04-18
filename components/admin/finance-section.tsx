@@ -8,34 +8,34 @@ import type { ExpenseCategory } from "@/models/expense";
 import { EXPENSE_CATEGORIES } from "@/models/expense";
 import { exportFinancePDF } from "@/utils/export";
 import {
-  daysInMonth,
-  fmtMoney,
-  fmtMoneyFull,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  shiftMonth,
-  shiftWeek,
-  shortDayLabel,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    fmtMoneyFull,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shiftMonth,
+    shiftWeek,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  Download,
-  ShoppingBag,
-  TrendingDown,
-  TrendingUp,
-  Users,
+    Download,
+    ShoppingBag,
+    TrendingDown,
+    TrendingUp,
+    Users,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Image, ScrollView } from "react-native";
 import {
-  Button,
-  Card,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { AdminPieChart } from "./admin-pie-chart";

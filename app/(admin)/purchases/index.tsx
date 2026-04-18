@@ -547,7 +547,11 @@ export default function PurchasesScreen() {
             <FlatList
               data={purchases}
               keyExtractor={(p) => String(p.id)}
-              contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+              contentContainerStyle={{
+                padding: 16,
+                gap: 8,
+                paddingBottom: 100,
+              }}
               renderItem={({ item }) => (
                 <Card
                   pressStyle={{ opacity: 0.9, scale: 0.98 }}
