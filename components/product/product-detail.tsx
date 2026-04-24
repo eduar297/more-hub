@@ -4,13 +4,13 @@ import { PackagePlus, Pencil, Trash2 } from "@tamagui/lucide-icons";
 import { Image } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import {
-    Button,
-    Card,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 export interface ProductDetailProps {
@@ -112,7 +112,7 @@ export function ProductDetail({
               >
                 <QRCode
                   value={product.code}
-                  size={76}
+                  size={46}
                   backgroundColor="white"
                 />
               </YStack>

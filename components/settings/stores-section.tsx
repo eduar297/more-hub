@@ -6,33 +6,39 @@ import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
 import { useStoreRepository } from "@/hooks/use-store-repository";
 import { useUserRepository } from "@/hooks/use-user-repository";
+import type { Product } from "@/models/product";
 import type { CreateStoreInput, Store as StoreModel } from "@/models/store";
+import { ProductRepository } from "@/repositories/product.repository";
 import { hashPin } from "@/utils/auth";
 import {
-    AlertCircle,
-    Check,
-    Edit3,
-    MapPin,
-    Plus,
-    Store,
-    Trash2,
-    X,
+  AlertCircle,
+  Check,
+  Edit3,
+  MapPin,
+  Plus,
+  Share2,
+  Store,
+  Trash2,
+  X,
 } from "@tamagui/lucide-icons";
+import * as Clipboard from "expo-clipboard";
 import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Text as TText, XStack, YStack } from "tamagui";
@@ -59,6 +65,10 @@ export function StoresSection() {
   const [saving, setSaving] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<StoreModel | null>(null);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoText, setPromoText] = useState("");
+  const [promoStore, setPromoStore] = useState<StoreModel | null>(null);
+  const db = useSQLiteContext();
 
   useFocusEffect(
     useCallback(() => {
@@ -171,6 +181,63 @@ export function StoresSection() {
     },
     [storeToDelete, verifyAdminPin, storeRepo, refreshStores],
   );
+
+  const makePromoText = useCallback(
+    (store: StoreModel, products: Product[]) => {
+      const location = store.address || store.name || "Dirección";
+      let text = `*Tus mejores ofertas ${location}*\n`;
+      text += "Siempre estaremos para atenderlos\n";
+      if (store.phone) {
+        const phones = store.phone
+          .split(",")
+          .map((item) => `#${item.trim()}`)
+          .join(", ");
+        text += `${phones}.\n`;
+      }
+      if (products.length > 0) {
+        text += "\n*Ofertas*\n";
+        products.forEach((product) => {
+          text += `•${product.name} $${product.salePrice}\n`;
+          if (product.priceTiers?.length) {
+            product.priceTiers.forEach((tier) => {
+              if (tier.minQty > 1) {
+                text += `*Más de ${tier.minQty} $${tier.price}*\n`;
+              }
+            });
+          }
+        });
+      }
+      text += "\n*Entre más opciones. No dude en contactarnos*";
+      return text;
+    },
+    [],
+  );
+
+  const handleOpenPromo = useCallback(
+    async (store: StoreModel) => {
+      const productRepo = new ProductRepository(db, store.id);
+      const products = await productRepo.findAllVisible();
+      setPromoStore(store);
+      setPromoText(makePromoText(store, products));
+      setShowPromoModal(true);
+    },
+    [db, makePromoText],
+  );
+
+  const handleCopyPromo = useCallback(async () => {
+    if (!promoText) return;
+    await Clipboard.setStringAsync(promoText);
+    Alert.alert("Copiado", "Texto copiado al portapapeles");
+  }, [promoText]);
+
+  const handleSharePromo = useCallback(async () => {
+    if (!promoText) return;
+    try {
+      await Share.share({ message: promoText });
+    } catch {
+      Alert.alert("Error", "No se pudo compartir");
+    }
+  }, [promoText]);
 
   const handleSwitchStore = useCallback(
     (s: StoreModel) => {
@@ -377,6 +444,19 @@ export function StoresSection() {
                     </View>
                     <View style={styles.rowActions}>
                       <TouchableOpacity
+                        style={[
+                          styles.iconBtn,
+                          { backgroundColor: c.blueLight },
+                        ]}
+                        onPress={() => handleOpenPromo(s)}
+                        activeOpacity={0.7}
+                        hitSlop={4}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Compartir texto de ${s.name}`}
+                      >
+                        <Share2 size={17} color={c.blue as any} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
                         style={[styles.iconBtn, { backgroundColor: c.editBg }]}
                         onPress={() => openEdit(s)}
                         activeOpacity={0.7}
@@ -420,6 +500,63 @@ export function StoresSection() {
           setStoreToDelete(null);
         }}
       />
+
+      <Modal
+        visible={showPromoModal}
+        animationType="slide"
+        presentationStyle="formSheet"
+        onRequestClose={() => setShowPromoModal(false)}
+      >
+        <SafeAreaView
+          edges={["top"]}
+          style={[stStyles.modalRoot, { backgroundColor: c.modalBg }]}
+        >
+          <XStack px="$4" py="$3" items="center" justify="space-between">
+            <XStack items="center" gap="$2">
+              <Share2 size={20} color="$blue10" />
+              <TText fontSize="$4" fontWeight="bold" color="$color">
+                Texto para compartir
+                {promoStore ? ` - ${promoStore.name}` : ""}
+              </TText>
+            </XStack>
+            <TouchableOpacity
+              onPress={() => setShowPromoModal(false)}
+              style={stStyles.closeBtn}
+            >
+              <X size={18} color="$color10" />
+            </TouchableOpacity>
+          </XStack>
+
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <Text style={{ color: c.text, lineHeight: 22 }}>
+              {promoText || "Generando texto..."}
+            </Text>
+          </ScrollView>
+
+          <XStack px="$4" pb="$4" pt="$2" gap="$2">
+            <Button
+              flex={1}
+              theme="gray"
+              size="$4"
+              onPress={() => setShowPromoModal(false)}
+            >
+              Cerrar
+            </Button>
+            <Button
+              flex={1}
+              theme="blue"
+              size="$4"
+              icon={<Share2 />}
+              onPress={handleSharePromo}
+            >
+              Compartir
+            </Button>
+            <Button flex={1} theme="green" size="$4" onPress={handleCopyPromo}>
+              Copiar
+            </Button>
+          </XStack>
+        </SafeAreaView>
+      </Modal>
 
       {/* ── Store form Modal ──────────────────────────────────────────── */}
       <Modal

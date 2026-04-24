@@ -250,7 +250,7 @@ export function ProductCard({
                 >
                   <QRCode
                     value={product.code}
-                    size={76}
+                    size={46}
                     backgroundColor="white"
                   />
                 </YStack>

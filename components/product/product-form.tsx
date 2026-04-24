@@ -174,7 +174,7 @@ export function ProductForm({
                 }}
                 p="$2"
               >
-                <QRCode value={code || " "} size={76} backgroundColor="white" />
+                <QRCode value={code || " "} size={46} backgroundColor="white" />
               </YStack>
             </XStack>
             <Text
