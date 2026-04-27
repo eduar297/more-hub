@@ -1,16 +1,44 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import React from "react";
+
+import { HapticTab } from "@/components/haptic-tab";
+import { useColors } from "@/hooks/use-colors";
+import {
+  BarChart3,
+  PackageSearch,
+  Settings,
+  ShoppingBag,
+} from "@tamagui/lucide-icons";
+import { useTheme } from "tamagui";
 
 export default function AdminLayout() {
+  const c = useColors();
+  const theme = useTheme();
+  const tint = theme.blue10?.val;
+
   return (
-    <Tabs>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        headerStyle: {
+          backgroundColor: c.headerBg,
+        },
+        headerTintColor: c.headerText,
+        headerShadowVisible: false,
+        tabBarActiveTintColor: tint,
+        tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: c.tabBarBg,
+          borderTopColor: c.tabBarBorder,
+        },
+      }}
+    >
       <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
-          headerShown: false,
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="chart-bar" size={24} color={color} />
+            <BarChart3 size={26} color={color as any} />
           ),
         }}
       />
@@ -18,13 +46,8 @@ export default function AdminLayout() {
         name="products"
         options={{
           title: "Inventario",
-          headerShown: false,
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons
-              name="package-variant"
-              size={24}
-              color={color}
-            />
+            <PackageSearch size={26} color={color as any} />
           ),
         }}
       />
@@ -32,19 +55,19 @@ export default function AdminLayout() {
         name="purchases"
         options={{
           title: "Comercio",
-          headerShown: false,
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="shopping" size={24} color={color} />
+            <ShoppingBag size={26} color={color as any} />
           ),
         }}
       />
+      <Tabs.Screen name="expenses" options={{ href: null }} />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Ajustes",
-          headerShown: false,
+          headerRight: () => undefined,
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="cog" size={24} color={color} />
+            <Settings size={26} color={color as any} />
           ),
         }}
       />
