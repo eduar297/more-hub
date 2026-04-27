@@ -5,33 +5,33 @@ import { Building2, Edit3, Plus, Trash2, X } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useId, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    Button,
-    Card,
-    Input,
-    Label,
-    Spinner,
-    Text,
-    TextArea,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Input,
+  Label,
+  Spinner,
+  Text,
+  TextArea,
+  XStack,
+  YStack,
 } from "tamagui";
 
 import { useColors } from "@/hooks/use-colors";
 import { useSupplierRepository } from "@/hooks/use-supplier-repository";
 import type {
-    CreateSupplierInput,
-    Supplier,
-    UpdateSupplierInput,
+  CreateSupplierInput,
+  Supplier,
+  UpdateSupplierInput,
 } from "@/models/supplier";
 
 // ── SupplierForm ─────────────────────────────────────────────────────────────
@@ -365,7 +365,7 @@ export function SuppliersSection() {
         <FlatList
           data={suppliers}
           keyExtractor={(s) => String(s.id)}
-          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 16, gap: 8 }}
           renderItem={({ item }) => (
             <Card
               pressStyle={{ opacity: 0.9, scale: 0.98 }}
@@ -420,7 +420,7 @@ export function SuppliersSection() {
         onRequestClose={() => setShowCreateSheet(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[sStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
@@ -460,7 +460,7 @@ export function SuppliersSection() {
         onRequestClose={() => setShowDetailSheet(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[sStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
@@ -575,7 +575,7 @@ export function SuppliersSection() {
         onRequestClose={() => setShowEditSheet(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[sStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack

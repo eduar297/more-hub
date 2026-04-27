@@ -17,29 +17,29 @@ import type { CreateProductInput, Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { generateEAN13 } from "@/utils/barcode";
 import {
-    Bluetooth,
-    ChevronDown,
-    Package,
-    Pencil,
-    Plus,
-    ScanLine,
-    ShoppingCart,
-    TrendingDown,
-    TrendingUp,
-    X,
+  Bluetooth,
+  ChevronDown,
+  Package,
+  Pencil,
+  Plus,
+  ScanLine,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SectionList,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SectionList,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Spinner, Text, XStack, YStack } from "tamagui";
@@ -558,7 +558,6 @@ export default function ProductsScreen() {
               )}
               SectionSeparatorComponent={null}
               stickySectionHeadersEnabled={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
             />
           )}
         </>

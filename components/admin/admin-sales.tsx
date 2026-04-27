@@ -12,11 +12,11 @@ import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Product } from "@/models/product";
 import type { PaymentMethod } from "@/models/ticket";
 import {
-    AlertCircle,
-    Bluetooth,
-    Receipt,
-    ScanLine,
-    Search,
+  AlertCircle,
+  Bluetooth,
+  Receipt,
+  ScanLine,
+  Search,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -297,7 +297,6 @@ export function AdminSales() {
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 100 }}
             ListFooterComponent={
               stockErrors.length > 0 ? (
                 <YStack px="$3" py="$2" gap="$1">
@@ -333,7 +332,6 @@ export function AdminSales() {
         <YStack
           px="$4"
           py="$3"
-          pb={100}
           gap="$3"
           borderTopWidth={1}
           borderColor="$borderColor"

@@ -5,31 +5,31 @@ import { useColors } from "@/hooks/use-colors";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { fmtMoney } from "@/utils/format";
 import type {
-    PricingReport,
-    ProductAnalysis,
-    ProductClass,
+  PricingReport,
+  ProductAnalysis,
+  ProductClass,
 } from "@/utils/pricing-analysis";
 import { runPricingAnalysis } from "@/utils/pricing-analysis";
 import {
-    ArrowUpDown,
-    Check,
-    CheckCircle,
-    ChevronDown,
-    TrendingUp,
+  ArrowUpDown,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  TrendingUp,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Image, ScrollView as RNScrollView } from "react-native";
 import {
-    Accordion,
-    Button,
-    Card,
-    Input,
-    Label,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Accordion,
+  Button,
+  Card,
+  Input,
+  Label,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 // ── Classification helpers ───────────────────────────────────────────────────
@@ -482,11 +482,7 @@ export function PricingAnalysisSection({
 
       {report && (
         <YStack flex={1}>
-          <RNScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            keyboardShouldPersistTaps="handled"
-          >
+          <RNScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
             {/* Summary KPIs */}
             <XStack px="$4" pt="$2" pb="$3" gap="$2.5">
               <Card
@@ -638,7 +634,6 @@ export function PricingAnalysisSection({
           <YStack
             px="$4"
             py="$3"
-            pb={100}
             borderTopWidth={1}
             borderColor="$borderColor"
             bg="$background"

@@ -4,40 +4,40 @@ import { useColors } from "@/hooks/use-colors";
 import { DEFAULT_WEB_CONFIG, type WebConfig } from "@/models/web-config";
 import { getWebConfig, updateWebConfig } from "@/services/supabase/web-config";
 import {
-    Check,
-    Copy,
-    ExternalLink,
-    Eye,
-    Globe,
-    Moon,
-    Palette,
-    Phone,
-    Save,
-    Share2,
-    Store as StoreIcon,
-    Sun,
+  Check,
+  Copy,
+  ExternalLink,
+  Eye,
+  Globe,
+  Moon,
+  Palette,
+  Phone,
+  Save,
+  Share2,
+  Store as StoreIcon,
+  Sun,
 } from "@tamagui/lucide-icons";
 import * as Clipboard from "expo-clipboard";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    Share,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  Share,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { runOnJS } from "react-native-reanimated";
 import ColorPicker, {
-    HueSlider,
-    Panel1,
-    Preview,
+  HueSlider,
+  Panel1,
+  Preview,
 } from "reanimated-color-picker";
 import { settingStyles as styles } from "./shared";
 
@@ -772,7 +772,6 @@ export function WebSection({ visible }: { visible?: boolean }) {
         style={{
           paddingHorizontal: 16,
           paddingVertical: 12,
-          paddingBottom: 100,
           borderTopWidth: 1,
           borderTopColor: c.border,
           backgroundColor: c.bg,

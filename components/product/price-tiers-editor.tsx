@@ -73,8 +73,30 @@ export function PriceTiersEditor({
   onChange,
   error,
 }: PriceTiersEditorProps) {
+  const getNextMinQty = (currentRows = rows): string => {
+    if (currentRows.length === 0) return "1";
+
+    // Find the highest maxQty or minQty + 1 if no maxQty
+    let maxEnd = 0;
+    for (const row of currentRows) {
+      const minQty = Number(row.minQty) || 0;
+      const maxQty = row.maxQty.trim() === "" ? null : Number(row.maxQty);
+
+      if (maxQty === null) {
+        // Open-ended range, add 1 to minQty
+        maxEnd = Math.max(maxEnd, minQty + 1);
+      } else {
+        // Closed range, next starts at maxQty + 1
+        maxEnd = Math.max(maxEnd, maxQty + 1);
+      }
+    }
+
+    return String(maxEnd);
+  };
+
   const handleAddRow = () => {
-    onChange([...rows, { minQty: "1", maxQty: "", price: "0.00" }]);
+    const nextMinQty = getNextMinQty();
+    onChange([...rows, { minQty: nextMinQty, maxQty: "", price: "0.00" }]);
   };
 
   const handleUpdateRow = (
@@ -84,6 +106,23 @@ export function PriceTiersEditor({
   ) => {
     const next = [...rows];
     next[index] = { ...next[index], [field]: value };
+
+    // Auto-add new row when maxQty is set on the last row
+    if (
+      field === "maxQty" &&
+      value.trim() !== "" &&
+      !Number.isNaN(Number(value))
+    ) {
+      const isLastRow = index === rows.length - 1;
+      const hasValidMaxQty =
+        value.trim() !== "" && !Number.isNaN(Number(value));
+
+      if (isLastRow && hasValidMaxQty) {
+        const nextMinQty = getNextMinQty(next);
+        next.push({ minQty: nextMinQty, maxQty: "", price: "0.00" });
+      }
+    }
+
     onChange(next);
   };
 

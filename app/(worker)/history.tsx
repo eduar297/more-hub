@@ -409,7 +409,7 @@ export default function HistoryScreen() {
         onRequestClose={() => setShowDetail(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[hStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack

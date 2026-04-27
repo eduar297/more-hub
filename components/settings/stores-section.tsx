@@ -508,7 +508,7 @@ export function StoresSection() {
         onRequestClose={() => setShowPromoModal(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[stStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack px="$4" py="$3" items="center" justify="space-between">
@@ -566,7 +566,7 @@ export function StoresSection() {
         onRequestClose={() => setSheetOpen(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[stStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack px="$4" py="$3" items="center" justify="space-between">

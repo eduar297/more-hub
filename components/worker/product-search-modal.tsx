@@ -2,6 +2,7 @@ import type { Product } from "@/models/product";
 import { Check, Package, Search, ShoppingCart, X } from "@tamagui/lucide-icons";
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Input, Text, XStack, YStack } from "tamagui";
 
 // ── Memoized product row ─────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ export function ProductSearchModal({
   onToggleCartItem,
 }: ProductSearchModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const insets = useSafeAreaInsets();
 
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return products;
@@ -285,7 +287,7 @@ export function ProductSearchModal({
       {visible && (
         <YStack
           px="$4"
-          pb="$5"
+          pb={Math.max(20, insets.bottom + 5)}
           pt="$2"
           bg="$background"
           theme={themeName as any}

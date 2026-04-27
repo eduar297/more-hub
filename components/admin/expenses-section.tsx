@@ -5,25 +5,25 @@ import { ChevronDown, Plus, Receipt, Trash2, X } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useId, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    Button,
-    Card,
-    Input,
-    Label,
-    Spinner,
-    Text,
-    TextArea,
-    XStack,
-    YStack,
+  Button,
+  Card,
+  Input,
+  Label,
+  Spinner,
+  Text,
+  TextArea,
+  XStack,
+  YStack,
 } from "tamagui";
 
 import { PeriodSelector } from "@/components/admin/period-selector";
@@ -104,7 +104,7 @@ function CategoryPicker({
         onRequestClose={() => setOpen(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[eStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
@@ -446,7 +446,7 @@ export function ExpensesSection() {
         <FlatList
           data={expenses}
           keyExtractor={(e) => String(e.id)}
-          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 16, gap: 8 }}
           renderItem={({ item }) => (
             <TouchableOpacity
               activeOpacity={0.7}
@@ -522,7 +522,7 @@ export function ExpensesSection() {
         onRequestClose={() => setSelectedExpense(null)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[eStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
@@ -650,7 +650,7 @@ export function ExpensesSection() {
         onRequestClose={() => setShowCreateSheet(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[eStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack

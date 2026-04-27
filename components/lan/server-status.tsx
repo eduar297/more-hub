@@ -3,24 +3,27 @@ import { useLan } from "@/contexts/lan-context";
 import { useColors } from "@/hooks/use-colors";
 import { LAN_PORT } from "@/services/lan/protocol";
 import {
-    Copy,
-    Monitor,
-    MonitorOff,
-    Wifi,
-    WifiOff,
-    X,
+  Copy,
+  Monitor,
+  MonitorOff,
+  Wifi,
+  WifiOff,
+  X,
 } from "@tamagui/lucide-icons";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Button, Text, XStack, YStack } from "tamagui";
 
 export function ServerStatusBadge() {
@@ -78,6 +81,7 @@ function ServerSheet({
     connectedDisplays,
   } = useLan();
   const c = useColors();
+  const insets = useSafeAreaInsets();
 
   const handleToggle = async () => {
     if (serverRunning) {
@@ -115,7 +119,7 @@ function ServerSheet({
       onRequestClose={() => onOpenChange(false)}
     >
       <SafeAreaView
-        edges={["top"]}
+        edges={["top", "bottom"]}
         style={[ssStyles.modalRoot, { backgroundColor: c.modalBg }]}
       >
         {/* Header */}
@@ -142,7 +146,11 @@ function ServerSheet({
         </XStack>
 
         <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 16 }}
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: Math.max(20, insets.bottom + 20),
+            gap: 16,
+          }}
         >
           {/* Status */}
           <XStack
@@ -188,7 +196,7 @@ function ServerSheet({
               </YStack>
 
               <Text fontSize="$2" color="$color10" text="center">
-                Escanea el QR desde la pantalla display
+                Escanea el QR desde
               </Text>
 
               {/* Manual code fallback */}

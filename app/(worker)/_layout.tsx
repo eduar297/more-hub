@@ -19,8 +19,8 @@ import {
 import {
   Download,
   LayoutList,
-  Monitor,
   ScanLine,
+  Server,
   User,
   Wifi,
 } from "@tamagui/lucide-icons";
@@ -49,7 +49,8 @@ function formatBytes(bytes: number) {
 
 function WaitingForAdmin({ onReset }: { onReset: () => void }) {
   const c = useColors();
-  const { connectionStatus, syncStatus, syncProgress, workerName } = useLan();
+  const { connectionStatus, syncStatus, syncProgress, workerName, serverIp } =
+    useLan();
 
   const progressFraction =
     syncProgress && syncProgress.totalBytes > 0
@@ -93,7 +94,8 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
     return {
       title: "Esperando datos",
       subtitle:
-        "El administrador debe sincronizar este Worker desde su app antes de poder iniciar sesión.",
+        "El administrador debe sincronizar este Worker desde su app antes de poder iniciar sesión." +
+        (serverIp ? `\n\nIP: ${serverIp}` : ""),
       color: "#22c55e",
       showProgress: false,
     };
@@ -495,10 +497,10 @@ function WorkerLayoutInner() {
         }}
       />
       <Tabs.Screen
-        name="display"
+        name="server"
         options={{
-          title: "Display",
-          tabBarIcon: ({ color }) => <Monitor size={26} color={color as any} />,
+          title: "Servidor",
+          tabBarIcon: ({ color }) => <Server size={26} color={color as any} />,
         }}
       />
       <Tabs.Screen

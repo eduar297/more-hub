@@ -5,7 +5,10 @@ import type { PaymentMethod } from "@/models/ticket";
 import { Banknote, CreditCard, ShoppingCart, X } from "@tamagui/lucide-icons";
 import { memo } from "react";
 import { Modal, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Button, Card, Spinner, Text, XStack, YStack } from "tamagui";
 
 interface CheckoutSheetProps {
@@ -30,6 +33,7 @@ export const CheckoutSheet = memo(function CheckoutSheet({
   onConfirm,
 }: CheckoutSheetProps) {
   const c = useColors();
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={open}
@@ -38,7 +42,7 @@ export const CheckoutSheet = memo(function CheckoutSheet({
       onRequestClose={() => onOpenChange(false)}
     >
       <SafeAreaView
-        edges={["top"]}
+        edges={["top", "bottom"]}
         style={[csStyles.modalRoot, { backgroundColor: c.modalBg }]}
       >
         {/* Header */}
@@ -65,7 +69,11 @@ export const CheckoutSheet = memo(function CheckoutSheet({
         </XStack>
 
         <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 16 }}
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: Math.max(20, insets.bottom + 20),
+            gap: 16,
+          }}
         >
           {/* Order summary */}
           <Card

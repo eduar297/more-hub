@@ -1,42 +1,42 @@
 import { SearchInput } from "@/components/ui/search-input";
 import {
-    AFFINITY_COLORS,
-    DISCOUNT_COLORS,
-    STAGNANT_COLORS,
+  AFFINITY_COLORS,
+  DISCOUNT_COLORS,
+  STAGNANT_COLORS,
 } from "@/constants/colors";
 import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { fmtMoney } from "@/utils/format";
 import type {
-    ComboAffinity,
-    ComboSuggestion,
-    DiscountOpportunity,
-    SalesReport,
-    StagnantProduct,
-    StagnantStatus,
+  ComboAffinity,
+  ComboSuggestion,
+  DiscountOpportunity,
+  SalesReport,
+  StagnantProduct,
+  StagnantStatus,
 } from "@/utils/sales-analysis";
 import { comboAffinity, runSalesAnalysis } from "@/utils/sales-analysis";
 import {
-    ArrowUpDown,
-    Check,
-    CheckCircle,
-    ChevronDown,
-    Package,
-    TrendingDown,
+  ArrowUpDown,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  Package,
+  TrendingDown,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Image, ScrollView } from "react-native";
 import {
-    Accordion,
-    Button,
-    Card,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Accordion,
+  Button,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 // ── Badge helpers ────────────────────────────────────────────────────────────
@@ -669,11 +669,7 @@ function StagnantSection({
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
       {/* Filter pills */}
       <ScrollView
         horizontal
@@ -844,11 +840,7 @@ function DiscountSection({
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
       {/* Filter pills */}
       <ScrollView
         horizontal
@@ -1003,11 +995,7 @@ function ComboSection({ items }: { items: ComboSuggestion[] }) {
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
       {/* Search */}
       <YStack px="$4" pb="$2">
         <SearchInput
@@ -1296,7 +1284,6 @@ export function SalesAnalysisSection({
             <YStack
               px="$4"
               py="$3"
-              pb={100}
               borderTopWidth={1}
               borderColor="$borderColor"
               bg="$background"
@@ -1321,7 +1308,6 @@ export function SalesAnalysisSection({
             <YStack
               px="$4"
               py="$3"
-              pb={100}
               borderTopWidth={1}
               borderColor="$borderColor"
               bg="$background"

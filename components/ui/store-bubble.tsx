@@ -182,7 +182,7 @@ export function StoreBubble() {
         onRequestClose={() => setIsMenuOpen(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[styles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           {/* Header */}

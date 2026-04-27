@@ -105,7 +105,7 @@ export function HeaderActions() {
         onRequestClose={closeSync}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[styles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack
@@ -142,7 +142,7 @@ export function HeaderActions() {
         onRequestClose={closeHistory}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[styles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack

@@ -1,18 +1,18 @@
 import { useLan } from "@/contexts/lan-context";
 import { LAN_PORT } from "@/services/lan/protocol";
 import {
-    Copy,
-    Monitor,
-    MonitorOff,
-    Wifi,
-    WifiOff,
+  Copy,
+  Monitor,
+  MonitorOff,
+  Wifi,
+  WifiOff,
 } from "@tamagui/lucide-icons";
 import * as Clipboard from "expo-clipboard";
 import { Alert, ScrollView } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Button, Text, XStack, YStack } from "tamagui";
 
-export default function DisplayScreen() {
+export default function ServerScreen() {
   const {
     serverRunning,
     startServer,
@@ -112,7 +112,7 @@ export default function DisplayScreen() {
               color="$color10"
               style={{ textAlign: "center" }}
             >
-              Escanea el QR desde la pantalla display
+              Escanea el QR
             </Text>
 
             {/* Manual code fallback */}

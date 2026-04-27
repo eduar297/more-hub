@@ -311,12 +311,13 @@ export default function WorkerScreen() {
 
         {/* Action buttons */}
         <XStack gap="$3">
-          <Button flex={1} size="$5" icon={ScanLine} onPress={scan}>
+          <Button flex={1} size="$6" height="$7" icon={ScanLine} onPress={scan}>
             Escanear
           </Button>
           <Button
             flex={1}
-            size="$5"
+            size="$6"
+            height="$7"
             theme="blue"
             icon={Search}
             onPress={() => setShowSearchSheet(true)}
@@ -441,7 +442,7 @@ export default function WorkerScreen() {
       <Modal
         visible={showSearchSheet}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="formSheet"
         onRequestClose={() => setShowSearchSheet(false)}
       >
         <YStack flex={1} bg="$background" theme={themeName as any}>

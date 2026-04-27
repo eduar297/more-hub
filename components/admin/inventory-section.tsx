@@ -11,33 +11,33 @@ import type { Product } from "@/models/product";
 import type { Unit, UnitCategory } from "@/models/unit";
 import { fmtMoney, fmtMoneyFull } from "@/utils/format";
 import {
-    runPurchaseSuggestions,
-    type PurchaseSuggestion,
+  runPurchaseSuggestions,
+  type PurchaseSuggestion,
 } from "@/utils/purchase-suggestions";
 import {
-    AlertTriangle,
-    DollarSign,
-    Package,
-    PackageX,
-    Percent,
-    RefreshCw,
-    Ruler,
-    Tag,
-    TrendingDown,
-    TrendingUp,
-    X,
+  AlertTriangle,
+  DollarSign,
+  Package,
+  PackageX,
+  Percent,
+  RefreshCw,
+  Ruler,
+  Tag,
+  TrendingDown,
+  TrendingUp,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, Separator, Spinner, Text, XStack, YStack } from "tamagui";
@@ -745,7 +745,6 @@ export function InventorySection() {
             <Text color="$color10">Sin productos</Text>
           </YStack>
         }
-        contentContainerStyle={{ paddingBottom: 100 }}
         style={{ flex: 1 }}
       />
 
@@ -760,7 +759,7 @@ export function InventorySection() {
         }}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[invStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack

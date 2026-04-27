@@ -4,32 +4,32 @@ import { useStore } from "@/contexts/store-context";
 import { useColors } from "@/hooks/use-colors";
 import { fmtMoney } from "@/utils/format";
 import type {
-    PurchaseReport,
-    PurchaseSuggestion,
-    SalesTrend,
-    Urgency,
+  PurchaseReport,
+  PurchaseSuggestion,
+  SalesTrend,
+  Urgency,
 } from "@/utils/purchase-suggestions";
 import { runPurchaseSuggestions } from "@/utils/purchase-suggestions";
 import {
-    ArrowUpDown,
-    ChevronDown,
-    Package,
-    ShoppingCart,
+  ArrowUpDown,
+  ChevronDown,
+  Package,
+  ShoppingCart,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import { Image, ScrollView } from "react-native";
 import {
-    Accordion,
-    Button,
-    Card,
-    Input,
-    Label,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
+  Accordion,
+  Button,
+  Card,
+  Input,
+  Label,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
 } from "tamagui";
 
 // ── Urgency helpers ──────────────────────────────────────────────────────────
@@ -479,11 +479,7 @@ export function PurchaseSuggestionsSection() {
 
       {/* Results */}
       {report && (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
           {/* KPIs */}
           <YStack px="$4" pt="$2" pb="$3" gap="$2.5">
             <XStack gap="$2.5">

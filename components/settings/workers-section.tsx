@@ -6,25 +6,25 @@ import { useUserRepository } from "@/hooks/use-user-repository";
 import type { User } from "@/models/user";
 import { hashPin } from "@/utils/auth";
 import {
-    AlertCircle,
-    Edit3,
-    Plus,
-    Trash2,
-    Users,
-    X,
+  AlertCircle,
+  Edit3,
+  Plus,
+  Trash2,
+  Users,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView as RNScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView as RNScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Text as TText, XStack, YStack } from "tamagui";
@@ -284,7 +284,7 @@ export function WorkersSection() {
         onRequestClose={() => setSheetOpen(false)}
       >
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "bottom"]}
           style={[wStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
           <XStack

@@ -51,11 +51,10 @@ export function ProductForm({
     isEdit ? String(product.costPrice) : "",
   );
   const [salePrice, setSalePrice] = useState(
-    isEdit ? String(product.salePrice) : "",
+    isEdit ? String(product.salePrice) : "0.00",
   );
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [stock, setStock] = useState(
-    isEdit ? String(product.stockBaseQty) : "0",
+    isEdit ? String(product.stockBaseQty) : "",
   );
   const [unitId, setUnitId] = useState(
     isEdit ? String(product.baseUnitId) : "",
@@ -96,6 +95,7 @@ export function ProductForm({
 
   const parsedCost = parseFloat(costPrice);
   const parsedSale = parseFloat(salePrice);
+  const parsedStock = parseFloat(stock);
   const tierError = validatePriceTierRows(tierRows);
   const normalizedTiers = normalizePriceTierRows(tierRows);
 
@@ -103,7 +103,10 @@ export function ProductForm({
     name.trim().length > 0 &&
     !isNaN(parsedCost) &&
     parsedCost > 0 &&
-    (!isEdit || (!isNaN(parsedSale) && parsedSale > 0)) &&
+    !isNaN(parsedSale) &&
+    parsedSale > 0 &&
+    !isNaN(parsedStock) &&
+    parsedStock >= 0 &&
     unitId.length > 0 &&
     !tierError;
 
@@ -114,9 +117,9 @@ export function ProductForm({
       code,
       pricePerBaseUnit: parsedCost,
       costPrice: parsedCost,
-      salePrice: isEdit ? parsedSale : parsedCost, // create: salePrice = costPrice initially
+      salePrice: parsedSale,
       visible,
-      stockBaseQty: isEdit ? product.stockBaseQty : 0, // always 0 on create
+      stockBaseQty: parsedStock,
       saleMode,
       baseUnitId: parseInt(unitId, 10),
       photoUri,
@@ -226,7 +229,7 @@ export function ProductForm({
             />
           </YStack>
 
-          {/* Cost price (always shown) + Sale price (edit only) */}
+          {/* Cost price + Sale price */}
           <XStack gap="$3">
             <YStack flex={1} gap="$1">
               <Label htmlFor={`${uid}-cost`} color="$color10" fontSize="$3">
@@ -243,23 +246,37 @@ export function ProductForm({
               />
             </YStack>
 
-            {isEdit && (
-              <YStack flex={1} gap="$1">
-                <Label htmlFor={`${uid}-sale`} color="$color10" fontSize="$3">
-                  Precio venta
-                </Label>
-                <Input
-                  id={`${uid}-sale`}
-                  placeholder="0.00"
-                  value={salePrice}
-                  onChangeText={setSalePrice}
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                  size="$4"
-                />
-              </YStack>
-            )}
+            <YStack flex={1} gap="$1">
+              <Label htmlFor={`${uid}-sale`} color="$color10" fontSize="$3">
+                Precio venta
+              </Label>
+              <Input
+                id={`${uid}-sale`}
+                placeholder="0.00"
+                value={salePrice}
+                onChangeText={setSalePrice}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                size="$4"
+              />
+            </YStack>
           </XStack>
+
+          {/* Stock */}
+          <YStack gap="$1">
+            <Label htmlFor={`${uid}-stock`} color="$color10" fontSize="$3">
+              {isEdit ? "Stock actual" : "Stock inicial"}
+            </Label>
+            <Input
+              id={`${uid}-stock`}
+              placeholder="0"
+              value={stock}
+              onChangeText={setStock}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              size="$4"
+            />
+          </YStack>
 
           {/* Unit */}
           <YStack gap="$1">

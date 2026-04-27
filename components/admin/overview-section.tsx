@@ -9,43 +9,43 @@ import { useProductRepository } from "@/hooks/use-product-repository";
 import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtMoneyFull,
-    MONTH_NAMES_SHORT,
-    shiftDay,
-    shiftMonth,
-    shiftWeek,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtMoneyFull,
+  MONTH_NAMES_SHORT,
+  shiftDay,
+  shiftMonth,
+  shiftWeek,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    runPurchaseSuggestions,
-    type PurchaseReport,
+  runPurchaseSuggestions,
+  type PurchaseReport,
 } from "@/utils/purchase-suggestions";
 import { runSalesAnalysis, type SalesReport } from "@/utils/sales-analysis";
 import {
-    AlertTriangle,
-    Award,
-    BarChart3,
-    ChevronRight,
-    DollarSign,
-    PackageX,
-    ShoppingCart,
-    TrendingDown,
-    TrendingUp,
-    X,
-    Zap,
+  AlertTriangle,
+  Award,
+  BarChart3,
+  ChevronRight,
+  DollarSign,
+  PackageX,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  X,
+  Zap,
 } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
 import {
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    TouchableOpacity,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, Spinner, Text, XStack, YStack } from "tamagui";
@@ -460,7 +460,7 @@ export function OverviewSection() {
         </YStack>
       </Card>
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <YStack p="$4" gap="$4">
           {/* KPI Row 1 */}
           <XStack gap="$3">
@@ -1060,7 +1060,7 @@ function BizAlertModal({
       onRequestClose={onClose}
     >
       <SafeAreaView
-        edges={["top"]}
+        edges={["top", "bottom"]}
         style={{ flex: 1, backgroundColor: colors.modalBg }}
       >
         {/* Header */}

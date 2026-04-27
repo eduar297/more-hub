@@ -85,13 +85,15 @@ export function ProductCard({
   const [name, setName] = useState(product.name);
   const [costPrice, setCostPrice] = useState(String(product.costPrice));
   const [salePrice, setSalePrice] = useState(String(product.salePrice));
+  const [stock, setStock] = useState(String(product.stockBaseQty));
   const [unitId, setUnitId] = useState(String(product.baseUnitId));
   const [saleMode, setSaleMode] = useState<SaleMode>(product.saleMode);
   const [photoUri, setPhotoUri] = useState<string | null>(
     product.photoUri ?? null,
   );
   const [visible, setVisible] = useState(product.visible);
-  const [stockQty, setStockQty] = useState("");
+  const [addStockQty, setAddStockQty] = useState("");
+  const [removeStockQty, setRemoveStockQty] = useState("");
   const [details, setDetails] = useState(product.details ?? "");
   const [tierRows, setTierRows] = useState<PriceTierEditorRow[]>(
     product.priceTiers?.length
@@ -109,11 +111,13 @@ export function ProductCard({
     setName(product.name);
     setCostPrice(String(product.costPrice));
     setSalePrice(String(product.salePrice));
+    setStock(String(product.stockBaseQty));
     setUnitId(String(product.baseUnitId));
     setSaleMode(product.saleMode);
     setPhotoUri(product.photoUri ?? null);
     setVisible(product.visible);
-    setStockQty("");
+    setAddStockQty("");
+    setRemoveStockQty("");
     setDetails(product.details ?? "");
     setTierRows(
       product.priceTiers?.length
@@ -129,6 +133,7 @@ export function ProductCard({
 
   const parsedCost = parseFloat(costPrice);
   const parsedSale = parseFloat(salePrice);
+  const parsedStock = parseFloat(stock);
   const tierError = validatePriceTierRows(tierRows);
   const normalizedTierRows = normalizePriceTierRows(tierRows);
 
@@ -138,11 +143,16 @@ export function ProductCard({
     parsedCost > 0 &&
     !isNaN(parsedSale) &&
     parsedSale > 0 &&
+    !isNaN(parsedStock) &&
+    parsedStock >= 0 &&
     unitId.length > 0 &&
     !tierError;
 
-  const parsedStockQty = parseFloat(stockQty);
-  const canAddStock = !isNaN(parsedStockQty) && parsedStockQty > 0;
+  const parsedAddStockQty = parseFloat(addStockQty);
+  const parsedRemoveStockQty = parseFloat(removeStockQty);
+  const canAddStock = !isNaN(parsedAddStockQty) && parsedAddStockQty > 0;
+  const canRemoveStock =
+    !isNaN(parsedRemoveStockQty) && parsedRemoveStockQty > 0;
 
   const hasTierChanges =
     normalizedTierRows.length !== (product.priceTiers?.length ?? 0) ||
@@ -160,6 +170,7 @@ export function ProductCard({
     name !== product.name ||
     costPrice !== String(product.costPrice) ||
     salePrice !== String(product.salePrice) ||
+    stock !== String(product.stockBaseQty) ||
     unitId !== String(product.baseUnitId) ||
     saleMode !== product.saleMode ||
     photoUri !== (product.photoUri ?? null) ||
@@ -176,7 +187,7 @@ export function ProductCard({
       costPrice: parsedCost,
       salePrice: parsedSale,
       visible,
-      stockBaseQty: product.stockBaseQty,
+      stockBaseQty: parsedStock,
       saleMode,
       baseUnitId: parseInt(unitId, 10),
       photoUri,
@@ -500,6 +511,22 @@ export function ProductCard({
             </YStack>
           </XStack>
 
+          {/* Stock */}
+          <YStack gap="$1">
+            <Label htmlFor={`${uid}-stock`} color="$color10" fontSize="$3">
+              Stock actual
+            </Label>
+            <Input
+              id={`${uid}-stock`}
+              placeholder="0"
+              value={stock}
+              onChangeText={setStock}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              size="$4"
+            />
+          </YStack>
+
           {/* Unit */}
           <YStack gap="$1">
             <Label color="$color10" fontSize="$3">
@@ -565,40 +592,89 @@ export function ProductCard({
             />
           </XStack>
 
-          {/* ── Add stock (inline) ── */}
+          {/* ── Stock adjustments ── */}
           <Separator my="$1" />
-          <YStack gap="$2">
-            <XStack items="center" gap="$2">
-              <PackagePlus size={16} color="$green10" />
-              <Text fontSize="$4" fontWeight="600" color="$color">
-                Añadir stock
-              </Text>
-              <Text fontSize="$2" color="$color10" ml="auto">
-                Actual: {product.stockBaseQty} {unitSymbol ?? "uds"}
-              </Text>
-            </XStack>
-            <XStack gap="$2" items="center">
-              <Input
-                flex={1}
-                placeholder="Cantidad"
-                value={stockQty}
-                onChangeText={setStockQty}
-                keyboardType="numeric"
-                returnKeyType="done"
-                size="$4"
-              />
-              <Button
-                theme="green"
-                size="$4"
-                icon={
-                  addingStock ? <Spinner size="small" /> : <Package size={16} />
-                }
-                disabled={addingStock || !canAddStock}
-                onPress={() => canAddStock && onAddStock(parsedStockQty)}
-              >
-                {addingStock ? "..." : "Añadir"}
-              </Button>
-            </XStack>
+          <YStack gap="$3">
+            <Text fontSize="$4" fontWeight="600" color="$color">
+              Ajustes de stock
+            </Text>
+            <Text fontSize="$2" color="$color10" ml="auto">
+              Actual: {product.stockBaseQty} {unitSymbol ?? "uds"}
+            </Text>
+
+            {/* Add stock */}
+            <YStack gap="$2">
+              <XStack items="center" gap="$2">
+                <PackagePlus size={16} color="$green10" />
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  Añadir stock
+                </Text>
+              </XStack>
+              <XStack gap="$2" items="center">
+                <Input
+                  flex={1}
+                  placeholder="Cantidad a añadir"
+                  value={addStockQty}
+                  onChangeText={setAddStockQty}
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                  size="$4"
+                />
+                <Button
+                  theme="green"
+                  size="$4"
+                  icon={
+                    addingStock ? (
+                      <Spinner size="small" />
+                    ) : (
+                      <Package size={16} />
+                    )
+                  }
+                  disabled={addingStock || !canAddStock}
+                  onPress={() => canAddStock && onAddStock(parsedAddStockQty)}
+                >
+                  {addingStock ? "..." : "Añadir"}
+                </Button>
+              </XStack>
+            </YStack>
+
+            {/* Remove stock */}
+            <YStack gap="$2">
+              <XStack items="center" gap="$2">
+                <Package size={16} color="$red10" />
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  Eliminar stock
+                </Text>
+              </XStack>
+              <XStack gap="$2" items="center">
+                <Input
+                  flex={1}
+                  placeholder="Cantidad a eliminar"
+                  value={removeStockQty}
+                  onChangeText={setRemoveStockQty}
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                  size="$4"
+                />
+                <Button
+                  theme="red"
+                  size="$4"
+                  icon={
+                    addingStock ? (
+                      <Spinner size="small" />
+                    ) : (
+                      <Package size={16} />
+                    )
+                  }
+                  disabled={addingStock || !canRemoveStock}
+                  onPress={() =>
+                    canRemoveStock && onAddStock(-parsedRemoveStockQty)
+                  }
+                >
+                  {addingStock ? "..." : "Eliminar"}
+                </Button>
+              </XStack>
+            </YStack>
           </YStack>
         </YStack>
       </ScrollView>
