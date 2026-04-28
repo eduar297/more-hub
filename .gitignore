@@ -41,3 +41,46 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Build files and artifacts
+**/build/
+**/dist/
+**/*.apk
+**/*.aab
+**/*.ipa
+**/*.app
+**/*.dSYM.zip
+**/*.dSYM
+
+# Android build files
+android/app/build/
+android/app/release/
+android/app/debug/
+android/build/
+android/.gradle/
+android/gradle/
+android/local.properties
+**/android/**/build/
+
+# iOS build files
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Pods/
+
+# EAS Build
+.eas/
+eas-build-*.tar.gz
+
+# Gradle files
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Build outputs
+*.log
+*.tmp
+*.temp
