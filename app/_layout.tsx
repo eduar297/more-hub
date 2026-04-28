@@ -14,7 +14,7 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect } from "react";
@@ -133,7 +133,6 @@ function DisplayProviders({ children }: { children: React.ReactNode }) {
 function RoleShell() {
   const { deviceRole, isLoading, isResetting, completeReset } = useDevice();
   const router = useRouter();
-  const segments = useSegments();
 
   // When isResetting becomes true, navigate to "/" then finalize the reset.
   // During this window deviceRole still holds the OLD value, so providers
@@ -145,12 +144,6 @@ function RoleShell() {
       return () => clearTimeout(timer);
     }
   }, [isResetting, router, completeReset]);
-
-  useEffect(() => {
-    if (isResetting && segments.length === 0) {
-      completeReset();
-    }
-  }, [isResetting, segments, completeReset]);
 
   if (isLoading) {
     return (
