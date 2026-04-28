@@ -3,24 +3,25 @@ import { useColors } from "@/hooks/use-colors";
 import { validateActivationCode } from "@/services/supabase/activation";
 import { getDeviceInfo } from "@/utils/device";
 import {
-    AlertCircle,
-    CheckCircle2,
-    Key,
-    Wifi,
-    WifiOff,
+  AlertCircle,
+  CheckCircle2,
+  Key,
+  Wifi,
+  WifiOff,
 } from "@tamagui/lucide-icons";
 import React, { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    TextInput,
-    Vibration,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Keyboard,
+  Modal,
+  StyleSheet,
+  TextInput,
+  TouchableWithoutFeedback,
+  Vibration,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Text, View, XStack, YStack } from "tamagui";
 
 const SCREEN_W = Dimensions.get("window").width;
@@ -140,63 +141,35 @@ export function ActivationGate({
       transparent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
-      >
-        <View
-          flex={1}
-          items="center"
-          justify="center"
-          bg={`${bgColor}ee` as any}
-        >
-          <Animated.View
-            style={[
-              styles.card,
-              {
-                backgroundColor: cardBg,
-                borderColor,
-                transform: [{ translateX: shakeAnim }],
-              },
-            ]}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView behavior="padding" style={styles.container}>
+          <View
+            flex={1}
+            items="center"
+            justify="center"
+            bg={`${bgColor}ee` as any}
           >
-            {success ? (
-              <YStack items="center" gap="$4" py="$6">
-                <View
-                  width={72}
-                  height={72}
-                  rounded="$10"
-                  items="center"
-                  justify="center"
-                  bg={c.successBg as any}
-                >
-                  <CheckCircle2 size={36} color={c.green as any} />
-                </View>
-                <Text
-                  fontSize={20}
-                  fontWeight="700"
-                  text="center"
-                  color="$color"
-                >
-                  ¡Activación exitosa!
-                </Text>
-                <Text fontSize={14} color="$color8" text="center">
-                  Configurando tu panel de administración...
-                </Text>
-              </YStack>
-            ) : (
-              <YStack gap="$4" py="$2">
-                {/* Header */}
-                <YStack items="center" gap="$3">
+            <Animated.View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: cardBg,
+                  borderColor,
+                  transform: [{ translateX: shakeAnim }],
+                },
+              ]}
+            >
+              {success ? (
+                <YStack items="center" gap="$4" py="$6">
                   <View
-                    width={64}
-                    height={64}
+                    width={72}
+                    height={72}
                     rounded="$10"
                     items="center"
                     justify="center"
-                    bg={c.blueLight as any}
+                    bg={c.successBg as any}
                   >
-                    <Key size={32} color={c.blue as any} />
+                    <CheckCircle2 size={36} color={c.green as any} />
                   </View>
                   <Text
                     fontSize={20}
@@ -204,125 +177,152 @@ export function ActivationGate({
                     text="center"
                     color="$color"
                   >
-                    Activar Administrador
+                    ¡Activación exitosa!
                   </Text>
-                  <Text
-                    fontSize={13}
-                    color="$color8"
-                    text="center"
-                    px="$2"
-                    style={{ lineHeight: 18 }}
-                  >
-                    Ingresa el código de activación de 8 caracteres que
-                    recibiste. Se requiere conexión a internet.
+                  <Text fontSize={14} color="$color8" text="center">
+                    Configurando tu panel de administración...
                   </Text>
                 </YStack>
-
-                {/* Code input */}
-                <YStack gap="$2">
-                  <TextInput
-                    ref={inputRef}
-                    value={code}
-                    onChangeText={handleCodeChange}
-                    placeholder="Ej: K7M3X9PH"
-                    placeholderTextColor={c.muted}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    returnKeyType="done"
-                    maxLength={CODE_LENGTH}
-                    editable={!loading}
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: inputBg,
-                        borderColor: error ? c.danger : borderColor,
-                        color: c.text,
-                      },
-                    ]}
-                  />
-                  {code.length > 0 && code.length < CODE_LENGTH && (
-                    <Text fontSize={11} color="$color8" text="right" pr="$1">
-                      {code.length}/{CODE_LENGTH}
-                    </Text>
-                  )}
-                </YStack>
-
-                {/* Error */}
-                {error !== "" && (
-                  <XStack
-                    items="center"
-                    gap="$2"
-                    bg={c.dangerBg as any}
-                    p="$2.5"
-                    rounded="$3"
-                  >
-                    {error.includes("conexión") ? (
-                      <WifiOff size={16} color={c.danger as any} />
-                    ) : (
-                      <AlertCircle size={16} color={c.danger as any} />
-                    )}
-                    <Text
-                      fontSize={12}
-                      color={c.danger as any}
-                      grow={1}
-                      style={{ lineHeight: 16 }}
+              ) : (
+                <YStack gap="$4" py="$2">
+                  {/* Header */}
+                  <YStack items="center" gap="$3">
+                    <View
+                      width={64}
+                      height={64}
+                      rounded="$10"
+                      items="center"
+                      justify="center"
+                      bg={c.blueLight as any}
                     >
-                      {error}
+                      <Key size={32} color={c.blue as any} />
+                    </View>
+                    <Text
+                      fontSize={20}
+                      fontWeight="700"
+                      text="center"
+                      color="$color"
+                    >
+                      Activar Administrador
+                    </Text>
+                    <Text
+                      fontSize={13}
+                      color="$color8"
+                      text="center"
+                      px="$2"
+                      style={{ lineHeight: 18 }}
+                    >
+                      Ingresa el código de activación de 8 caracteres que
+                      recibiste. Se requiere conexión a internet.
+                    </Text>
+                  </YStack>
+
+                  {/* Code input */}
+                  <YStack gap="$2">
+                    <TextInput
+                      ref={inputRef}
+                      value={code}
+                      onChangeText={handleCodeChange}
+                      placeholder="Ej: K7M3X9PH"
+                      placeholderTextColor={c.muted}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      maxLength={CODE_LENGTH}
+                      editable={!loading}
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: inputBg,
+                          borderColor: error ? c.danger : borderColor,
+                          color: c.text,
+                        },
+                      ]}
+                    />
+                    {code.length > 0 && code.length < CODE_LENGTH && (
+                      <Text fontSize={11} color="$color8" text="right" pr="$1">
+                        {code.length}/{CODE_LENGTH}
+                      </Text>
+                    )}
+                  </YStack>
+
+                  {/* Error */}
+                  {error !== "" && (
+                    <XStack
+                      items="center"
+                      gap="$2"
+                      bg={c.dangerBg as any}
+                      p="$2.5"
+                      rounded="$3"
+                    >
+                      {error.includes("conexión") ? (
+                        <WifiOff size={16} color={c.danger as any} />
+                      ) : (
+                        <AlertCircle size={16} color={c.danger as any} />
+                      )}
+                      <Text
+                        fontSize={12}
+                        color={c.danger as any}
+                        grow={1}
+                        style={{ lineHeight: 16 }}
+                      >
+                        {error}
+                      </Text>
+                    </XStack>
+                  )}
+
+                  {/* Activate button */}
+                  <XStack
+                    bg={
+                      loading || code.length < CODE_LENGTH
+                        ? "$color5"
+                        : (c.blue as any)
+                    }
+                    rounded="$4"
+                    height={48}
+                    items="center"
+                    justify="center"
+                    gap="$2"
+                    pressStyle={{ opacity: 0.8 }}
+                    disabled={loading || code.length < CODE_LENGTH}
+                    onPress={handleActivate}
+                  >
+                    {loading ? (
+                      <>
+                        <ActivityIndicator size="small" color="#fff" />
+                        <Text fontSize={15} fontWeight="600" color="#fff">
+                          Validando...
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Wifi size={18} color="#fff" />
+                        <Text fontSize={15} fontWeight="600" color="#fff">
+                          Activar
+                        </Text>
+                      </>
+                    )}
+                  </XStack>
+
+                  {/* Cancel */}
+                  <XStack
+                    rounded="$4"
+                    height={44}
+                    items="center"
+                    justify="center"
+                    pressStyle={{ opacity: 0.6 }}
+                    onPress={onClose}
+                  >
+                    <Text fontSize={14} color="$color8">
+                      Cancelar
                     </Text>
                   </XStack>
-                )}
-
-                {/* Activate button */}
-                <XStack
-                  bg={
-                    loading || code.length < CODE_LENGTH
-                      ? "$color5"
-                      : (c.blue as any)
-                  }
-                  rounded="$4"
-                  height={48}
-                  items="center"
-                  justify="center"
-                  gap="$2"
-                  pressStyle={{ opacity: 0.8 }}
-                  disabled={loading || code.length < CODE_LENGTH}
-                  onPress={handleActivate}
-                >
-                  {loading ? (
-                    <>
-                      <ActivityIndicator size="small" color="#fff" />
-                      <Text fontSize={15} fontWeight="600" color="#fff">
-                        Validando...
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Wifi size={18} color="#fff" />
-                      <Text fontSize={15} fontWeight="600" color="#fff">
-                        Activar
-                      </Text>
-                    </>
-                  )}
-                </XStack>
-
-                {/* Cancel */}
-                <XStack
-                  rounded="$4"
-                  height={44}
-                  items="center"
-                  justify="center"
-                  pressStyle={{ opacity: 0.6 }}
-                  onPress={onClose}
-                >
-                  <Text fontSize={14} color="$color8">
-                    Cancelar
-                  </Text>
-                </XStack>
-              </YStack>
-            )}
-          </Animated.View>
-        </View>
-      </KeyboardAvoidingView>
+                </YStack>
+              )}
+            </Animated.View>
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

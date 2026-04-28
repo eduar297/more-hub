@@ -10,15 +10,16 @@ import { migrateWorkerDb } from "@/database/migrate-worker";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { config } from "@/tamagui.config";
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
 } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect } from "react";
 import { ActivityIndicator, LogBox } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 import { TamaguiProvider, Text, Theme, YStack } from "tamagui";
 
@@ -196,9 +197,11 @@ export default function RootLayout() {
   return (
     <TamaguiProvider config={config} defaultTheme="light">
       <Theme name={colorScheme === "dark" ? "dark" : "light"}>
-        <DeviceProvider>
-          <RoleShell />
-        </DeviceProvider>
+        <KeyboardProvider>
+          <DeviceProvider>
+            <RoleShell />
+          </DeviceProvider>
+        </KeyboardProvider>
       </Theme>
     </TamaguiProvider>
   );

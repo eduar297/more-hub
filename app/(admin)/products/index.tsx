@@ -33,14 +33,15 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
-  Platform,
   SectionList,
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Spinner, Text, XStack, YStack } from "tamagui";
 
@@ -583,98 +584,99 @@ export default function ProductsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={closeModal}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
-        >
-          <SafeAreaView
-            edges={["top", "bottom"]}
-            style={[pStyles.modalRoot, { backgroundColor: c.modalBg }]}
-          >
-            {/* ── Header ── */}
-            <XStack
-              p="$3"
-              px="$4"
-              items="center"
-              justify="space-between"
-              borderBottomWidth={1}
-              borderBottomColor="$borderColor"
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+            <SafeAreaView
+              edges={["top", "bottom"]}
+              style={[pStyles.modalRoot, { backgroundColor: c.modalBg }]}
             >
-              <XStack items="center" gap="$2" flex={1}>
-                {modalMode === "create" ? (
-                  <Plus size={18} color={c.blue as any} />
-                ) : (
-                  <Package size={18} color={c.blue as any} />
-                )}
-                <Text
-                  fontSize={16}
-                  fontWeight="700"
-                  color="$color"
-                  numberOfLines={1}
-                  style={{ flexShrink: 1 }}
-                >
-                  {modalMode === "create"
-                    ? "Nuevo producto"
-                    : selectedProduct?.name ?? "Detalle"}
-                </Text>
-              </XStack>
-              <XStack items="center" gap="$3">
-                {/* Edit toggle (only in view mode) */}
-                {modalMode === "view" && selectedProduct && (
-                  <TouchableOpacity
-                    onPress={() => setDetailEditing((v) => !v)}
-                    hitSlop={8}
-                    style={[
-                      pStyles.headerBtn,
-                      detailEditing && { backgroundColor: c.blue + "20" },
-                    ]}
+              {/* ── Header ── */}
+              <XStack
+                p="$3"
+                px="$4"
+                items="center"
+                justify="space-between"
+                borderBottomWidth={1}
+                borderBottomColor="$borderColor"
+              >
+                <XStack items="center" gap="$2" flex={1}>
+                  {modalMode === "create" ? (
+                    <Plus size={18} color={c.blue as any} />
+                  ) : (
+                    <Package size={18} color={c.blue as any} />
+                  )}
+                  <Text
+                    fontSize={16}
+                    fontWeight="700"
+                    color="$color"
+                    numberOfLines={1}
+                    style={{ flexShrink: 1 }}
                   >
-                    <Pencil
-                      size={18}
-                      color={detailEditing ? (c.blue as any) : (c.text as any)}
-                    />
+                    {modalMode === "create"
+                      ? "Nuevo producto"
+                      : selectedProduct?.name ?? "Detalle"}
+                  </Text>
+                </XStack>
+                <XStack items="center" gap="$3">
+                  {/* Edit toggle (only in view mode) */}
+                  {modalMode === "view" && selectedProduct && (
+                    <TouchableOpacity
+                      onPress={() => setDetailEditing((v) => !v)}
+                      hitSlop={8}
+                      style={[
+                        pStyles.headerBtn,
+                        detailEditing && { backgroundColor: c.blue + "20" },
+                      ]}
+                    >
+                      <Pencil
+                        size={18}
+                        color={
+                          detailEditing ? (c.blue as any) : (c.text as any)
+                        }
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    onPress={closeModal}
+                    hitSlop={8}
+                    style={pStyles.headerBtn}
+                  >
+                    <X size={18} color={c.text as any} />
                   </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  onPress={closeModal}
-                  hitSlop={8}
-                  style={pStyles.headerBtn}
-                >
-                  <X size={18} color={c.text as any} />
-                </TouchableOpacity>
+                </XStack>
               </XStack>
-            </XStack>
 
-            {/* ── Create ── */}
-            {modalMode === "create" && (
-              <ProductForm
-                key={createCode}
-                code={createCode}
-                scanned={scannedCode}
-                units={allUnits}
-                onSubmit={handleCreate}
-                loading={creating}
-                onCancel={closeModal}
-              />
-            )}
+              {/* ── Create ── */}
+              {modalMode === "create" && (
+                <ProductForm
+                  key={createCode}
+                  code={createCode}
+                  scanned={scannedCode}
+                  units={allUnits}
+                  onSubmit={handleCreate}
+                  loading={creating}
+                  onCancel={closeModal}
+                />
+              )}
 
-            {/* ── View / Edit (ProductCard) ── */}
-            {modalMode === "view" && selectedProduct && (
-              <ProductCard
-                product={selectedProduct}
-                units={allUnits}
-                editing={detailEditing}
-                unitSymbol={unitMap.get(selectedProduct.baseUnitId)?.symbol}
-                onSave={handleEdit}
-                onAddStock={handleAddStock}
-                onDelete={handleDeletePress}
-                saving={editSaving}
-                addingStock={addingStock}
-                deleting={deleting}
-              />
-            )}
-          </SafeAreaView>
-        </KeyboardAvoidingView>
+              {/* ── View / Edit (ProductCard) ── */}
+              {modalMode === "view" && selectedProduct && (
+                <ProductCard
+                  product={selectedProduct}
+                  units={allUnits}
+                  editing={detailEditing}
+                  unitSymbol={unitMap.get(selectedProduct.baseUnitId)?.symbol}
+                  onSave={handleEdit}
+                  onAddStock={handleAddStock}
+                  onDelete={handleDeletePress}
+                  saving={editSaving}
+                  addingStock={addingStock}
+                  deleting={deleting}
+                />
+              )}
+            </SafeAreaView>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Hidden input for scanner gun (Bluetooth HID keyboard) */}

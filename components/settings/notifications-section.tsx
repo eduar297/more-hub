@@ -20,14 +20,15 @@ import * as Crypto from "expo-crypto";
 import React, { useCallback, useState } from "react";
 import {
     Alert,
-    KeyboardAvoidingView,
+    Keyboard,
     Modal,
-    Platform,
     Switch,
     Text,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import {
     Button,
     Input,
@@ -385,172 +386,171 @@ export function NotificationCards() {
         transparent
         onRequestClose={() => setSheetOpen(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1 }}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: OVERLAY_HEAVY,
-              justifyContent: "center",
-              paddingHorizontal: 20,
-            }}
-          >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
             <View
               style={{
-                backgroundColor: c.card,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: c.border,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.35,
-                shadowRadius: 24,
-                elevation: 16,
+                flex: 1,
+                backgroundColor: OVERLAY_HEAVY,
+                justifyContent: "center",
+                paddingHorizontal: 20,
               }}
             >
-              <YStack gap="$3" p="$4">
-                <XStack items="center" justify="space-between">
-                  <XStack items="center" gap="$2" flex={1}>
-                    <Clock size={18} color={c.blue as any} />
-                    <TText fontSize="$6" fontWeight="bold" color="$color">
-                      {editingReminder
-                        ? "Editar recordatorio"
-                        : "Nuevo recordatorio"}
-                    </TText>
+              <View
+                style={{
+                  backgroundColor: c.card,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 24,
+                  elevation: 16,
+                }}
+              >
+                <YStack gap="$3" p="$4">
+                  <XStack items="center" justify="space-between">
+                    <XStack items="center" gap="$2" flex={1}>
+                      <Clock size={18} color={c.blue as any} />
+                      <TText fontSize="$6" fontWeight="bold" color="$color">
+                        {editingReminder
+                          ? "Editar recordatorio"
+                          : "Nuevo recordatorio"}
+                      </TText>
+                    </XStack>
+                    <TouchableOpacity
+                      onPress={() => setSheetOpen(false)}
+                      hitSlop={8}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: ICON_BTN_BG,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <X size={18} color={c.text as any} />
+                    </TouchableOpacity>
                   </XStack>
-                  <TouchableOpacity
-                    onPress={() => setSheetOpen(false)}
-                    hitSlop={8}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: ICON_BTN_BG,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <X size={18} color={c.text as any} />
-                  </TouchableOpacity>
-                </XStack>
 
-                {/* Label */}
-                <YStack gap="$1">
-                  <TText
-                    fontSize="$2"
-                    fontWeight="600"
-                    color="$color10"
-                    textTransform="uppercase"
-                    letterSpacing={0.5}
-                  >
-                    Nombre *
-                  </TText>
-                  <Input
-                    placeholder="Ej: Revisar inventario"
-                    value={formLabel}
-                    onChangeText={(v: string) => setFormLabel(v)}
-                    autoCapitalize="sentences"
-                    returnKeyType="next"
-                    size="$4"
-                  />
-                </YStack>
-
-                {/* Body */}
-                <YStack gap="$1">
-                  <TText
-                    fontSize="$2"
-                    fontWeight="600"
-                    color="$color10"
-                    textTransform="uppercase"
-                    letterSpacing={0.5}
-                  >
-                    Mensaje
-                  </TText>
-                  <TextArea
-                    placeholder="Texto que aparecerá en la notificación"
-                    value={formBody}
-                    onChangeText={(v: string) => setFormBody(v)}
-                    autoCapitalize="sentences"
-                    size="$4"
-                    numberOfLines={3}
-                    verticalAlign="top"
-                  />
-                </YStack>
-
-                {/* Time picker */}
-                <YStack gap="$1">
-                  <TText
-                    fontSize="$2"
-                    fontWeight="600"
-                    color="$color10"
-                    textTransform="uppercase"
-                    letterSpacing={0.5}
-                  >
-                    Hora
-                  </TText>
-                  <XStack items="center" justify="center">
-                    <View style={{ width: 100 }}>
-                      <Picker
-                        selectedValue={formHour}
-                        onValueChange={(v: number) => setFormHour(v)}
-                        itemStyle={{ color: c.text, fontSize: 22 }}
-                      >
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <Picker.Item
-                            key={i}
-                            label={String(i).padStart(2, "0")}
-                            value={i}
-                          />
-                        ))}
-                      </Picker>
-                    </View>
-                    <TText fontSize={24} fontWeight="700" color="$color10">
-                      :
+                  {/* Label */}
+                  <YStack gap="$1">
+                    <TText
+                      fontSize="$2"
+                      fontWeight="600"
+                      color="$color10"
+                      textTransform="uppercase"
+                      letterSpacing={0.5}
+                    >
+                      Nombre *
                     </TText>
-                    <View style={{ width: 100 }}>
-                      <Picker
-                        selectedValue={formMinute}
-                        onValueChange={(v: number) => setFormMinute(v)}
-                        itemStyle={{ color: c.text, fontSize: 22 }}
-                      >
-                        {Array.from({ length: 60 }, (_, i) => (
-                          <Picker.Item
-                            key={i}
-                            label={String(i).padStart(2, "0")}
-                            value={i}
-                          />
-                        ))}
-                      </Picker>
-                    </View>
+                    <Input
+                      placeholder="Ej: Revisar inventario"
+                      value={formLabel}
+                      onChangeText={(v: string) => setFormLabel(v)}
+                      autoCapitalize="sentences"
+                      returnKeyType="next"
+                      size="$4"
+                    />
+                  </YStack>
+
+                  {/* Body */}
+                  <YStack gap="$1">
+                    <TText
+                      fontSize="$2"
+                      fontWeight="600"
+                      color="$color10"
+                      textTransform="uppercase"
+                      letterSpacing={0.5}
+                    >
+                      Mensaje
+                    </TText>
+                    <TextArea
+                      placeholder="Texto que aparecerá en la notificación"
+                      value={formBody}
+                      onChangeText={(v: string) => setFormBody(v)}
+                      autoCapitalize="sentences"
+                      size="$4"
+                      numberOfLines={3}
+                      verticalAlign="top"
+                    />
+                  </YStack>
+
+                  {/* Time picker */}
+                  <YStack gap="$1">
+                    <TText
+                      fontSize="$2"
+                      fontWeight="600"
+                      color="$color10"
+                      textTransform="uppercase"
+                      letterSpacing={0.5}
+                    >
+                      Hora
+                    </TText>
+                    <XStack items="center" justify="center">
+                      <View style={{ width: 100 }}>
+                        <Picker
+                          selectedValue={formHour}
+                          onValueChange={(v: number) => setFormHour(v)}
+                          itemStyle={{ color: c.text, fontSize: 22 }}
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <Picker.Item
+                              key={i}
+                              label={String(i).padStart(2, "0")}
+                              value={i}
+                            />
+                          ))}
+                        </Picker>
+                      </View>
+                      <TText fontSize={24} fontWeight="700" color="$color10">
+                        :
+                      </TText>
+                      <View style={{ width: 100 }}>
+                        <Picker
+                          selectedValue={formMinute}
+                          onValueChange={(v: number) => setFormMinute(v)}
+                          itemStyle={{ color: c.text, fontSize: 22 }}
+                        >
+                          {Array.from({ length: 60 }, (_, i) => (
+                            <Picker.Item
+                              key={i}
+                              label={String(i).padStart(2, "0")}
+                              value={i}
+                            />
+                          ))}
+                        </Picker>
+                      </View>
+                    </XStack>
+                  </YStack>
+
+                  <XStack gap="$2.5" mt="$1">
+                    <Button
+                      flex={1}
+                      variant="outlined"
+                      onPress={() => setSheetOpen(false)}
+                      size="$4"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      flex={1}
+                      theme="blue"
+                      onPress={handleSaveReminder}
+                      disabled={!formLabel.trim()}
+                      opacity={!formLabel.trim() ? 0.5 : 1}
+                      size="$4"
+                    >
+                      Guardar
+                    </Button>
                   </XStack>
                 </YStack>
-
-                <XStack gap="$2.5" mt="$1">
-                  <Button
-                    flex={1}
-                    variant="outlined"
-                    onPress={() => setSheetOpen(false)}
-                    size="$4"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    flex={1}
-                    theme="blue"
-                    onPress={handleSaveReminder}
-                    disabled={!formLabel.trim()}
-                    opacity={!formLabel.trim() ? 0.5 : 1}
-                    size="$4"
-                  >
-                    Guardar
-                  </Button>
-                </XStack>
-              </YStack>
+              </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
     </>
   );

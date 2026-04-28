@@ -26,18 +26,19 @@ import {
     Animated,
     Dimensions,
     Image,
-    KeyboardAvoidingView,
+    Keyboard,
     Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     Vibration,
     View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useTheme } from "tamagui";
 
 /* ── Carousel constants ── */
@@ -991,25 +992,27 @@ export function LoginSheet({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={[
-            styles.overlay,
-            { backgroundColor: c.overlay },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-        >
-          <Pressable style={{ width: "100%", maxWidth: 380 }} onPress={onClose}>
-            <Pressable onPress={(e) => e.stopPropagation()}>
-              {role === "ADMIN" ? renderAdmin() : renderWorker()}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.overlay,
+              { backgroundColor: c.overlay },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
+            <Pressable
+              style={{ width: "100%", maxWidth: 380 }}
+              onPress={onClose}
+            >
+              <Pressable onPress={(e) => e.stopPropagation()}>
+                {role === "ADMIN" ? renderAdmin() : renderWorker()}
+              </Pressable>
             </Pressable>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

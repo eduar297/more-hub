@@ -1,24 +1,25 @@
 import { useLan } from "@/contexts/lan-context";
 import type { DiscoveredServer } from "@/services/lan/lan-client";
 import {
-    AlertCircle,
-    Camera,
-    Monitor,
-    RefreshCw,
-    Store,
-    Wifi,
-    WifiOff,
+  AlertCircle,
+  Camera,
+  Monitor,
+  RefreshCw,
+  Store,
+  Wifi,
+  WifiOff,
 } from "@tamagui/lucide-icons";
 import { useCameraPermissions } from "expo-camera";
 import CameraViewClass from "expo-camera/build/CameraView";
 import { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
+  Alert,
+  FlatList,
+  Keyboard,
+  Pressable,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Button, Input, Spinner, Text, XStack, YStack } from "tamagui";
 
 export function DisplayConnect() {
@@ -178,100 +179,112 @@ export function DisplayConnect() {
 
   if (step === "code" && selectedServer) {
     return (
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={100}
-      >
-        <YStack
-          flex={1}
-          bg="$background"
-          items="center"
-          justify="center"
-          gap="$5"
-          p="$6"
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={100}
         >
-          <Monitor size={48} color="$purple10" />
+          <YStack
+            flex={1}
+            bg="$background"
+            items="center"
+            justify="center"
+            gap="$5"
+            p="$6"
+          >
+            <Monitor size={48} color="$purple10" />
 
-          <YStack items="center" gap="$2">
-            <Text fontSize="$6" fontWeight="bold" color="$color" text="center">
-              Conectar a {selectedServer.storeName}
-            </Text>
-            <Text fontSize="$3" color="$color10" text="center">
-              Escanea el QR o ingresa el código de 6 dígitos
-            </Text>
-          </YStack>
-
-          {/* QR scan button */}
-          <Button size="$5" theme="purple" icon={Camera} onPress={handleScanQR}>
-            Escanear QR
-          </Button>
-
-          {/* Divider */}
-          <XStack items="center" gap="$3" width="100%" maxW={260}>
-            <YStack flex={1} height={1} bg="$borderColor" />
-            <Text fontSize="$2" color="$color10">
-              o ingresa el código
-            </Text>
-            <YStack flex={1} height={1} bg="$borderColor" />
-          </XStack>
-
-          {/* Code input */}
-          <Input
-            value={code}
-            onChangeText={(t) => {
-              setCode(t.replace(/\D/g, "").slice(0, 6));
-              setCodeError("");
-            }}
-            placeholder="000000"
-            keyboardType="number-pad"
-            returnKeyType="done"
-            autoFocus
-            maxLength={6}
-            fontSize={32}
-            fontWeight="bold"
-            letterSpacing={12}
-            textAlign="center"
-            width={260}
-            size="$6"
-            borderColor={codeError ? "$red8" : "$borderColor"}
-            onSubmitEditing={() => {
-              if (code.length === 6) handleConnect();
-            }}
-          />
-
-          {codeError ? (
-            <XStack items="center" gap="$2">
-              <AlertCircle size={16} color="$red10" />
-              <Text fontSize="$3" color="$red10">
-                {codeError}
+            <YStack items="center" gap="$2">
+              <Text
+                fontSize="$6"
+                fontWeight="bold"
+                color="$color"
+                text="center"
+              >
+                Conectar a {selectedServer.storeName}
               </Text>
-            </XStack>
-          ) : null}
+              <Text fontSize="$3" color="$color10" text="center">
+                Escanea el QR o ingresa el código de 6 dígitos
+              </Text>
+            </YStack>
 
-          <XStack gap="$3">
+            {/* QR scan button */}
             <Button
-              size="$4"
-              variant="outlined"
-              onPress={() => {
-                setStep("discover");
-                setSelectedServer(null);
-              }}
-            >
-              Volver
-            </Button>
-            <Button
-              size="$4"
+              size="$5"
               theme="purple"
-              icon={Wifi}
-              onPress={handleConnect}
-              disabled={code.length !== 6}
+              icon={Camera}
+              onPress={handleScanQR}
             >
-              Conectar
+              Escanear QR
             </Button>
-          </XStack>
-        </YStack>
-      </KeyboardAvoidingView>
+
+            {/* Divider */}
+            <XStack items="center" gap="$3" width="100%" maxW={260}>
+              <YStack flex={1} height={1} bg="$borderColor" />
+              <Text fontSize="$2" color="$color10">
+                o ingresa el código
+              </Text>
+              <YStack flex={1} height={1} bg="$borderColor" />
+            </XStack>
+
+            {/* Code input */}
+            <Input
+              value={code}
+              onChangeText={(t) => {
+                setCode(t.replace(/\D/g, "").slice(0, 6));
+                setCodeError("");
+              }}
+              placeholder="000000"
+              keyboardType="number-pad"
+              returnKeyType="done"
+              autoFocus
+              maxLength={6}
+              fontSize={32}
+              fontWeight="bold"
+              letterSpacing={12}
+              textAlign="center"
+              width={260}
+              size="$6"
+              borderColor={codeError ? "$red8" : "$borderColor"}
+              onSubmitEditing={() => {
+                if (code.length === 6) handleConnect();
+              }}
+            />
+
+            {codeError ? (
+              <XStack items="center" gap="$2">
+                <AlertCircle size={16} color="$red10" />
+                <Text fontSize="$3" color="$red10">
+                  {codeError}
+                </Text>
+              </XStack>
+            ) : null}
+
+            <XStack gap="$3">
+              <Button
+                size="$4"
+                variant="outlined"
+                onPress={() => {
+                  setStep("discover");
+                  setSelectedServer(null);
+                }}
+              >
+                Volver
+              </Button>
+              <Button
+                size="$4"
+                theme="purple"
+                icon={Wifi}
+                onPress={handleConnect}
+                disabled={code.length !== 6}
+              >
+                Conectar
+              </Button>
+            </XStack>
+          </YStack>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     );
   }
 

@@ -30,7 +30,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
   Linking,
   Modal,
   Platform,
@@ -40,8 +40,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Text as TText, XStack, YStack } from "tamagui";
 import { STORE_COLORS, settingStyles as styles } from "./shared";
@@ -645,49 +647,47 @@ export function StoresSection() {
             </XStack>
           </XStack>
 
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-          >
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ padding: 16 }}
-              keyboardShouldPersistTaps="handled"
-              automaticallyAdjustKeyboardInsets={true}
-              showsVerticalScrollIndicator={false}
-            >
-              <TText fontSize="$2" color="$color10" mb="$2">
-                Edita el texto de promoción:
-              </TText>
-              <View
-                style={{
-                  backgroundColor: c.editBg,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  borderRadius: 8,
-                  padding: 16,
-                  height: Platform.OS === "ios" ? 550 : 450,
-                }}
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ padding: 16 }}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={true}
+                showsVerticalScrollIndicator={false}
               >
-                <TextInput
-                  multiline
-                  value={editedPromoText}
-                  onChangeText={setEditedPromoText}
-                  placeholder="Escriba el texto de promoción..."
-                  placeholderTextColor={c.muted}
+                <TText fontSize="$2" color="$color10" mb="$2">
+                  Edita el texto de promoción:
+                </TText>
+                <View
                   style={{
-                    flex: 1,
-                    textAlignVertical: "top",
-                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                    fontSize: 15,
-                    lineHeight: 22,
-                    color: c.text,
+                    backgroundColor: c.editBg,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    borderRadius: 8,
+                    padding: 16,
+                    height: Platform.OS === "ios" ? 550 : 450,
                   }}
-                />
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
+                >
+                  <TextInput
+                    multiline
+                    value={editedPromoText}
+                    onChangeText={setEditedPromoText}
+                    placeholder="Escriba el texto de promoción..."
+                    placeholderTextColor={c.muted}
+                    style={{
+                      flex: 1,
+                      textAlignVertical: "top",
+                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                      fontSize: 15,
+                      lineHeight: 22,
+                      color: c.text,
+                    }}
+                  />
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
 
           {/* Footer with actions */}
           <XStack
