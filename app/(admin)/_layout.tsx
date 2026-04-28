@@ -4,10 +4,10 @@ import React from "react";
 import { HapticTab } from "@/components/haptic-tab";
 import { useColors } from "@/hooks/use-colors";
 import {
-  BarChart3,
-  PackageSearch,
-  Settings,
-  ShoppingBag,
+    BarChart3,
+    PackageSearch,
+    ShoppingBag,
+    Store,
 } from "@tamagui/lucide-icons";
 import { useTheme } from "tamagui";
 
@@ -63,11 +63,9 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Ajustes",
+          title: "Mi Tienda",
           headerRight: () => undefined,
-          tabBarIcon: ({ color }) => (
-            <Settings size={26} color={color as any} />
-          ),
+          tabBarIcon: ({ color }) => <Store size={26} color={color as any} />,
         }}
       />
     </Tabs>

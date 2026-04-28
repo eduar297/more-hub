@@ -30,6 +30,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -37,6 +38,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -67,6 +69,7 @@ export function StoresSection() {
   const [storeToDelete, setStoreToDelete] = useState<StoreModel | null>(null);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoText, setPromoText] = useState("");
+  const [editedPromoText, setEditedPromoText] = useState("");
   const [promoStore, setPromoStore] = useState<StoreModel | null>(null);
   const db = useSQLiteContext();
 
@@ -185,8 +188,8 @@ export function StoresSection() {
   const makePromoText = useCallback(
     (store: StoreModel, products: Product[]) => {
       const location = store.address || store.name || "Dirección";
-      let text = `*Tus mejores ofertas ${location}*\n`;
-      text += "Siempre estaremos para atenderlos\n";
+      let text = `*Tus mejores ofertas ${location}* 🛍️\n`;
+      text += "Siempre estaremos para atenderlos 😊\n";
       if (store.phone) {
         const phones = store.phone
           .split(",")
@@ -194,20 +197,99 @@ export function StoresSection() {
           .join(", ");
         text += `${phones}.\n`;
       }
+
       if (products.length > 0) {
-        text += "\n*Ofertas*\n";
-        products.forEach((product) => {
-          text += `•${product.name} $${product.salePrice}\n`;
-          if (product.priceTiers?.length) {
-            product.priceTiers.forEach((tier) => {
-              if (tier.minQty > 1) {
-                text += `*Más de ${tier.minQty} $${tier.price}*\n`;
-              }
-            });
-          }
-        });
+        // Categorizar productos por tipo
+        const carnes = products.filter(
+          (p) =>
+            p.name.toLowerCase().includes("pollo") ||
+            p.name.toLowerCase().includes("carne") ||
+            p.name.toLowerCase().includes("muslo") ||
+            p.name.toLowerCase().includes("pechuga") ||
+            p.name.toLowerCase().includes("picadillo") ||
+            p.name.toLowerCase().includes("salchicha") ||
+            p.name.toLowerCase().includes("jamón") ||
+            p.name.toLowerCase().includes("queso"),
+        );
+
+        const basicos = products.filter(
+          (p) =>
+            p.name.toLowerCase().includes("arroz") ||
+            p.name.toLowerCase().includes("frijol") ||
+            p.name.toLowerCase().includes("pasta") ||
+            p.name.toLowerCase().includes("espagueti") ||
+            p.name.toLowerCase().includes("aceite") ||
+            p.name.toLowerCase().includes("vinagre") ||
+            p.name.toLowerCase().includes("azúcar") ||
+            p.name.toLowerCase().includes("harina"),
+        );
+
+        const otros = products.filter(
+          (p) => !carnes.includes(p) && !basicos.includes(p),
+        );
+
+        if (carnes.length > 0) {
+          text += "\n*Cárnicos 🥩*\n";
+          carnes.forEach((product) => {
+            const emoji = product.name.toLowerCase().includes("pollo")
+              ? "🍗"
+              : product.name.toLowerCase().includes("queso")
+              ? "🧀"
+              : product.name.toLowerCase().includes("salchicha")
+              ? "🌭"
+              : product.name.toLowerCase().includes("jamón")
+              ? "🥓"
+              : "🥩";
+            text += `•${product.name} ${emoji} $${product.salePrice}\n`;
+            if (product.priceTiers?.length) {
+              product.priceTiers.forEach((tier) => {
+                if (tier.minQty > 1) {
+                  text += `*Más de ${tier.minQty} $${tier.price}*\n`;
+                }
+              });
+            }
+          });
+        }
+
+        if (basicos.length > 0) {
+          text += "\n*Productos básicos* 🌾🍝🍚\n";
+          basicos.forEach((product) => {
+            const emoji = product.name.toLowerCase().includes("arroz")
+              ? "🍚"
+              : product.name.toLowerCase().includes("pasta") ||
+                product.name.toLowerCase().includes("espagueti")
+              ? "🍝"
+              : product.name.toLowerCase().includes("frijol")
+              ? "🫘"
+              : product.name.toLowerCase().includes("aceite")
+              ? "🫒"
+              : "🌾";
+            text += `•${product.name} ${emoji} $${product.salePrice}\n`;
+            if (product.priceTiers?.length) {
+              product.priceTiers.forEach((tier) => {
+                if (tier.minQty > 1) {
+                  text += `*Por cantidad $${tier.price}*\n`;
+                }
+              });
+            }
+          });
+        }
+
+        if (otros.length > 0) {
+          text += "\n*Otros productos* 🛒\n";
+          otros.forEach((product) => {
+            text += `•${product.name} $${product.salePrice}\n`;
+            if (product.priceTiers?.length) {
+              product.priceTiers.forEach((tier) => {
+                if (tier.minQty > 1) {
+                  text += `*Más de ${tier.minQty} $${tier.price}*\n`;
+                }
+              });
+            }
+          });
+        }
       }
-      text += "\n*Entre más opciones. No dude en contactarnos*";
+      text += "\n*Entre más opciones. No dude en contactarnos* 📞";
       return text;
     },
     [],
@@ -217,26 +299,32 @@ export function StoresSection() {
     async (store: StoreModel) => {
       const productRepo = new ProductRepository(db, store.id);
       const products = await productRepo.findAllVisible();
+      const text = makePromoText(store, products);
       setPromoStore(store);
-      setPromoText(makePromoText(store, products));
+      setPromoText(text);
+      setEditedPromoText(text);
       setShowPromoModal(true);
     },
     [db, makePromoText],
   );
 
   const handleCopyPromo = useCallback(async () => {
-    if (!promoText) return;
-    await Clipboard.setStringAsync(promoText);
+    if (!editedPromoText) return;
+    await Clipboard.setStringAsync(editedPromoText);
     Alert.alert("Copiado", "Texto copiado al portapapeles");
-  }, [promoText]);
+  }, [editedPromoText]);
 
   const handleSharePromo = useCallback(async () => {
-    if (!promoText) return;
+    if (!editedPromoText) return;
     try {
-      await Share.share({ message: promoText });
+      await Share.share({ message: editedPromoText });
     } catch {
       Alert.alert("Error", "No se pudo compartir");
     }
+  }, [editedPromoText]);
+
+  const handleResetText = useCallback(() => {
+    setEditedPromoText(promoText);
   }, [promoText]);
 
   const handleSwitchStore = useCallback(
@@ -394,23 +482,33 @@ export function StoresSection() {
                           gap: 6,
                         }}
                       >
+                        {/* Punto de tienda activa: siempre verde si es activa, gris si no */}
                         <View
                           style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: s.color ?? c.blue,
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            backgroundColor: isActive ? "#22c55e" : c.border,
+                            marginRight: 6,
                           }}
                         />
-                        <Text style={[styles.workerName, { color: c.text }]}>
+                        <Text
+                          style={[
+                            styles.workerName,
+                            { color: c.text, maxWidth: 110 },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {s.name}
                         </Text>
                         {isActive && (
                           <Text
                             style={{
-                              fontSize: 10,
-                              color: s.color ?? c.blue,
+                              fontSize: 11,
+                              color: "#22c55e",
                               fontWeight: "700",
+                              marginLeft: 6,
+                              letterSpacing: 0.5,
                             }}
                           >
                             ACTIVA
@@ -442,11 +540,15 @@ export function StoresSection() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    <View style={styles.rowActions}>
+                    <View style={[styles.rowActions, { gap: 10 }]}>
                       <TouchableOpacity
                         style={[
                           styles.iconBtn,
-                          { backgroundColor: c.blueLight },
+                          {
+                            backgroundColor: c.blueLight,
+                            width: 30,
+                            height: 30,
+                          },
                         ]}
                         onPress={() => handleOpenPromo(s)}
                         activeOpacity={0.7}
@@ -454,22 +556,29 @@ export function StoresSection() {
                         accessibilityRole="button"
                         accessibilityLabel={`Compartir texto de ${s.name}`}
                       >
-                        <Share2 size={17} color={c.blue as any} />
+                        <Share2 size={15} color={c.blue as any} />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.iconBtn, { backgroundColor: c.editBg }]}
+                        style={[
+                          styles.iconBtn,
+                          { backgroundColor: c.editBg, width: 30, height: 30 },
+                        ]}
                         onPress={() => openEdit(s)}
                         activeOpacity={0.7}
                         hitSlop={4}
                         accessibilityRole="button"
                         accessibilityLabel={`Editar ${s.name}`}
                       >
-                        <Edit3 size={17} color={c.muted as any} />
+                        <Edit3 size={15} color={c.muted as any} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[
                           styles.iconBtn,
-                          { backgroundColor: c.dangerBg },
+                          {
+                            backgroundColor: c.dangerBg,
+                            width: 30,
+                            height: 30,
+                          },
                         ]}
                         onPress={() => handleDelete(s)}
                         activeOpacity={0.7}
@@ -477,7 +586,7 @@ export function StoresSection() {
                         accessibilityRole="button"
                         accessibilityLabel={`Eliminar ${s.name}`}
                       >
-                        <Trash2 size={17} color={c.danger as any} />
+                        <Trash2 size={15} color={c.danger as any} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -504,55 +613,119 @@ export function StoresSection() {
       <Modal
         visible={showPromoModal}
         animationType="slide"
-        presentationStyle="formSheet"
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowPromoModal(false)}
       >
         <SafeAreaView
           edges={["top", "bottom"]}
           style={[stStyles.modalRoot, { backgroundColor: c.modalBg }]}
         >
-          <XStack px="$4" py="$3" items="center" justify="space-between">
-            <XStack items="center" gap="$2">
-              <Share2 size={20} color="$blue10" />
-              <TText fontSize="$4" fontWeight="bold" color="$color">
-                Texto para compartir
-                {promoStore ? ` - ${promoStore.name}` : ""}
+          {/* Header */}
+          <XStack
+            px="$3"
+            py="$2.5"
+            items="center"
+            justify="space-between"
+            borderBottomWidth={1}
+            borderBottomColor="$borderColor"
+          >
+            <XStack items="center" gap="$2" flex={1}>
+              <Share2 size={18} color="$blue10" />
+              <TText
+                fontSize="$4"
+                fontWeight="bold"
+                color="$color"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                flex={1}
+              >
+                {promoStore?.name || "Promoción"}
               </TText>
             </XStack>
-            <TouchableOpacity
-              onPress={() => setShowPromoModal(false)}
-              style={stStyles.closeBtn}
-            >
-              <X size={18} color="$color10" />
-            </TouchableOpacity>
+            <XStack gap="$1.5" items="center">
+              <Button
+                size="$2"
+                theme="gray"
+                onPress={handleResetText}
+                disabled={editedPromoText === promoText}
+                px="$2.5"
+              >
+                <TText fontSize="$2">Resetear</TText>
+              </Button>
+              <TouchableOpacity
+                onPress={() => setShowPromoModal(false)}
+                style={[stStyles.closeBtn, { width: 28, height: 28 }]}
+              >
+                <X size={16} color="$color10" />
+              </TouchableOpacity>
+            </XStack>
           </XStack>
 
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <Text style={{ color: c.text, lineHeight: 22 }}>
-              {promoText || "Generando texto..."}
-            </Text>
-          </ScrollView>
-
-          <XStack px="$4" pb="$4" pt="$2" gap="$2">
-            <Button
-              flex={1}
-              theme="gray"
-              size="$4"
-              onPress={() => setShowPromoModal(false)}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16 }}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={true}
+              showsVerticalScrollIndicator={false}
             >
-              Cerrar
+              <TText fontSize="$2" color="$color10" mb="$2">
+                Edita el texto de promoción:
+              </TText>
+              <View
+                style={{
+                  backgroundColor: c.editBg,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  borderRadius: 8,
+                  padding: 16,
+                  height: Platform.OS === "ios" ? 550 : 450,
+                }}
+              >
+                <TextInput
+                  multiline
+                  value={editedPromoText}
+                  onChangeText={setEditedPromoText}
+                  placeholder="Escriba el texto de promoción..."
+                  placeholderTextColor={c.muted}
+                  style={{
+                    flex: 1,
+                    textAlignVertical: "top",
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    fontSize: 15,
+                    lineHeight: 22,
+                    color: c.text,
+                  }}
+                />
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+
+          {/* Footer with actions */}
+          <XStack
+            px="$4"
+            pb="$4"
+            pt="$3"
+            gap="$2"
+            borderTopWidth={1}
+            borderTopColor="$borderColor"
+            bg="$background"
+          >
+            <Button flex={1} theme="green" size="$4" onPress={handleCopyPromo}>
+              Copiar
             </Button>
             <Button
               flex={1}
               theme="blue"
               size="$4"
-              icon={<Share2 />}
+              icon={<Share2 size={16} />}
               onPress={handleSharePromo}
             >
               Compartir
-            </Button>
-            <Button flex={1} theme="green" size="$4" onPress={handleCopyPromo}>
-              Copiar
             </Button>
           </XStack>
         </SafeAreaView>
