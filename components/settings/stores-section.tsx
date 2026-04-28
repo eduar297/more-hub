@@ -493,27 +493,11 @@ export function StoresSection() {
                           }}
                         />
                         <Text
-                          style={[
-                            styles.workerName,
-                            { color: c.text, maxWidth: 110 },
-                          ]}
+                          style={[styles.workerName, { color: c.text }]}
                           numberOfLines={1}
                         >
                           {s.name}
                         </Text>
-                        {isActive && (
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              color: "#22c55e",
-                              fontWeight: "700",
-                              marginLeft: 6,
-                              letterSpacing: 0.5,
-                            }}
-                          >
-                            ACTIVA
-                          </Text>
-                        )}
                       </View>
                       {s.address ? (
                         <Text style={[styles.workerMeta, { color: c.muted }]}>
