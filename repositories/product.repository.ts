@@ -1,8 +1,8 @@
 import type {
-    CreateProductInput,
-    PriceTierInput,
-    Product,
-    UpdateProductInput,
+  CreateProductInput,
+  PriceTierInput,
+  Product,
+  UpdateProductInput,
 } from "@/models/product";
 import { File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
@@ -11,7 +11,7 @@ import { BaseRepository } from "./base.repository";
 export class ProductRepository extends BaseRepository<
   Product,
   CreateProductInput,
-  UpdateProductInput
+  Omit<UpdateProductInput, "priceTiers">
 > {
   constructor(db: SQLiteDatabase, storeId?: number) {
     super(db, "products", storeId);
@@ -180,7 +180,9 @@ export class ProductRepository extends BaseRepository<
       await this.savePriceTiers(created.id, input.priceTiers);
     }
 
-    return this.findById(created.id);
+    const final = await this.findById(created.id);
+    if (!final) throw new Error("Error al obtener producto creado");
+    return final;
   }
 
   async update(id: number, input: UpdateProductInput): Promise<Product> {
@@ -254,6 +256,7 @@ export class ProductRepository extends BaseRepository<
       "DELETE FROM product_price_tiers WHERE productId = ?",
       productId,
     );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const [index, tier] of tiers.entries()) {
       await this.db.runAsync(
         "INSERT INTO product_price_tiers (productId, minQty, maxQty, price) VALUES (?, ?, ?, ?)",
