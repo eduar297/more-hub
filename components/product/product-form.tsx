@@ -1,9 +1,9 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
 import {
-  PriceTierEditorRow,
-  PriceTiersEditor,
-  normalizePriceTierRows,
-  validatePriceTierRows,
+    PriceTierEditorRow,
+    PriceTiersEditor,
+    normalizePriceTierRows,
+    validatePriceTierRows,
 } from "@/components/product/price-tiers-editor";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
@@ -51,7 +51,7 @@ export function ProductForm({
     isEdit ? String(product.costPrice) : "",
   );
   const [salePrice, setSalePrice] = useState(
-    isEdit ? String(product.salePrice) : "0.00",
+    isEdit ? String(product.salePrice) : "",
   );
   const [stock, setStock] = useState(
     isEdit ? String(product.stockBaseQty) : "",
