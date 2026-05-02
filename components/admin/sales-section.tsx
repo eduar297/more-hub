@@ -199,8 +199,11 @@ export function SalesSection() {
       productName: string;
       totalQty: number;
       totalRevenue: number;
+      totalCost: number;
+      totalProfit: number;
     }[]
   >([]);
+  const [cogsTotal, setCogsTotal] = useState(0);
   const [paymentBreakdown, setPaymentBreakdown] = useState<
     { method: string; total: number; count: number }[]
   >([]);
@@ -404,6 +407,53 @@ export function SalesSection() {
     useCallback(() => {
       loadData();
     }, [loadData]),
+  );
+
+  // Load COGS for the active period to compute true profit (revenue - COGS).
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          let cogs = 0;
+          if (nav.period === "day") {
+            cogs = await ticketRepo.cogsByDay(nav.selectedDay, wId);
+          } else if (nav.period === "week") {
+            cogs = await ticketRepo.cogsByDateRange(
+              nav.selectedWeekStart,
+              weekEndISO(nav.selectedWeekStart),
+              wId,
+            );
+          } else if (nav.period === "month") {
+            cogs = await ticketRepo.cogsByMonth(nav.selectedMonth, wId);
+          } else if (nav.period === "year") {
+            cogs = await ticketRepo.cogsByDateRange(
+              `${nav.selectedYear}-01-01`,
+              `${nav.selectedYear}-12-31`,
+              wId,
+            );
+          } else {
+            cogs = await ticketRepo.cogsByDateRange(
+              nav.dateRange.from,
+              nav.dateRange.to,
+              wId,
+            );
+          }
+          setCogsTotal(cogs);
+        } catch {
+          setCogsTotal(0);
+        }
+      })();
+    }, [
+      nav.period,
+      nav.selectedDay,
+      nav.selectedWeekStart,
+      nav.selectedMonth,
+      nav.selectedYear,
+      nav.dateRange,
+      ticketRepo,
+      wId,
+      syncVersion,
+    ]),
   );
 
   // Load previous-period data for delta comparison
@@ -634,6 +684,9 @@ export function SalesSection() {
   const summaryTickets =
     nav.period === "day" ? daySummary.ticketCount : monthlySummary.ticketCount;
   const summaryAvg = summaryTickets > 0 ? summaryTotal / summaryTickets : 0;
+  const summaryProfit = summaryTotal - cogsTotal;
+  const summaryMarginPct =
+    summaryTotal > 0 ? (summaryProfit / summaryTotal) * 100 : 0;
 
   // Delta computation
   const pctDelta = (cur: number, prev: number) =>
@@ -724,7 +777,7 @@ export function SalesSection() {
       {/* KPI cards */}
       <XStack gap="$3">
         <StatCard
-          label="Total"
+          label="Ingreso"
           value={`$${fmtMoney(summaryTotal)}`}
           detail={`$${fmtMoneyFull(summaryTotal)}`}
           color="$green10"
@@ -745,6 +798,28 @@ export function SalesSection() {
           color="$purple10"
           icon={<TrendingUp size={16} color="$purple10" />}
           delta={avgDelta}
+        />
+      </XStack>
+      <XStack gap="$3">
+        <StatCard
+          label="Ganancia"
+          value={`$${fmtMoney(summaryProfit)}`}
+          detail={`$${fmtMoneyFull(summaryProfit)} · margen ${summaryMarginPct.toFixed(1)}%`}
+          color={summaryProfit >= 0 ? "$green10" : "$red10"}
+          icon={
+            summaryProfit >= 0 ? (
+              <TrendingUp size={16} color="$green10" />
+            ) : (
+              <TrendingUp size={16} color="$red10" />
+            )
+          }
+        />
+        <StatCard
+          label="Costo (FIFO)"
+          value={`$${fmtMoney(cogsTotal)}`}
+          detail={`$${fmtMoneyFull(cogsTotal)}`}
+          color="$orange10"
+          icon={<DollarSign size={16} color="$orange10" />}
         />
       </XStack>
 
@@ -1260,42 +1335,151 @@ export function SalesSection() {
                             <Text fontSize="$1" color="$color10">
                               {item.quantity} x ${item.unitPrice}
                             </Text>
+                            {item.costPrice != null && item.costPrice > 0 ? (
+                              <Text fontSize="$1" color="$color8">
+                                Costo unitario: ${fmtMoney(item.costPrice)}
+                              </Text>
+                            ) : null}
                           </YStack>
-                          <Text fontSize="$3" fontWeight="600" color="$green10">
-                            ${fmtMoney(item.subtotal)}
-                          </Text>
+                          <YStack
+                            style={{ alignItems: "flex-end" }}
+                            gap="$0.5"
+                          >
+                            <Text
+                              fontSize="$3"
+                              fontWeight="600"
+                              color="$green10"
+                            >
+                              ${fmtMoney(item.subtotal)}
+                            </Text>
+                            {item.costPrice != null && item.costPrice > 0
+                              ? (() => {
+                                  const lineProfit =
+                                    item.subtotal -
+                                    item.costPrice * item.quantity;
+                                  return (
+                                    <Text
+                                      fontSize="$1"
+                                      fontWeight="600"
+                                      color={
+                                        lineProfit >= 0 ? "$green10" : "$red10"
+                                      }
+                                    >
+                                      {lineProfit >= 0 ? "+" : "-"}$
+                                      {fmtMoney(Math.abs(lineProfit))} gan.
+                                    </Text>
+                                  );
+                                })()
+                              : null}
+                          </YStack>
                         </XStack>
                       </YStack>
                     ))}
                   </Card>
                 )}
 
-                {/* Total */}
-                <XStack
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                  py="$2"
-                >
-                  <Text fontSize="$5" fontWeight="bold" color="$color">
-                    Total
-                  </Text>
-                  <Text
-                    fontSize="$7"
-                    fontWeight="bold"
-                    color={
-                      sheetTicket.status === "VOIDED" ? "$red10" : "$green10"
-                    }
-                    style={
-                      sheetTicket.status === "VOIDED"
-                        ? { textDecorationLine: "line-through" }
-                        : undefined
-                    }
-                  >
-                    ${fmtMoney(sheetTicket.total)}
-                  </Text>
-                </XStack>
+                {/* Total + ganancia */}
+                {(() => {
+                  const ticketCogs = sheetItems.reduce(
+                    (s, it) =>
+                      s + (it.costPrice != null ? it.costPrice * it.quantity : 0),
+                    0,
+                  );
+                  const ticketProfit = sheetTicket.total - ticketCogs;
+                  const hasCost = sheetItems.some(
+                    (it) => it.costPrice != null && it.costPrice > 0,
+                  );
+                  const isVoided = sheetTicket.status === "VOIDED";
+                  return (
+                    <YStack gap="$2" py="$2">
+                      <XStack
+                        style={{
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text fontSize="$4" color="$color10">
+                          Ingreso (total)
+                        </Text>
+                        <Text
+                          fontSize="$6"
+                          fontWeight="bold"
+                          color={isVoided ? "$red10" : "$green10"}
+                          style={
+                            isVoided
+                              ? { textDecorationLine: "line-through" }
+                              : undefined
+                          }
+                        >
+                          ${fmtMoney(sheetTicket.total)}
+                        </Text>
+                      </XStack>
+                      {hasCost && (
+                        <>
+                          <XStack
+                            style={{
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text fontSize="$3" color="$color10">
+                              Costo (FIFO)
+                            </Text>
+                            <Text fontSize="$3" color="$orange10">
+                              -${fmtMoney(ticketCogs)}
+                            </Text>
+                          </XStack>
+                          <Separator />
+                          <XStack
+                            style={{
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text fontSize="$5" fontWeight="bold" color="$color">
+                              Ganancia
+                            </Text>
+                            <Text
+                              fontSize="$6"
+                              fontWeight="bold"
+                              color={
+                                isVoided
+                                  ? "$red10"
+                                  : ticketProfit >= 0
+                                    ? "$green10"
+                                    : "$red10"
+                              }
+                              style={
+                                isVoided
+                                  ? { textDecorationLine: "line-through" }
+                                  : undefined
+                              }
+                            >
+                              {ticketProfit >= 0 ? "+" : "-"}$
+                              {fmtMoney(Math.abs(ticketProfit))}
+                            </Text>
+                          </XStack>
+                          <XStack
+                            style={{
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <Text fontSize="$1" color="$color8">
+                              Margen{" "}
+                              {sheetTicket.total > 0
+                                ? (
+                                    (ticketProfit / sheetTicket.total) *
+                                    100
+                                  ).toFixed(1)
+                                : "0.0"}
+                              %
+                            </Text>
+                          </XStack>
+                        </>
+                      )}
+                    </YStack>
+                  );
+                })()}
 
                 {/* Void info or void button */}
                 {sheetTicket.status === "VOIDED" ? (

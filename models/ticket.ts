@@ -27,6 +27,8 @@ export interface TicketItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+  /** Snapshot of FIFO unit cost at sale time (null only for legacy data with no batches). */
+  costPrice: number | null;
   code: string | null;
   photoUri: string | null;
   originalPrice: number | null;

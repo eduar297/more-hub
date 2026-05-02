@@ -28,6 +28,7 @@ export class TicketRepository extends BaseRepository<
     );
 
     const ticketId = Crypto.randomUUID();
+    const storeId = this.storeId ?? 1;
 
     await this.db.withExclusiveTransactionAsync(async (tx) => {
       await tx.runAsync(
@@ -38,21 +39,79 @@ export class TicketRepository extends BaseRepository<
         input.items.length,
         input.workerId ?? null,
         input.workerName ?? null,
-        this.storeId ?? 1,
+        storeId,
       );
 
       for (const item of input.items) {
         const subtotal = item.quantity * item.unitPrice;
 
+        // FIFO-consume from purchase_batches: oldest first, with quantity remaining.
+        const batches = await tx.getAllAsync<{
+          id: number;
+          quantityRemaining: number;
+          unitCost: number;
+        }>(
+          `SELECT id, quantityRemaining, unitCost
+           FROM purchase_batches
+           WHERE productId = ? AND storeId = ? AND quantityRemaining > 0
+           ORDER BY createdAt ASC, id ASC`,
+          [item.productId, storeId],
+        );
+
+        let qtyToConsume = item.quantity;
+        let totalCost = 0;
+        let consumed = 0;
+        let lastBatchCost = 0;
+
+        for (const b of batches) {
+          if (qtyToConsume <= 0) break;
+          const take = Math.min(b.quantityRemaining, qtyToConsume);
+          if (take <= 0) continue;
+          totalCost += take * b.unitCost;
+          consumed += take;
+          lastBatchCost = b.unitCost;
+          await tx.runAsync(
+            `UPDATE purchase_batches SET quantityRemaining = quantityRemaining - ? WHERE id = ?`,
+            [take, b.id],
+          );
+          qtyToConsume -= take;
+        }
+
+        // Stock-out fallback: use last known cost (most recent batch ever, or product.costPrice).
+        if (qtyToConsume > 0) {
+          let fallbackCost = lastBatchCost;
+          if (fallbackCost <= 0) {
+            const last = await tx.getFirstAsync<{ unitCost: number }>(
+              `SELECT unitCost FROM purchase_batches
+               WHERE productId = ? AND storeId = ?
+               ORDER BY createdAt DESC, id DESC LIMIT 1`,
+              [item.productId, storeId],
+            );
+            if (last?.unitCost) fallbackCost = last.unitCost;
+          }
+          if (fallbackCost <= 0) {
+            const prod = await tx.getFirstAsync<{ costPrice: number | null }>(
+              `SELECT costPrice FROM products WHERE id = ?`,
+              [item.productId],
+            );
+            fallbackCost = prod?.costPrice ?? 0;
+          }
+          totalCost += qtyToConsume * fallbackCost;
+          consumed += qtyToConsume;
+        }
+
+        const costPrice = consumed > 0 ? totalCost / consumed : 0;
+
         await tx.runAsync(
-          `INSERT INTO ticket_items (ticketId, productId, productName, quantity, unitPrice, subtotal)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO ticket_items (ticketId, productId, productName, quantity, unitPrice, subtotal, costPrice)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
           ticketId,
           item.productId,
           item.productName,
           item.quantity,
           item.unitPrice,
           subtotal,
+          costPrice,
         );
 
         await tx.runAsync(
@@ -71,18 +130,23 @@ export class TicketRepository extends BaseRepository<
   /**
    * Void (annul) a ticket: mark as VOIDED and restore stock for each item.
    * Runs inside an exclusive transaction to guarantee atomicity.
+   *
+   * For FIFO: creates a synthetic refund batch per item using the original
+   * costPrice and the ticket's createdAt, so subsequent sales pull from
+   * the refunded units first (their cost matches what was originally consumed).
    */
   async voidTicket(
     ticketId: string,
     userId: number,
     reason: string,
   ): Promise<void> {
+    const storeId = this.storeId ?? 1;
     await this.db.withExclusiveTransactionAsync(async (tx) => {
       // Verify ticket is active
-      const ticket = await tx.getFirstAsync<{ status: string }>(
-        `SELECT status FROM tickets WHERE id = ?`,
-        [ticketId],
-      );
+      const ticket = await tx.getFirstAsync<{
+        status: string;
+        createdAt: string;
+      }>(`SELECT status, createdAt FROM tickets WHERE id = ?`, [ticketId]);
       if (!ticket) throw new Error("Ticket no encontrado");
       if (ticket.status === "VOIDED") throw new Error("Ticket ya anulado");
 
@@ -94,19 +158,36 @@ export class TicketRepository extends BaseRepository<
         ticketId,
       );
 
-      // Restore stock for each item
+      // Restore stock & create refund batches for FIFO accuracy
       const items = await tx.getAllAsync<{
         productId: number;
         quantity: number;
-      }>(`SELECT productId, quantity FROM ticket_items WHERE ticketId = ?`, [
-        ticketId,
-      ]);
+        costPrice: number | null;
+      }>(
+        `SELECT productId, quantity, costPrice FROM ticket_items WHERE ticketId = ?`,
+        [ticketId],
+      );
       for (const item of items) {
         await tx.runAsync(
           `UPDATE products SET stockBaseQty = stockBaseQty + ? WHERE id = ?`,
           item.quantity,
           item.productId,
         );
+
+        const refundCost = item.costPrice ?? 0;
+        if (item.quantity > 0) {
+          await tx.runAsync(
+            `INSERT INTO purchase_batches
+              (purchaseId, productId, quantity, quantityRemaining, unitCost, storeId, createdAt)
+             VALUES (NULL, ?, ?, ?, ?, ?, ?)`,
+            item.productId,
+            item.quantity,
+            item.quantity,
+            refundCost,
+            storeId,
+            ticket.createdAt,
+          );
+        }
       }
     });
   }
@@ -139,6 +220,118 @@ export class TicketRepository extends BaseRepository<
        LEFT JOIN products p ON p.id = ti.productId
        WHERE ti.ticketId = ? ORDER BY ti.id`,
       [ticketId],
+    );
+  }
+
+  /**
+   * Cost of Goods Sold for a date range [from, to] inclusive (YYYY-MM-DD).
+   * Sums ti.quantity * COALESCE(ti.costPrice, 0) for active tickets only.
+   */
+  async cogsByDateRange(
+    from: string,
+    to: string,
+    workerId?: number | null,
+  ): Promise<number> {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [from, to];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    const row = await this.db.getFirstAsync<{ cogs: number }>(
+      `SELECT COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) AS cogs
+       FROM ticket_items ti
+       JOIN tickets t ON t.id = ti.ticketId
+       WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}${ACTIVE}`,
+      params,
+    );
+    return row?.cogs ?? 0;
+  }
+
+  /** COGS for a specific day. */
+  async cogsByDay(date: string, workerId?: number | null): Promise<number> {
+    return this.cogsByDateRange(date, date, workerId);
+  }
+
+  /** COGS for a YYYY-MM month. */
+  async cogsByMonth(month: string, workerId?: number | null): Promise<number> {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [month];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    const row = await this.db.getFirstAsync<{ cogs: number }>(
+      `SELECT COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) AS cogs
+       FROM ticket_items ti
+       JOIN tickets t ON t.id = ti.ticketId
+       WHERE strftime('%Y-%m', t.createdAt) = ?${wFilter}${sFilter}${ACTIVE}`,
+      params,
+    );
+    return row?.cogs ?? 0;
+  }
+
+  /** Monthly COGS series for a given year (parallel to monthlySalesForYear). */
+  async cogsMonthlyForYear(
+    year: string,
+    workerId?: number | null,
+  ): Promise<{ month: number; cogs: number }[]> {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [year];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    return this.db.getAllAsync<{ month: number; cogs: number }>(
+      `SELECT CAST(strftime('%m', t.createdAt) AS INTEGER) AS month,
+              COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) AS cogs
+       FROM ticket_items ti
+       JOIN tickets t ON t.id = ti.ticketId
+       WHERE strftime('%Y', t.createdAt) = ?${wFilter}${sFilter}${ACTIVE}
+       GROUP BY month
+       ORDER BY month`,
+      params,
+    );
+  }
+
+  /** Daily COGS for a given month. */
+  async cogsDailyForMonth(
+    month: string,
+    workerId?: number | null,
+  ): Promise<{ day: number; cogs: number }[]> {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [month];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    return this.db.getAllAsync<{ day: number; cogs: number }>(
+      `SELECT CAST(strftime('%d', t.createdAt) AS INTEGER) AS day,
+              COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) AS cogs
+       FROM ticket_items ti
+       JOIN tickets t ON t.id = ti.ticketId
+       WHERE strftime('%Y-%m', t.createdAt) = ?${wFilter}${sFilter}${ACTIVE}
+       GROUP BY day
+       ORDER BY day`,
+      params,
+    );
+  }
+
+  /** Hourly COGS for a given day. */
+  async cogsHourlyForDay(
+    date: string,
+    workerId?: number | null,
+  ): Promise<{ hour: number; cogs: number }[]> {
+    const wFilter = workerId ? " AND t.workerId = ?" : "";
+    const sFilter = this.storeId !== undefined ? " AND t.storeId = ?" : "";
+    const params: SQLiteBindValue[] = [date];
+    if (workerId) params.push(workerId);
+    if (this.storeId !== undefined) params.push(this.storeId);
+    return this.db.getAllAsync<{ hour: number; cogs: number }>(
+      `SELECT CAST(strftime('%H', t.createdAt) AS INTEGER) AS hour,
+              COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) AS cogs
+       FROM ticket_items ti
+       JOIN tickets t ON t.id = ti.ticketId
+       WHERE date(t.createdAt) = ?${wFilter}${sFilter}${ACTIVE}
+       GROUP BY hour
+       ORDER BY hour`,
+      params,
     );
   }
 
@@ -214,6 +407,8 @@ export class TicketRepository extends BaseRepository<
       productName: string;
       totalQty: number;
       totalRevenue: number;
+      totalCost: number;
+      totalProfit: number;
     }[]
   > {
     const m = month ?? currentMonth();
@@ -226,7 +421,9 @@ export class TicketRepository extends BaseRepository<
     return this.db.getAllAsync(
       `SELECT ti.productId, ti.productName,
               SUM(ti.quantity) as totalQty,
-              SUM(ti.subtotal) as totalRevenue
+              SUM(ti.subtotal) as totalRevenue,
+              COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) as totalCost,
+              SUM(ti.subtotal) - COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) as totalProfit
        FROM ticket_items ti
        JOIN tickets t ON ti.ticketId = t.id
        WHERE strftime('%Y-%m', t.createdAt) = ?${wFilter}${sFilter}${ACTIVE}
@@ -249,6 +446,8 @@ export class TicketRepository extends BaseRepository<
       productName: string;
       totalQty: number;
       totalRevenue: number;
+      totalCost: number;
+      totalProfit: number;
     }[]
   > {
     const wFilter = workerId ? " AND t.workerId = ?" : "";
@@ -260,7 +459,9 @@ export class TicketRepository extends BaseRepository<
     return this.db.getAllAsync(
       `SELECT ti.productId, ti.productName,
               SUM(ti.quantity) as totalQty,
-              SUM(ti.subtotal) as totalRevenue
+              SUM(ti.subtotal) as totalRevenue,
+              COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) as totalCost,
+              SUM(ti.subtotal) - COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) as totalProfit
        FROM ticket_items ti
        JOIN tickets t ON ti.ticketId = t.id
        WHERE date(t.createdAt) BETWEEN ? AND ?${wFilter}${sFilter}${ACTIVE}

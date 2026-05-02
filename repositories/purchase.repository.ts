@@ -1,7 +1,7 @@
 import type {
-  CreatePurchaseInput,
-  Purchase,
-  PurchaseItem,
+    CreatePurchaseInput,
+    Purchase,
+    PurchaseItem,
 } from "@/models/purchase";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { BaseRepository } from "./base.repository";
@@ -34,6 +34,7 @@ export class PurchaseRepository extends BaseRepository<
     const transportCost = input.transportCost ?? 0;
     const total = itemsTotal + transportCost;
     let purchaseId = 0;
+    const storeId = this.storeId ?? 1;
 
     await this.db.withExclusiveTransactionAsync(async (tx) => {
       const result = await tx.runAsync(
@@ -45,12 +46,20 @@ export class PurchaseRepository extends BaseRepository<
         total,
         transportCost,
         input.items.length,
-        this.storeId ?? 1,
+        storeId,
       );
       purchaseId = result.lastInsertRowId;
 
       for (const item of input.items) {
         const subtotal = item.quantity * item.unitCost;
+        // Prorate transport cost across items by subtotal share, then per-unit.
+        const transportShare =
+          itemsTotal > 0 ? (transportCost * subtotal) / itemsTotal : 0;
+        const allInUnitCost =
+          item.quantity > 0
+            ? item.unitCost + transportShare / item.quantity
+            : item.unitCost;
+
         await tx.runAsync(
           `INSERT INTO purchase_items (purchaseId, productId, productName, quantity, unitCost, subtotal)
            VALUES (?, ?, ?, ?, ?, ?)`,
@@ -61,10 +70,31 @@ export class PurchaseRepository extends BaseRepository<
           item.unitCost,
           subtotal,
         );
+
+        // FIFO batch with all-in unit cost.
+        await tx.runAsync(
+          `INSERT INTO purchase_batches
+            (purchaseId, productId, quantity, quantityRemaining, unitCost, storeId)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          purchaseId,
+          item.productId,
+          item.quantity,
+          item.quantity,
+          allInUnitCost,
+          storeId,
+        );
+
         // Add incoming stock to the product
         await tx.runAsync(
           `UPDATE products SET stockBaseQty = stockBaseQty + ? WHERE id = ?`,
           item.quantity,
+          item.productId,
+        );
+
+        // Update product cost price with latest purchase cost (including transport)
+        await tx.runAsync(
+          `UPDATE products SET costPrice = ? WHERE id = ?`,
+          allInUnitCost,
           item.productId,
         );
       }

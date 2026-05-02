@@ -6,7 +6,6 @@ import { useColors } from "@/hooks/use-colors";
 import { useExpenseRepository } from "@/hooks/use-expense-repository";
 import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useProductRepository } from "@/hooks/use-product-repository";
-import { usePurchaseRepository } from "@/hooks/use-purchase-repository";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import {
   daysInMonth,
@@ -54,7 +53,6 @@ export function OverviewSection() {
   const db = useSQLiteContext();
   const { currentStore, syncVersion } = useStore();
   const ticketRepo = useTicketRepository();
-  const purchaseRepo = usePurchaseRepository();
   const expenseRepo = useExpenseRepository();
   const productRepo = useProductRepository();
 
@@ -64,14 +62,14 @@ export function OverviewSection() {
   // Data states
   const [salesTotal, setSalesTotal] = useState(0);
   const [ticketCount, setTicketCount] = useState(0);
-  const [purchasesTotal, setPurchasesTotal] = useState(0);
   const [expensesTotal, setExpensesTotal] = useState(0);
+  const [cogsTotal, setCogsTotal] = useState(0);
 
   // Previous period data (for delta %)
   const [prevSales, setPrevSales] = useState(0);
   const [prevTickets, setPrevTickets] = useState(0);
-  const [prevPurchases, setPrevPurchases] = useState(0);
   const [prevExpenses, setPrevExpenses] = useState(0);
+  const [prevCogs, setPrevCogs] = useState(0);
 
   // Chart data
   const [dailySalesData, setDailySalesData] = useState<
@@ -163,46 +161,46 @@ export function OverviewSection() {
 
       if (nav.period === "day") {
         const prevDay = shiftDay(nav.selectedDay, -1);
-        const [daySumm, hourly, dayPurch, dayExp, pSales, pPurch, pExp] =
+        const [daySumm, hourly, dayExp, pSales, pExp, dayCogs, pCogs] =
           await Promise.all([
             ticketRepo.daySummary(nav.selectedDay),
             ticketRepo.hourlySales(nav.selectedDay),
-            purchaseRepo.daySummary(nav.selectedDay),
             expenseRepo.dayTotal(nav.selectedDay),
             ticketRepo.daySummary(prevDay),
-            purchaseRepo.daySummary(prevDay),
             expenseRepo.dayTotal(prevDay),
+            ticketRepo.cogsByDay(nav.selectedDay),
+            ticketRepo.cogsByDay(prevDay),
           ]);
         setSalesTotal(daySumm.totalSales);
         setTicketCount(daySumm.ticketCount);
         setHourlySales(hourly);
-        setPurchasesTotal(dayPurch.totalSpent);
         setExpensesTotal(dayExp);
+        setCogsTotal(dayCogs);
         setPrevSales(pSales.totalSales);
         setPrevTickets(pSales.ticketCount);
-        setPrevPurchases(pPurch.totalSpent);
         setPrevExpenses(pExp);
+        setPrevCogs(pCogs);
       } else if (nav.period === "week") {
         const wkEnd = weekEndISO(nav.selectedWeekStart);
         const prevWkStart = shiftWeek(nav.selectedWeekStart, -1);
         const prevWkEnd = weekEndISO(prevWkStart);
-        const [wkTickets, wkPurch, wkExp, pTickets, pPurch, pExp] =
+        const [wkTickets, wkExp, pTickets, pExp, wkCogs, pCogs] =
           await Promise.all([
             ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
-            purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
             expenseRepo.rangeTotal(nav.selectedWeekStart, wkEnd),
             ticketRepo.findByDateRange(prevWkStart, prevWkEnd),
-            purchaseRepo.rangeSummary(prevWkStart, prevWkEnd),
             expenseRepo.rangeTotal(prevWkStart, prevWkEnd),
+            ticketRepo.cogsByDateRange(nav.selectedWeekStart, wkEnd),
+            ticketRepo.cogsByDateRange(prevWkStart, prevWkEnd),
           ]);
         setSalesTotal(wkTickets.reduce((s, t) => s + t.total, 0));
         setTicketCount(wkTickets.length);
-        setPurchasesTotal(wkPurch.totalSpent);
         setExpensesTotal(wkExp);
+        setCogsTotal(wkCogs);
         setPrevSales(pTickets.reduce((s, t) => s + t.total, 0));
         setPrevTickets(pTickets.length);
-        setPrevPurchases(pPurch.totalSpent);
         setPrevExpenses(pExp);
+        setPrevCogs(pCogs);
         const weekDailyTotals = Array.from({ length: 7 }, (_, i) => {
           const dayKey = shiftDay(nav.selectedWeekStart, i);
           return {
@@ -215,60 +213,64 @@ export function OverviewSection() {
         setDailySalesData(weekDailyTotals);
       } else if (nav.period === "month") {
         const prevMonth = shiftMonth(nav.selectedMonth, -1);
-        const [monthSumm, daily, monthP, monthE, pSumm, pP, pE] =
+        const [monthSumm, daily, monthE, pSumm, pE, monthCogs, pCogs] =
           await Promise.all([
             ticketRepo.monthlySummary(nav.selectedMonth),
             ticketRepo.dailySales(nav.selectedMonth),
-            purchaseRepo.monthlySummary(nav.selectedMonth),
             expenseRepo.monthlyTotal(nav.selectedMonth),
             ticketRepo.monthlySummary(prevMonth),
-            purchaseRepo.monthlySummary(prevMonth),
             expenseRepo.monthlyTotal(prevMonth),
+            ticketRepo.cogsByMonth(nav.selectedMonth),
+            ticketRepo.cogsByMonth(prevMonth),
           ]);
         setSalesTotal(monthSumm.totalSales);
         setTicketCount(monthSumm.ticketCount);
         setDailySalesData(daily);
-        setPurchasesTotal(monthP.totalSpent);
         setExpensesTotal(monthE);
+        setCogsTotal(monthCogs);
         setPrevSales(pSumm.totalSales);
         setPrevTickets(pSumm.ticketCount);
-        setPrevPurchases(pP.totalSpent);
         setPrevExpenses(pE);
+        setPrevCogs(pCogs);
       } else if (nav.period === "year") {
         const prevYear = String(Number(nav.selectedYear) - 1);
-        const [yearSales, yearPurch, yearExp, pSales, pPurch, pExp] =
+        const yStart = `${nav.selectedYear}-01-01`;
+        const yEnd = `${nav.selectedYear}-12-31`;
+        const pStart = `${prevYear}-01-01`;
+        const pEnd = `${prevYear}-12-31`;
+        const [yearSales, yearExp, pSales, pExp, yearCogs, pCogs] =
           await Promise.all([
             ticketRepo.monthlySalesForYear(nav.selectedYear),
-            purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
             expenseRepo.monthlyTotalsForYear(nav.selectedYear),
             ticketRepo.monthlySalesForYear(prevYear),
-            purchaseRepo.monthlyTotalsForYear(prevYear),
             expenseRepo.monthlyTotalsForYear(prevYear),
+            ticketRepo.cogsByDateRange(yStart, yEnd),
+            ticketRepo.cogsByDateRange(pStart, pEnd),
           ]);
         setYearlySales(yearSales);
         setSalesTotal(yearSales.reduce((s, y) => s + y.total, 0));
         setTicketCount(yearSales.reduce((s, y) => s + y.tickets, 0));
-        setPurchasesTotal(yearPurch.reduce((s, y) => s + y.total, 0));
         setExpensesTotal(yearExp.reduce((s, y) => s + y.total, 0));
+        setCogsTotal(yearCogs);
         setPrevSales(pSales.reduce((s, y) => s + y.total, 0));
         setPrevTickets(pSales.reduce((s, y) => s + y.tickets, 0));
-        setPrevPurchases(pPurch.reduce((s, y) => s + y.total, 0));
         setPrevExpenses(pExp.reduce((s, y) => s + y.total, 0));
+        setPrevCogs(pCogs);
       } else {
         // range
-        const [rangeTickets, rangePurch, rangeExp] = await Promise.all([
+        const [rangeTickets, rangeExp, rangeCogs] = await Promise.all([
           ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to),
-          purchaseRepo.rangeSummary(nav.dateRange.from, nav.dateRange.to),
           expenseRepo.rangeTotal(nav.dateRange.from, nav.dateRange.to),
+          ticketRepo.cogsByDateRange(nav.dateRange.from, nav.dateRange.to),
         ]);
         setSalesTotal(rangeTickets.reduce((s, t) => s + t.total, 0));
         setTicketCount(rangeTickets.length);
-        setPurchasesTotal(rangePurch.totalSpent);
         setExpensesTotal(rangeExp);
+        setCogsTotal(rangeCogs);
         setPrevSales(0);
         setPrevTickets(0);
-        setPrevPurchases(0);
         setPrevExpenses(0);
+        setPrevCogs(0);
         const dayCount =
           Math.round(
             (new Date(nav.dateRange.to + "T12:00:00").getTime() -
@@ -298,7 +300,6 @@ export function OverviewSection() {
     nav.dateRange,
     periodRange,
     ticketRepo,
-    purchaseRepo,
     expenseRepo,
     productRepo,
     syncVersion,
@@ -343,7 +344,8 @@ export function OverviewSection() {
     }, [db, currentStore?.id]),
   );
 
-  const profit = salesTotal - purchasesTotal - expensesTotal;
+  // True profit: revenue − cost of goods sold (FIFO snapshot) − operating expenses.
+  const profit = salesTotal - cogsTotal - expensesTotal;
   const avgTicket = ticketCount > 0 ? salesTotal / ticketCount : 0;
 
   // Delta % vs previous period
@@ -356,7 +358,7 @@ export function OverviewSection() {
     : undefined;
   const prevAvg = prevTickets > 0 ? prevSales / prevTickets : 0;
   const avgDelta = showDelta ? pctDelta(avgTicket, prevAvg) : undefined;
-  const prevProfit = prevSales - prevPurchases - prevExpenses;
+  const prevProfit = prevSales - prevCogs - prevExpenses;
   const profitDelta = showDelta ? pctDelta(profit, prevProfit) : undefined;
 
   // Best/worst day and peak hour insights

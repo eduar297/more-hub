@@ -103,39 +103,48 @@ export async function runPricingAnalysis(
     sParams,
   );
 
-  // ── Weighted-average purchase cost per product ──────────────────────────
-  const purchaseCosts = await db.getAllAsync<{
+  // ── Sales per product (with FIFO COGS from snapshot costPrice) ─────────
+  // costPrice on ticket_items is set at sale time via FIFO consumption,
+  // so this gives the *real* cost of what was sold rather than a global
+  // weighted average over the period.
+  const salesData = await db.getAllAsync<{
+    productId: number;
+    totalQty: number;
+    totalRevenue: number;
+    totalCost: number;
+    avgCost: number;
+  }>(
+    `SELECT ti.productId,
+            SUM(ti.quantity) AS totalQty,
+            SUM(ti.subtotal) AS totalRevenue,
+            COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) AS totalCost,
+            COALESCE(SUM(ti.quantity * COALESCE(ti.costPrice, 0)), 0) /
+              NULLIF(SUM(ti.quantity), 0) AS avgCost
+     FROM ticket_items ti
+     JOIN tickets t ON t.id = ti.ticketId
+     WHERE date(t.createdAt) >= ? AND date(t.createdAt) <= ?${storeId !== undefined ? " AND t.storeId = ?" : ""}
+     GROUP BY ti.productId`,
+    storeId !== undefined ? [from, to, storeId] : [from, to],
+  );
+  const salesMap = new Map(salesData.map((r) => [r.productId, r]));
+
+  // For products with no sales in the period, fall back to current FIFO
+  // inventory cost (avg of what's in stock now, weighted by quantityRemaining).
+  const inventoryCosts = await db.getAllAsync<{
     productId: number;
     avgCost: number;
     totalQty: number;
   }>(
     `SELECT productId,
-            SUM(subtotal) / SUM(quantity) AS avgCost,
-            SUM(quantity)                 AS totalQty
-     FROM purchase_items pi
-     JOIN purchases p ON p.id = pi.purchaseId
-     WHERE date(p.createdAt) >= ? AND date(p.createdAt) <= ?${storeId !== undefined ? " AND p.storeId = ?" : ""}
+            SUM(quantityRemaining * unitCost) /
+              NULLIF(SUM(quantityRemaining), 0) AS avgCost,
+            SUM(quantityRemaining) AS totalQty
+     FROM purchase_batches
+     WHERE quantityRemaining > 0${storeId !== undefined ? " AND storeId = ?" : ""}
      GROUP BY productId`,
-    storeId !== undefined ? [from, to, storeId] : [from, to],
+    storeId !== undefined ? [storeId] : [],
   );
-  const costMap = new Map(purchaseCosts.map((r) => [r.productId, r]));
-
-  // ── Sales per product ──────────────────────────────────────────────────
-  const salesData = await db.getAllAsync<{
-    productId: number;
-    totalQty: number;
-    totalRevenue: number;
-  }>(
-    `SELECT productId,
-            SUM(quantity) AS totalQty,
-            SUM(subtotal) AS totalRevenue
-     FROM ticket_items ti
-     JOIN tickets t ON t.id = ti.ticketId
-     WHERE date(t.createdAt) >= ? AND date(t.createdAt) <= ?${storeId !== undefined ? " AND t.storeId = ?" : ""}
-     GROUP BY productId`,
-    storeId !== undefined ? [from, to, storeId] : [from, to],
-  );
-  const salesMap = new Map(salesData.map((r) => [r.productId, r]));
+  const costMap = new Map(inventoryCosts.map((r) => [r.productId, r]));
 
   // ── Total expenses in the period ──────────────────────────────────────
   const expResult = await db.getFirstAsync<{ total: number }>(
@@ -161,11 +170,15 @@ export async function runPricingAnalysis(
       ? monthlyVolumes[Math.floor(monthlyVolumes.length / 2)]
       : 0;
 
-  // Median current margin
+  // Median current margin (uses FIFO-realised cost when available).
+  const realisedCost = (productId: number, fallback: number) => {
+    const sales = salesMap.get(productId);
+    if (sales && sales.totalQty > 0 && sales.avgCost > 0) return sales.avgCost;
+    return costMap.get(productId)?.avgCost ?? fallback;
+  };
   const margins = products
     .map((p) => {
-      const cost =
-        costMap.get(p.id)?.avgCost ?? p.costPrice ?? p.pricePerBaseUnit;
+      const cost = realisedCost(p.id, p.costPrice ?? p.pricePerBaseUnit);
       return p.salePrice > 0 ? (p.salePrice - cost) / p.salePrice : 0;
     })
     .sort((a, b) => a - b);
@@ -174,9 +187,10 @@ export async function runPricingAnalysis(
 
   // ── Per-product analysis ──────────────────────────────────────────────
   const analyses: ProductAnalysis[] = products.map((p) => {
-    const purchase = costMap.get(p.id);
-    const avgPurchaseCost =
-      purchase?.avgCost ?? p.costPrice ?? p.pricePerBaseUnit;
+    const avgPurchaseCost = realisedCost(
+      p.id,
+      p.costPrice ?? p.pricePerBaseUnit,
+    );
 
     const sales = salesMap.get(p.id);
     const unitsSold = sales?.totalQty ?? 0;

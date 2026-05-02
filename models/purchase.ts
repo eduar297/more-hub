@@ -41,3 +41,19 @@ export interface CreatePurchaseInput {
     unitCost: number;
   }[];
 }
+
+export interface PurchaseBatch {
+  id: number;
+  /** Null when this is a synthetic seed batch for manually-added stock. */
+  purchaseId: number | null;
+  productId: number;
+  /** Original quantity received in this batch. */
+  quantity: number;
+  /** Units still available — decremented as sales consume FIFO. */
+  quantityRemaining: number;
+  /** All-in unit cost (item cost + prorated transport). */
+  unitCost: number;
+  storeId: number;
+  createdAt: string;
+  updatedAt: string;
+}

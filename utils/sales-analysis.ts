@@ -148,15 +148,28 @@ export async function runSalesAnalysis(
     storeId !== undefined ? [storeId] : [],
   );
 
-  // ── Weighted-average cost per product ──────────────────────────────────
-  const costRows = await db.getAllAsync<{ productId: number; avgCost: number }>(
+  // ── FIFO inventory cost per product ─────────────────────────────────────
+  // Real cost of current stock = sum of (quantityRemaining * unitCost) across
+  // unconsumed batches. avgCost falls back to a stock-weighted unit cost so
+  // the rest of the analysis (margin/discount logic) keeps working.
+  const costRows = await db.getAllAsync<{
+    productId: number;
+    avgCost: number;
+    inventoryValue: number;
+  }>(
     `SELECT productId,
-            SUM(quantity * unitCost) / NULLIF(SUM(quantity), 0) AS avgCost
-     FROM purchase_items${storeId !== undefined ? " pi JOIN purchases p ON p.id = pi.purchaseId WHERE p.storeId = ?" : ""}
+            SUM(quantityRemaining * unitCost) /
+              NULLIF(SUM(quantityRemaining), 0) AS avgCost,
+            SUM(quantityRemaining * unitCost) AS inventoryValue
+     FROM purchase_batches
+     WHERE quantityRemaining > 0${storeId !== undefined ? " AND storeId = ?" : ""}
      GROUP BY productId`,
     storeId !== undefined ? [storeId] : [],
   );
   const costMap = new Map(costRows.map((r) => [r.productId, r.avgCost]));
+  const inventoryValueMap = new Map(
+    costRows.map((r) => [r.productId, r.inventoryValue]),
+  );
 
   // ── Sales per product: total, recent half, older half ──────────────────
   const salesRows = await db.getAllAsync<{
@@ -232,7 +245,9 @@ export async function runSalesAnalysis(
       status = "slowing";
     }
 
-    const capitalLocked = p.stockBaseQty * avgCost;
+    // FIFO-accurate when batches exist; falls back to qty * avgCost for legacy data.
+    const capitalLocked =
+      inventoryValueMap.get(p.id) ?? p.stockBaseQty * avgCost;
     const daysOfStock =
       recentRate > 0 ? Math.round(p.stockBaseQty / recentRate) : Infinity;
 

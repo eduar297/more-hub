@@ -10,8 +10,15 @@ import { useLan } from "@/contexts/lan-context";
 import { useColors } from "@/hooks/use-colors";
 import { Bell, RefreshCw, X } from "@tamagui/lucide-icons";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack } from "tamagui";
 
@@ -23,6 +30,43 @@ export function HeaderActions() {
   const { history, clearHistory, unseenCount, markAllSeen } =
     useNotifications();
   const { stopDiscovery, disconnectFromServer } = useLan();
+
+  const shakeAnimation = useRef(new Animated.Value(0)).current;
+
+  const startShakeAnimation = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(shakeAnimation, {
+        toValue: 2,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnimation, {
+        toValue: -2,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnimation, {
+        toValue: 2,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnimation, {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [shakeAnimation]);
+
+  useEffect(() => {
+    if (unseenCount > 0) {
+      const interval = setInterval(() => {
+        startShakeAnimation();
+      }, 3000); // Vibra cada 3 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [unseenCount, startShakeAnimation]);
 
   const openHistory = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -66,36 +110,51 @@ export function HeaderActions() {
         >
           <RefreshCw size={20} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={openHistory} hitSlop={8}>
-          <Bell size={24} color={c.text as any} />
-          {unseenCount > 0 && (
-            <View
-              style={{
-                position: "absolute",
-                top: -6,
-                right: -8,
-                minWidth: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: c.danger,
-                alignItems: "center",
-                justifyContent: "center",
-                paddingHorizontal: 4,
-              }}
-            >
-              <Text
+        <Animated.View
+          style={{
+            transform: [{ translateX: shakeAnimation }],
+          }}
+        >
+          <TouchableOpacity onPress={openHistory} hitSlop={8}>
+            <Bell size={24} color={c.text as any} />
+            {unseenCount > 0 && (
+              <View
                 style={{
-                  color: "#fff",
-                  fontSize: 10,
-                  fontWeight: "700",
-                  fontVariant: ["tabular-nums"],
+                  position: "absolute",
+                  right: 0,
+                  minWidth: unseenCount > 9 ? 16 : 10,
+                  height: unseenCount > 9 ? 16 : 10,
+                  borderRadius: unseenCount > 9 ? 8 : 5,
+                  backgroundColor: c.green,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {unseenCount > 99 ? "99+" : unseenCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+                {unseenCount > 9 ? (
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontSize: 8,
+                      fontWeight: "700",
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {unseenCount > 99 ? "99+" : unseenCount}
+                  </Text>
+                ) : (
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: "#fff",
+                    }}
+                  />
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       </View>
 
       <Modal

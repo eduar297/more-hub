@@ -93,11 +93,29 @@ async function ensureTables(db: SQLiteDatabase) {
       quantity REAL NOT NULL,
       unitPrice REAL NOT NULL,
       subtotal REAL NOT NULL,
+      costPrice REAL,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       FOREIGN KEY (ticketId) REFERENCES tickets(id),
       FOREIGN KEY (productId) REFERENCES products(id)
     );
+
+    CREATE TABLE IF NOT EXISTS purchase_batches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchaseId INTEGER,
+      productId INTEGER NOT NULL,
+      quantity REAL NOT NULL,
+      quantityRemaining REAL NOT NULL,
+      unitCost REAL NOT NULL,
+      storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+      createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      FOREIGN KEY (productId) REFERENCES products(id),
+      FOREIGN KEY (purchaseId) REFERENCES purchases(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pb_fifo
+      ON purchase_batches (productId, storeId, createdAt, id);
 
     CREATE TABLE IF NOT EXISTS suppliers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,16 +215,166 @@ async function ensureTables(db: SQLiteDatabase) {
   await ensureTriggers(db);
 }
 
+/**
+ * Backfill purchase_batches and ticket_items.costPrice from existing data.
+ *
+ * Strategy:
+ *  1. Mirror each purchase_items row into purchase_batches, prorating
+ *     transportCost into unitCost (so the batch unit cost is "all-in").
+ *  2. For each product, if (currentStock + totalSold - totalPurchased) > 0,
+ *     insert a synthetic seed batch at products.costPrice — represents stock
+ *     that was added manually (no purchase recorded).
+ *  3. Replay every active ticket_item in chronological order, FIFO-consuming
+ *     from batches, snapshot the resulting weighted unit cost into
+ *     ticket_items.costPrice and update each batch's quantityRemaining.
+ *  4. If a sale exhausted batches (sold without stock), use the most recent
+ *     batch's unitCost (or products.costPrice as final fallback).
+ */
+async function backfillFifoBatches(db: SQLiteDatabase) {
+  // Step 1: mirror purchase_items into purchase_batches with prorated transport.
+  await db.execAsync(`
+    INSERT INTO purchase_batches
+      (purchaseId, productId, quantity, quantityRemaining, unitCost, storeId, createdAt, updatedAt)
+    SELECT
+      pi.purchaseId,
+      pi.productId,
+      pi.quantity,
+      pi.quantity,
+      pi.unitCost + COALESCE(
+        (p.transportCost * pi.subtotal /
+          NULLIF((SELECT SUM(quantity * unitCost)
+                  FROM purchase_items WHERE purchaseId = pi.purchaseId), 0)
+        ) / NULLIF(pi.quantity, 0),
+        0
+      ),
+      p.storeId,
+      pi.createdAt,
+      pi.updatedAt
+    FROM purchase_items pi
+    JOIN purchases p ON p.id = pi.purchaseId;
+  `);
+
+  // Step 2: synthetic seed batches for products with manual stock.
+  const products = await db.getAllAsync<{
+    id: number;
+    storeId: number;
+    stockBaseQty: number;
+    costPrice: number | null;
+    pricePerBaseUnit: number;
+    createdAt: string;
+  }>(
+    `SELECT id, storeId, stockBaseQty, costPrice, pricePerBaseUnit, createdAt FROM products`,
+  );
+
+  for (const p of products) {
+    const purchased = await db.getFirstAsync<{ q: number | null }>(
+      `SELECT COALESCE(SUM(quantity), 0) AS q FROM purchase_items WHERE productId = ?`,
+      [p.id],
+    );
+    const sold = await db.getFirstAsync<{ q: number | null }>(
+      `SELECT COALESCE(SUM(ti.quantity), 0) AS q
+       FROM ticket_items ti JOIN tickets t ON t.id = ti.ticketId
+       WHERE ti.productId = ? AND t.status = 'ACTIVE'`,
+      [p.id],
+    );
+    const purchasedQty = purchased?.q ?? 0;
+    const soldQty = sold?.q ?? 0;
+    const seed = p.stockBaseQty + soldQty - purchasedQty;
+    if (seed > 0) {
+      const unitCost = p.costPrice ?? p.pricePerBaseUnit ?? 0;
+      // Use a very early createdAt so this batch is consumed first in FIFO.
+      const seedDate = "1970-01-01 00:00:00";
+      await db.runAsync(
+        `INSERT INTO purchase_batches
+          (purchaseId, productId, quantity, quantityRemaining, unitCost, storeId, createdAt, updatedAt)
+         VALUES (NULL, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))`,
+        [p.id, seed, seed, unitCost, p.storeId, seedDate],
+      );
+    }
+  }
+
+  // Step 3: replay active ticket_items chronologically, FIFO-consume per product.
+  const productIds = products.map((p) => p.id);
+  for (const productId of productIds) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) continue;
+
+    const batches = await db.getAllAsync<{
+      id: number;
+      quantityRemaining: number;
+      unitCost: number;
+    }>(
+      `SELECT id, quantityRemaining, unitCost
+       FROM purchase_batches
+       WHERE productId = ?
+       ORDER BY createdAt ASC, id ASC`,
+      [productId],
+    );
+
+    if (batches.length === 0) continue;
+
+    const items = await db.getAllAsync<{
+      id: number;
+      quantity: number;
+    }>(
+      `SELECT ti.id, ti.quantity
+       FROM ticket_items ti JOIN tickets t ON t.id = ti.ticketId
+       WHERE ti.productId = ? AND t.status = 'ACTIVE' AND ti.costPrice IS NULL
+       ORDER BY t.createdAt ASC, ti.id ASC`,
+      [productId],
+    );
+
+    const tracking = batches.map((b) => ({ ...b }));
+    const lastCostFallback =
+      tracking[tracking.length - 1]?.unitCost ?? product.costPrice ?? 0;
+
+    for (const ti of items) {
+      let qtyToConsume = ti.quantity;
+      let totalCost = 0;
+      let consumed = 0;
+      for (const b of tracking) {
+        if (qtyToConsume <= 0) break;
+        if (b.quantityRemaining <= 0) continue;
+        const take = Math.min(b.quantityRemaining, qtyToConsume);
+        totalCost += take * b.unitCost;
+        consumed += take;
+        b.quantityRemaining -= take;
+        qtyToConsume -= take;
+      }
+      if (qtyToConsume > 0) {
+        totalCost += qtyToConsume * lastCostFallback;
+        consumed += qtyToConsume;
+      }
+      const avgCost = consumed > 0 ? totalCost / consumed : 0;
+      await db.runAsync(`UPDATE ticket_items SET costPrice = ? WHERE id = ?`, [
+        avgCost,
+        ti.id,
+      ]);
+    }
+
+    for (const b of tracking) {
+      await db.runAsync(
+        `UPDATE purchase_batches SET quantityRemaining = ? WHERE id = ?`,
+        [Math.max(0, b.quantityRemaining), b.id],
+      );
+    }
+  }
+}
+
 /** Create updatedAt triggers for all syncable tables (idempotent). */
 async function ensureTriggers(db: SQLiteDatabase) {
   const tables = [
     "stores",
     "products",
+    "product_price_tiers",
+    "users",
     "tickets",
     "ticket_items",
-    "expenses",
     "suppliers",
-    "users",
+    "purchases",
+    "purchase_items",
+    "purchase_batches",
+    "expenses",
   ];
   for (const t of tables) {
     await db.execAsync(`
@@ -222,7 +390,7 @@ async function ensureTriggers(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 32;
+  const DATABASE_VERSION = 34;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -714,6 +882,356 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       );
     `);
     currentVersion = 32;
+  }
+
+  if (currentVersion === 32) {
+    await db.execAsync(`
+      ALTER TABLE ticket_items ADD COLUMN costPrice REAL;
+
+      CREATE TABLE IF NOT EXISTS purchase_batches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchaseId INTEGER,
+        productId INTEGER NOT NULL,
+        quantity REAL NOT NULL,
+        quantityRemaining REAL NOT NULL,
+        unitCost REAL NOT NULL,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (productId) REFERENCES products(id),
+        FOREIGN KEY (purchaseId) REFERENCES purchases(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_pb_fifo
+        ON purchase_batches (productId, storeId, createdAt, id);
+    `);
+
+    await backfillFifoBatches(db);
+    currentVersion = 33;
+  }
+
+  if (currentVersion === 33) {
+    console.log("🔄 Resetting admin database to clean schema...");
+
+    // Drop all tables and recreate with clean schema
+    await db.execAsync(`
+      -- Drop all tables if they exist
+      DROP TABLE IF EXISTS sync_hosts;
+      DROP TABLE IF EXISTS notification_history;
+      DROP TABLE IF EXISTS app_settings;
+      DROP TABLE IF EXISTS purchase_batches;
+      DROP TABLE IF EXISTS purchase_items;
+      DROP TABLE IF EXISTS purchases;
+      DROP TABLE IF EXISTS suppliers;
+      DROP TABLE IF EXISTS expenses;
+      DROP TABLE IF EXISTS ticket_items;
+      DROP TABLE IF EXISTS tickets;
+      DROP TABLE IF EXISTS product_price_tiers;
+      DROP TABLE IF EXISTS products;
+      DROP TABLE IF EXISTS users;
+      DROP TABLE IF EXISTS units;
+      DROP TABLE IF EXISTS unit_categories;
+      DROP TABLE IF EXISTS stores;
+
+      -- Recreate all tables with correct clean schema
+      CREATE TABLE stores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        address TEXT,
+        latitude REAL,
+        longitude REAL,
+        phone TEXT,
+        logoUri TEXT,
+        logoHash TEXT,
+        cloudLogoPath TEXT,
+        color TEXT NOT NULL DEFAULT '#3b82f6',
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE unit_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL
+      );
+
+      CREATE TABLE units (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        symbol TEXT NOT NULL,
+        categoryId INTEGER NOT NULL,
+        toBaseFactor REAL NOT NULL,
+        FOREIGN KEY (categoryId) REFERENCES unit_categories(id)
+      );
+
+      CREATE TABLE products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        code TEXT UNIQUE,
+        pricePerBaseUnit REAL NOT NULL,
+        costPrice REAL,
+        salePrice REAL,
+        visible INTEGER NOT NULL DEFAULT 1,
+        baseUnitId INTEGER NOT NULL,
+        stockBaseQty REAL NOT NULL DEFAULT 0,
+        saleMode TEXT CHECK (saleMode IN ('UNIT','VARIABLE')) NOT NULL,
+        photoUri TEXT,
+        photoHash TEXT,
+        cloudPhotoPath TEXT,
+        details TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (baseUnitId) REFERENCES units(id)
+      );
+
+      CREATE TABLE product_price_tiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        productId INTEGER NOT NULL REFERENCES products(id),
+        minQty REAL NOT NULL,
+        maxQty REAL,
+        price REAL NOT NULL,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        role TEXT CHECK (role IN ('ADMIN', 'WORKER')) NOT NULL,
+        pinHash TEXT NOT NULL,
+        photoUri TEXT,
+        photoHash TEXT,
+        cloudPhotoPath TEXT,
+        storeId INTEGER REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE tickets (
+        id TEXT PRIMARY KEY,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        paymentMethod TEXT CHECK (paymentMethod IN ('CASH','CARD')) NOT NULL,
+        total REAL NOT NULL,
+        itemCount INTEGER NOT NULL,
+        workerId INTEGER,
+        workerName TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','VOIDED')),
+        voidedAt TEXT,
+        voidedBy INTEGER REFERENCES users(id),
+        voidReason TEXT,
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (workerId) REFERENCES users(id)
+      );
+
+      CREATE TABLE ticket_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticketId TEXT NOT NULL,
+        productId INTEGER NOT NULL,
+        productName TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unitPrice REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        costPrice REAL,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (ticketId) REFERENCES tickets(id),
+        FOREIGN KEY (productId) REFERENCES products(id)
+      );
+
+      CREATE TABLE suppliers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        contactName TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        notes TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE purchases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplierId INTEGER,
+        supplierName TEXT NOT NULL,
+        notes TEXT,
+        total REAL NOT NULL,
+        transportCost REAL NOT NULL DEFAULT 0,
+        itemCount INTEGER NOT NULL,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (supplierId) REFERENCES suppliers(id)
+      );
+
+      CREATE TABLE purchase_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchaseId INTEGER NOT NULL,
+        productId INTEGER NOT NULL,
+        productName TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unitCost REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (purchaseId) REFERENCES purchases(id),
+        FOREIGN KEY (productId) REFERENCES products(id)
+      );
+
+      CREATE TABLE purchase_batches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        purchaseId INTEGER,
+        productId INTEGER NOT NULL,
+        quantity REAL NOT NULL,
+        quantityRemaining REAL NOT NULL,
+        unitCost REAL NOT NULL,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (productId) REFERENCES products(id),
+        FOREIGN KEY (purchaseId) REFERENCES purchases(id)
+      );
+
+      CREATE INDEX idx_pb_fifo
+        ON purchase_batches (productId, storeId, createdAt, id);
+
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL CHECK (category IN ('TRANSPORT','ELECTRICITY','RENT','REPAIRS','SUPPLIES','OTHER')),
+        description TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+
+      CREATE TABLE notification_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        dedupeKey TEXT,
+        seen INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      CREATE TABLE sync_hosts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        host TEXT NOT NULL,
+        port INTEGER NOT NULL DEFAULT 8765,
+        name TEXT,
+        deviceId TEXT,
+        brand TEXT,
+        model TEXT,
+        osVersion TEXT,
+        appVersion TEXT,
+        lastUsedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        UNIQUE(host, port)
+      );
+    `);
+
+    // Create triggers for updatedAt columns
+    await db.execAsync(`
+      CREATE TRIGGER trg_stores_updated_at
+      AFTER UPDATE ON stores
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE stores SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_products_updated_at
+      AFTER UPDATE ON products
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE products SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_product_price_tiers_updated_at
+      AFTER UPDATE ON product_price_tiers
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE product_price_tiers SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_users_updated_at
+      AFTER UPDATE ON users
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE users SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_tickets_updated_at
+      AFTER UPDATE ON tickets
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE tickets SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_ticket_items_updated_at
+      AFTER UPDATE ON ticket_items
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE ticket_items SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_suppliers_updated_at
+      AFTER UPDATE ON suppliers
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE suppliers SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_purchases_updated_at
+      AFTER UPDATE ON purchases
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE purchases SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_purchase_items_updated_at
+      AFTER UPDATE ON purchase_items
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE purchase_items SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_purchase_batches_updated_at
+      AFTER UPDATE ON purchase_batches
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE purchase_batches SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+
+      CREATE TRIGGER trg_expenses_updated_at
+      AFTER UPDATE ON expenses
+      FOR EACH ROW
+      WHEN NEW.updatedAt = OLD.updatedAt
+      BEGIN
+        UPDATE expenses SET updatedAt = datetime('now','localtime') WHERE id = NEW.id;
+      END;
+    `);
+
+    console.log("✅ Admin database reset completed with clean schema");
+    currentVersion = 34;
   }
 
   await ensureTriggers(db);

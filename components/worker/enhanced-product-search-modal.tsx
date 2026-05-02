@@ -4,13 +4,7 @@ import {
     getTierPreview,
     hasVolumePricing,
 } from "@/utils/pricing";
-import {
-    Check,
-    Package,
-    Search,
-    ShoppingCart,
-    X
-} from "@tamagui/lucide-icons";
+import { Check, Package, Search, ShoppingCart, X } from "@tamagui/lucide-icons";
 import { memo, useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

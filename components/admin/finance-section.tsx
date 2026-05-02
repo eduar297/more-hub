@@ -71,6 +71,7 @@ export function FinanceSection() {
   const [purchTotal, setPurchTotal] = useState(0);
   const [purchTransport, setPurchTransport] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
+  const [cogsTotal, setCogsTotal] = useState(0);
   const [expensesByCategory, setExpensesByCategory] = useState<
     { category: ExpenseCategory; total: number }[]
   >([]);
@@ -109,6 +110,8 @@ export function FinanceSection() {
   // Previous period comparison
   const [prevSales, setPrevSales] = useState(0);
   const [prevEgresos, setPrevEgresos] = useState(0);
+  const [prevCogs, setPrevCogs] = useState(0);
+  const [prevExpenses, setPrevExpenses] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -122,6 +125,7 @@ export function FinanceSection() {
           hourly,
           dayPurchases,
           dayExpenses,
+          dayCogs,
         ] = await Promise.all([
           ticketRepo.daySummary(nav.selectedDay),
           purchaseRepo.daySummary(nav.selectedDay),
@@ -130,12 +134,14 @@ export function FinanceSection() {
           ticketRepo.hourlySales(nav.selectedDay),
           purchaseRepo.findByDay(nav.selectedDay),
           expenseRepo.findByDay(nav.selectedDay),
+          ticketRepo.cogsByDay(nav.selectedDay),
         ]);
         setSalesTotal(daySumm.totalSales);
         setSalesTickets(daySumm.ticketCount);
         setPurchTotal(dayP.totalSpent);
         setPurchTransport(dayP.totalTransport);
         setExpenseTotal(dayE);
+        setCogsTotal(dayCogs);
         setExpensesByCategory(dayExpCat);
         setHourlySales(hourly);
         // Build hourly income/outflow for day trend
@@ -159,20 +165,29 @@ export function FinanceSection() {
         );
       } else if (nav.period === "week") {
         const wkEnd = weekEndISO(nav.selectedWeekStart);
-        const [wkTickets, wkPurch, wkExp, wkExpCat, wkPurchases, wkExpenses] =
-          await Promise.all([
-            ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
-            purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
-            expenseRepo.rangeTotal(nav.selectedWeekStart, wkEnd),
-            expenseRepo.rangeSummaryByCategory(nav.selectedWeekStart, wkEnd),
-            purchaseRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
-            expenseRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
-          ]);
+        const [
+          wkTickets,
+          wkPurch,
+          wkExp,
+          wkExpCat,
+          wkPurchases,
+          wkExpenses,
+          wkCogs,
+        ] = await Promise.all([
+          ticketRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
+          purchaseRepo.rangeSummary(nav.selectedWeekStart, wkEnd),
+          expenseRepo.rangeTotal(nav.selectedWeekStart, wkEnd),
+          expenseRepo.rangeSummaryByCategory(nav.selectedWeekStart, wkEnd),
+          purchaseRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
+          expenseRepo.findByDateRange(nav.selectedWeekStart, wkEnd),
+          ticketRepo.cogsByDateRange(nav.selectedWeekStart, wkEnd),
+        ]);
         setSalesTotal(wkTickets.reduce((s, t) => s + t.total, 0));
         setSalesTickets(wkTickets.length);
         setPurchTotal(wkPurch.totalSpent);
         setPurchTransport(wkPurch.totalTransport);
         setExpenseTotal(wkExp);
+        setCogsTotal(wkCogs);
         setExpensesByCategory(wkExpCat);
         // Build daily income/outflow for week chart
         const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -208,6 +223,7 @@ export function FinanceSection() {
           monthDaily,
           monthPurchases,
           monthExpenses,
+          monthCogs,
         ] = await Promise.all([
           ticketRepo.monthlySummary(nav.selectedMonth),
           purchaseRepo.monthlySummary(nav.selectedMonth),
@@ -216,12 +232,14 @@ export function FinanceSection() {
           ticketRepo.dailySales(nav.selectedMonth),
           purchaseRepo.findByMonth(nav.selectedMonth),
           expenseRepo.findByMonth(nav.selectedMonth),
+          ticketRepo.cogsByMonth(nav.selectedMonth),
         ]);
         setSalesTotal(monthS.totalSales);
         setSalesTickets(monthS.ticketCount);
         setPurchTotal(monthP.totalSpent);
         setPurchTransport(monthP.totalTransport);
         setExpenseTotal(monthE);
+        setCogsTotal(monthCogs);
         setExpensesByCategory(expByCat);
         setMonthDailySales(monthDaily);
         // Build daily income/outflow for the month
@@ -246,11 +264,12 @@ export function FinanceSection() {
       } else if (nav.period === "year") {
         const yearStart = `${nav.selectedYear}-01-01`;
         const yearEnd = `${nav.selectedYear}-12-31`;
-        const [ySales, yPurch, yExp, yExpCat] = await Promise.all([
+        const [ySales, yPurch, yExp, yExpCat, yCogs] = await Promise.all([
           ticketRepo.monthlySalesForYear(nav.selectedYear),
           purchaseRepo.monthlyTotalsForYear(nav.selectedYear),
           expenseRepo.monthlyTotalsForYear(nav.selectedYear),
           expenseRepo.rangeSummaryByCategory(yearStart, yearEnd),
+          ticketRepo.cogsByDateRange(yearStart, yearEnd),
         ]);
         setYearSalesTrend(ySales);
         setYearPurchaseTrend(yPurch);
@@ -260,10 +279,11 @@ export function FinanceSection() {
         setPurchTotal(yPurch.reduce((s, y) => s + y.total, 0));
         setPurchTransport(yPurch.reduce((s, y) => s + y.transport, 0));
         setExpenseTotal(yExp.reduce((s, y) => s + y.total, 0));
+        setCogsTotal(yCogs);
         setExpensesByCategory(yExpCat);
       } else {
         // range
-        const [rangeTickets, rangePurch, rangeExp, rangeExpCat] =
+        const [rangeTickets, rangePurch, rangeExp, rangeExpCat, rangeCogs] =
           await Promise.all([
             ticketRepo.findByDateRange(nav.dateRange.from, nav.dateRange.to),
             purchaseRepo.rangeSummary(nav.dateRange.from, nav.dateRange.to),
@@ -272,12 +292,14 @@ export function FinanceSection() {
               nav.dateRange.from,
               nav.dateRange.to,
             ),
+            ticketRepo.cogsByDateRange(nav.dateRange.from, nav.dateRange.to),
           ]);
         setSalesTotal(rangeTickets.reduce((s, t) => s + t.total, 0));
         setSalesTickets(rangeTickets.length);
         setPurchTotal(rangePurch.totalSpent);
         setPurchTransport(rangePurch.totalTransport);
         setExpenseTotal(rangeExp);
+        setCogsTotal(rangeCogs);
         setExpensesByCategory(rangeExpCat);
         // Build daily income for range chart
         const dayCount =
@@ -331,51 +353,67 @@ export function FinanceSection() {
         try {
           if (nav.period === "day") {
             const prevDay = shiftDay(nav.selectedDay, -1);
-            const [pS, pP, pE] = await Promise.all([
+            const [pS, pP, pE, pC] = await Promise.all([
               ticketRepo.daySummary(prevDay),
               purchaseRepo.daySummary(prevDay),
               expenseRepo.dayTotal(prevDay),
+              ticketRepo.cogsByDay(prevDay),
             ]);
             setPrevSales(pS.totalSales);
             setPrevEgresos(pP.totalSpent + pE);
+            setPrevCogs(pC);
+            setPrevExpenses(pE);
           } else if (nav.period === "week") {
             const prevWk = shiftWeek(nav.selectedWeekStart, -1);
             const prevWkEnd = weekEndISO(prevWk);
-            const [pT, pP, pE] = await Promise.all([
+            const [pT, pP, pE, pC] = await Promise.all([
               ticketRepo.findByDateRange(prevWk, prevWkEnd),
               purchaseRepo.rangeSummary(prevWk, prevWkEnd),
               expenseRepo.rangeTotal(prevWk, prevWkEnd),
+              ticketRepo.cogsByDateRange(prevWk, prevWkEnd),
             ]);
             setPrevSales(pT.reduce((s, t) => s + t.total, 0));
             setPrevEgresos(pP.totalSpent + pE);
+            setPrevCogs(pC);
+            setPrevExpenses(pE);
           } else if (nav.period === "month") {
             const prevMonth = shiftMonth(nav.selectedMonth, -1);
-            const [pS, pP, pE] = await Promise.all([
+            const [pS, pP, pE, pC] = await Promise.all([
               ticketRepo.monthlySummary(prevMonth),
               purchaseRepo.monthlySummary(prevMonth),
               expenseRepo.monthlyTotal(prevMonth),
+              ticketRepo.cogsByMonth(prevMonth),
             ]);
             setPrevSales(pS.totalSales);
             setPrevEgresos(pP.totalSpent + pE);
+            setPrevCogs(pC);
+            setPrevExpenses(pE);
           } else if (nav.period === "year") {
             const prevYear = String(Number(nav.selectedYear) - 1);
-            const [pS, pP, pE] = await Promise.all([
+            const yStart = `${prevYear}-01-01`;
+            const yEnd = `${prevYear}-12-31`;
+            const [pS, pP, pE, pC] = await Promise.all([
               ticketRepo.monthlySalesForYear(prevYear),
               purchaseRepo.monthlyTotalsForYear(prevYear),
               expenseRepo.monthlyTotalsForYear(prevYear),
+              ticketRepo.cogsByDateRange(yStart, yEnd),
             ]);
             setPrevSales(pS.reduce((s, y) => s + y.total, 0));
-            setPrevEgresos(
-              pP.reduce((s, y) => s + y.total, 0) +
-                pE.reduce((s, y) => s + y.total, 0),
-            );
+            const pETotal = pE.reduce((s, y) => s + y.total, 0);
+            setPrevEgresos(pP.reduce((s, y) => s + y.total, 0) + pETotal);
+            setPrevCogs(pC);
+            setPrevExpenses(pETotal);
           } else {
             setPrevSales(0);
             setPrevEgresos(0);
+            setPrevCogs(0);
+            setPrevExpenses(0);
           }
         } catch {
           setPrevSales(0);
           setPrevEgresos(0);
+          setPrevCogs(0);
+          setPrevExpenses(0);
         }
       })();
     }, [
@@ -433,10 +471,17 @@ export function FinanceSection() {
   );
 
   const purchaseMerchandise = purchTotal - purchTransport;
+  // Cash-flow view (kept for the egresos pie/comparison): money that left the till.
   const totalEgresos = purchTotal + expenseTotal;
-  const profit = salesTotal - totalEgresos;
+  // True P&L: revenue − cost of goods actually sold − operating expenses.
+  // FIFO snapshots costPrice per ticket_item, so cogsTotal reflects the real
+  // cost of the units sold in this period (not the cost of all stock bought).
+  const profit = salesTotal - cogsTotal - expenseTotal;
   const profitMargin =
     salesTotal > 0 ? ((profit / salesTotal) * 100).toFixed(1) : "0.0";
+  // Inventory delta: purchases that haven't been sold yet are stock buildup,
+  // not a loss. Helpful to show the cash difference vs. accounting profit.
+  const inventoryDelta = purchaseMerchandise - cogsTotal;
 
   const egresoItems = useMemo(() => {
     const items: { label: string; value: number; color: string }[] = [];
@@ -836,10 +881,10 @@ export function FinanceSection() {
               <Separator />
 
               <Text fontSize="$3" fontWeight="bold" color="$color">
-                Egresos
+                Costos y gastos
               </Text>
 
-              {purchaseMerchandise > 0 && (
+              {cogsTotal > 0 && (
                 <XStack
                   style={{
                     justifyContent: "space-between",
@@ -847,28 +892,16 @@ export function FinanceSection() {
                   }}
                   ml="$2"
                 >
-                  <Text fontSize="$3" color="$color10">
-                    Compras de mercancía
-                  </Text>
+                  <YStack flex={1}>
+                    <Text fontSize="$3" color="$color10">
+                      Costo de lo vendido (FIFO)
+                    </Text>
+                    <Text fontSize="$1" color="$color8">
+                      Lo que costó comprar lo que se vendió
+                    </Text>
+                  </YStack>
                   <Text fontSize="$3" fontWeight="600" color="$red10">
-                    -${fmtMoneyFull(purchaseMerchandise)}
-                  </Text>
-                </XStack>
-              )}
-
-              {purchTransport > 0 && (
-                <XStack
-                  style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                  ml="$2"
-                >
-                  <Text fontSize="$3" color="$color10">
-                    Transporte (compras)
-                  </Text>
-                  <Text fontSize="$3" fontWeight="600" color="$red10">
-                    -${fmtMoneyFull(purchTransport)}
+                    -${fmtMoneyFull(cogsTotal)}
                   </Text>
                 </XStack>
               )}
@@ -898,10 +931,10 @@ export function FinanceSection() {
                 }}
               >
                 <Text fontSize="$3" fontWeight="600" color="$color">
-                  Total egresos
+                  Total costos + gastos
                 </Text>
                 <Text fontSize="$3" fontWeight="bold" color="$red10">
-                  -${fmtMoneyFull(totalEgresos)}
+                  -${fmtMoneyFull(cogsTotal + expenseTotal)}
                 </Text>
               </XStack>
 
@@ -935,8 +968,69 @@ export function FinanceSection() {
                 </Text>
               </XStack>
 
-              {/* ROI */}
-              {totalEgresos > 0 && (
+              {/* Cash-flow snapshot: purchases & inventory delta vs. accounting profit. */}
+              {(purchTotal > 0 || inventoryDelta !== 0) && (
+                <>
+                  <Separator />
+                  <Text fontSize="$2" fontWeight="600" color="$color8">
+                    Flujo de caja (información)
+                  </Text>
+                  {purchaseMerchandise > 0 && (
+                    <XStack
+                      style={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text fontSize="$2" color="$color8">
+                        Compras del período
+                      </Text>
+                      <Text fontSize="$2" color="$color8">
+                        ${fmtMoneyFull(purchaseMerchandise)}
+                      </Text>
+                    </XStack>
+                  )}
+                  {purchTransport > 0 && (
+                    <XStack
+                      style={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text fontSize="$2" color="$color8">
+                        Transporte de compras
+                      </Text>
+                      <Text fontSize="$2" color="$color8">
+                        ${fmtMoneyFull(purchTransport)}
+                      </Text>
+                    </XStack>
+                  )}
+                  {inventoryDelta !== 0 && (
+                    <XStack
+                      style={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text fontSize="$2" color="$color8">
+                        {inventoryDelta > 0
+                          ? "Aumento de inventario"
+                          : "Disminución de inventario"}
+                      </Text>
+                      <Text
+                        fontSize="$2"
+                        color={inventoryDelta > 0 ? "$blue10" : "$orange10"}
+                      >
+                        {inventoryDelta > 0 ? "+" : "-"}$
+                        {fmtMoneyFull(Math.abs(inventoryDelta))}
+                      </Text>
+                    </XStack>
+                  )}
+                </>
+              )}
+
+              {/* ROI based on actual costs (COGS + expenses). */}
+              {cogsTotal + expenseTotal > 0 && (
                 <>
                   <Separator />
                   <XStack
@@ -946,14 +1040,15 @@ export function FinanceSection() {
                     }}
                   >
                     <Text fontSize="$2" color="$color10">
-                      ROI (retorno sobre inversión)
+                      ROI (retorno sobre costo)
                     </Text>
                     <Text
                       fontSize="$3"
                       fontWeight="bold"
                       color={profit >= 0 ? "$green10" : "$red10"}
                     >
-                      {((profit / totalEgresos) * 100).toFixed(1)}%
+                      {((profit / (cogsTotal + expenseTotal)) * 100).toFixed(1)}
+                      %
                     </Text>
                   </XStack>
                 </>
@@ -992,10 +1087,10 @@ export function FinanceSection() {
                     }}
                   >
                     <Text fontSize="$2" color="$color8">
-                      Egresos ant.
+                      Costos + gastos ant.
                     </Text>
                     <Text fontSize="$2" color="$color8">
-                      ${fmtMoneyFull(prevEgresos)}
+                      ${fmtMoneyFull(prevCogs + prevExpenses)}
                     </Text>
                   </XStack>
                   <XStack
@@ -1005,17 +1100,21 @@ export function FinanceSection() {
                     }}
                   >
                     <Text fontSize="$2" color="$color8">
-                      Resultado ant.
+                      Ganancia ant.
                     </Text>
                     <Text
                       fontSize="$2"
                       fontWeight="600"
                       color={
-                        prevSales - prevEgresos >= 0 ? "$green10" : "$red10"
+                        prevSales - prevCogs - prevExpenses >= 0
+                          ? "$green10"
+                          : "$red10"
                       }
                     >
-                      {prevSales - prevEgresos >= 0 ? "+" : "-"}$
-                      {fmtMoneyFull(Math.abs(prevSales - prevEgresos))}
+                      {prevSales - prevCogs - prevExpenses >= 0 ? "+" : "-"}$
+                      {fmtMoneyFull(
+                        Math.abs(prevSales - prevCogs - prevExpenses),
+                      )}
                     </Text>
                   </XStack>
                 </>
