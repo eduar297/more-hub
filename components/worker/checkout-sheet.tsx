@@ -1,13 +1,21 @@
 import type { CartItem } from "@/components/worker/types";
 import { ICON_BTN_BG } from "@/constants/colors";
+import { useCardTypeRepository } from "@/hooks/use-card-type-repository";
 import { useColors } from "@/hooks/use-colors";
+import type { CardType } from "@/models/card-type";
 import type { PaymentMethod } from "@/models/ticket";
-import { Banknote, CreditCard, ShoppingCart, X } from "@tamagui/lucide-icons";
-import { memo } from "react";
+import {
+    Banknote,
+    ChevronDown,
+    CreditCard,
+    ShoppingCart,
+    X,
+} from "@tamagui/lucide-icons";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Modal, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import {
-  SafeAreaView,
-  useSafeAreaInsets,
+    SafeAreaView,
+    useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { Button, Card, Spinner, Text, XStack, YStack } from "tamagui";
 
@@ -18,6 +26,8 @@ interface CheckoutSheetProps {
   cartTotal: number;
   paymentMethod: PaymentMethod;
   onPaymentMethodChange: (method: PaymentMethod) => void;
+  selectedCardType: CardType | null;
+  onCardTypeChange: (cardType: CardType | null) => void;
   confirming: boolean;
   onConfirm: () => void;
 }
@@ -29,11 +39,42 @@ export const CheckoutSheet = memo(function CheckoutSheet({
   cartTotal,
   paymentMethod,
   onPaymentMethodChange,
+  selectedCardType,
+  onCardTypeChange,
   confirming,
   onConfirm,
 }: CheckoutSheetProps) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const cardTypeRepo = useCardTypeRepository();
+  const [cardTypes, setCardTypes] = useState<CardType[]>([]);
+  const [showCardTypes, setShowCardTypes] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      cardTypeRepo.findAllActive().then(setCardTypes);
+    }
+  }, [open, cardTypeRepo]);
+
+  const handleCardTypeSelect = useCallback(
+    (cardType: CardType) => {
+      onCardTypeChange(cardType);
+      setShowCardTypes(false);
+    },
+    [onCardTypeChange],
+  );
+
+  const handlePaymentMethodChange = useCallback(
+    (method: PaymentMethod) => {
+      onPaymentMethodChange(method);
+      if (method === "CASH") {
+        onCardTypeChange(null);
+      } else if (method === "CARD" && cardTypes.length === 1) {
+        onCardTypeChange(cardTypes[0]);
+      }
+    },
+    [onPaymentMethodChange, onCardTypeChange, cardTypes],
+  );
   return (
     <Modal
       visible={open}
@@ -125,7 +166,7 @@ export const CheckoutSheet = memo(function CheckoutSheet({
                 icon={Banknote}
                 theme={paymentMethod === "CASH" ? "green" : undefined}
                 variant={paymentMethod === "CASH" ? undefined : "outlined"}
-                onPress={() => onPaymentMethodChange("CASH")}
+                onPress={() => handlePaymentMethodChange("CASH")}
               >
                 Efectivo
               </Button>
@@ -135,11 +176,86 @@ export const CheckoutSheet = memo(function CheckoutSheet({
                 icon={CreditCard}
                 theme={paymentMethod === "CARD" ? "blue" : undefined}
                 variant={paymentMethod === "CARD" ? undefined : "outlined"}
-                onPress={() => onPaymentMethodChange("CARD")}
+                onPress={() => handlePaymentMethodChange("CARD")}
               >
                 Tarjeta
               </Button>
             </XStack>
+
+            {/* Card type selection */}
+            {paymentMethod === "CARD" && cardTypes.length > 0 && (
+              <YStack gap="$2">
+                <Text fontSize="$4" fontWeight="600" color="$color">
+                  Tipo de tarjeta
+                </Text>
+                {cardTypes.length === 1 ? (
+                  <Card
+                    p="$3"
+                    borderWidth={1}
+                    borderColor="$blue10"
+                    bg="$blue3"
+                    style={{ borderRadius: 10 }}
+                  >
+                    <Text fontSize="$4" color="$blue10" fontWeight="600">
+                      {cardTypes[0].name}
+                    </Text>
+                    {cardTypes[0].description && (
+                      <Text fontSize="$3" color="$blue9">
+                        {cardTypes[0].description}
+                      </Text>
+                    )}
+                  </Card>
+                ) : (
+                  <Button
+                    size="$4"
+                    variant="outlined"
+                    iconAfter={ChevronDown}
+                    onPress={() => setShowCardTypes(!showCardTypes)}
+                    style={{ justifyContent: "space-between" }}
+                  >
+                    {selectedCardType
+                      ? selectedCardType.name
+                      : "Seleccionar tarjeta"}
+                  </Button>
+                )}
+
+                {/* Card types list */}
+                {showCardTypes && cardTypes.length > 1 && (
+                  <YStack
+                    gap="$1"
+                    p="$2"
+                    bg="$color3"
+                    style={{ borderRadius: 8 }}
+                  >
+                    {cardTypes.map((cardType) => (
+                      <Button
+                        key={cardType.id}
+                        variant="ghost"
+                        size="$3"
+                        onPress={() => handleCardTypeSelect(cardType)}
+                        style={{ justifyContent: "flex-start" }}
+                        theme={
+                          selectedCardType?.id === cardType.id
+                            ? "blue"
+                            : undefined
+                        }
+                      >
+                        <YStack style={{ alignItems: "flex-start" }}>
+                          <Text fontSize="$3" fontWeight="600">
+                            {cardType.name}
+                          </Text>
+                          {cardType.description && (
+                            <Text fontSize="$2" color="$color10">
+                              {cardType.description}
+                            </Text>
+                          )}
+                        </YStack>
+                      </Button>
+                    ))}
+                  </YStack>
+                )}
+              </YStack>
+            )}
           </YStack>
         </ScrollView>
 
@@ -170,7 +286,13 @@ export const CheckoutSheet = memo(function CheckoutSheet({
             size="$6"
             theme="green"
             icon={confirming ? <Spinner /> : ShoppingCart}
-            disabled={confirming || cart.length === 0}
+            disabled={
+              confirming ||
+              cart.length === 0 ||
+              (paymentMethod === "CARD" &&
+                cardTypes.length > 1 &&
+                !selectedCardType)
+            }
             onPress={onConfirm}
           >
             {confirming ? "Registrando..." : "Confirmar venta"}

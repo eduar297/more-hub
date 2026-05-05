@@ -1,34 +1,44 @@
 import {
-  CloudSyncSection,
-  PreferencesSection,
-  ProfileSection,
-  StoresSection,
-  SyncSection,
-  WebSection,
-  WorkersSection,
+    CloudSyncSection,
+    PreferencesSection,
+    ProfileSection,
+    StoresSection,
+    SyncSection,
+    WebSection,
+    WorkersSection,
 } from "@/components/settings";
+import { CardTypesSection } from "@/components/settings/card-types-section";
 import type { SyncMode } from "@/components/settings/sync-mode-selector";
 import { SyncModeSelector } from "@/components/settings/sync-mode-selector";
 import type { TabDef } from "@/components/ui/screen-tabs";
 import { ScreenTabs } from "@/components/ui/screen-tabs";
 import { useColors } from "@/hooks/use-colors";
 import {
-  Globe,
-  RefreshCw,
-  Settings,
-  Store,
-  UserCog,
-  Users,
+    CreditCard,
+    Globe,
+    RefreshCw,
+    Settings,
+    Store,
+    UserCog,
+    Users,
 } from "@tamagui/lucide-icons";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-type SettingTab = "workers" | "profile" | "stores" | "prefs" | "sync" | "web";
+type SettingTab =
+  | "workers"
+  | "profile"
+  | "stores"
+  | "cards"
+  | "prefs"
+  | "sync"
+  | "web";
 
 const TABS: TabDef<SettingTab>[] = [
   { key: "profile", label: "Mi Perfil", Icon: UserCog },
   { key: "workers", label: "Vendedores", Icon: Users },
   { key: "stores", label: "Tiendas", Icon: Store },
+  { key: "cards", label: "Tarjetas", Icon: CreditCard },
   { key: "sync", label: "Sincronizar", Icon: RefreshCw },
   { key: "web", label: "Página Web", Icon: Globe },
   { key: "prefs", label: "Preferencias", Icon: Settings },
@@ -51,6 +61,9 @@ export default function SettingsScreen() {
       </View>
       <View style={activeTab === "stores" ? styles.visible : styles.hidden}>
         <StoresSection />
+      </View>
+      <View style={activeTab === "cards" ? styles.visible : styles.hidden}>
+        <CardTypesSection />
       </View>
       <View style={activeTab === "sync" ? styles.visible : styles.hidden}>
         <SyncModeSelector value={syncMode} onChange={setSyncMode} />

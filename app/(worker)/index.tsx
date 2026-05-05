@@ -9,6 +9,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useScannerGun } from "@/hooks/use-scanner-gun";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
+import type { CardType } from "@/models/card-type";
 import type { Product } from "@/models/product";
 import type { PaymentMethod } from "@/models/ticket";
 import type { CartItemWire } from "@/services/lan/protocol";
@@ -42,6 +43,9 @@ export default function WorkerScreen() {
   const [showSearchSheet, setShowSearchSheet] = useState(false);
   const [visibleProducts, setVisibleProducts] = useState<Product[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [selectedCardType, setSelectedCardType] = useState<CardType | null>(
+    null,
+  );
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -191,6 +195,7 @@ export default function WorkerScreen() {
     setCart([]);
     setShowCheckout(false);
     setPaymentMethod("CASH");
+    setSelectedCardType(null);
     setError(null);
     broadcastClear();
   }, [broadcastClear]);
@@ -240,6 +245,12 @@ export default function WorkerScreen() {
       }));
       await tickets.create({
         paymentMethod,
+        cardTypeId: selectedCardType?.id ?? null,
+        cardTypeName: selectedCardType 
+          ? selectedCardType.cardNumber 
+            ? `${selectedCardType.name} (${selectedCardType.cardNumber})`
+            : selectedCardType.name
+          : null,
         workerId: user?.id ?? null,
         workerName: user?.name ?? null,
         items: saleItems,
@@ -254,7 +265,7 @@ export default function WorkerScreen() {
       setConfirming(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, paymentMethod, stockErrors, tickets, clearCart]);
+  }, [cart, paymentMethod, selectedCardType, stockErrors, tickets, clearCart]);
 
   // Stable FlatList helpers (avoid re-creating closures on every render)
   const cartKeyExtractor = useCallback(
@@ -474,6 +485,8 @@ export default function WorkerScreen() {
         cartTotal={cartTotal}
         paymentMethod={paymentMethod}
         onPaymentMethodChange={setPaymentMethod}
+        selectedCardType={selectedCardType}
+        onCardTypeChange={setSelectedCardType}
         confirming={confirming}
         onConfirm={handleConfirmSale}
       />

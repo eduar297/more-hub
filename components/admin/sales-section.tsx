@@ -11,53 +11,53 @@ import type { Ticket, TicketItem } from "@/models/ticket";
 import type { User as UserModel } from "@/models/user";
 import { exportTicketsPDF } from "@/utils/export";
 import {
-  daysInMonth,
-  fmtMoney,
-  fmtMoneyFull,
-  fmtTime,
-  MONTH_NAMES_SHORT,
-  shiftDay,
-  shiftMonth,
-  shiftWeek,
-  shortDayLabel,
-  weekEndISO,
+    daysInMonth,
+    fmtMoney,
+    fmtMoneyFull,
+    fmtTime,
+    MONTH_NAMES_SHORT,
+    shiftDay,
+    shiftMonth,
+    shiftWeek,
+    shortDayLabel,
+    weekEndISO,
 } from "@/utils/format";
 import {
-  Ban,
-  ChevronRight,
-  CreditCard,
-  DollarSign,
-  Printer,
-  Receipt,
-  Search,
-  ShoppingCart,
-  TrendingUp,
-  User,
-  Users,
-  X,
+    Ban,
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    Printer,
+    Receipt,
+    Search,
+    ShoppingCart,
+    TrendingUp,
+    User,
+    Users,
+    X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
+    Alert,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Button,
-  Card,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Card,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 import { AdminBarChart } from "./admin-bar-chart";
 import { AdminPieChart } from "./admin-pie-chart";
@@ -804,7 +804,9 @@ export function SalesSection() {
         <StatCard
           label="Ganancia"
           value={`$${fmtMoney(summaryProfit)}`}
-          detail={`$${fmtMoneyFull(summaryProfit)} · margen ${summaryMarginPct.toFixed(1)}%`}
+          detail={`$${fmtMoneyFull(
+            summaryProfit,
+          )} · margen ${summaryMarginPct.toFixed(1)}%`}
           color={summaryProfit >= 0 ? "$green10" : "$red10"}
           icon={
             summaryProfit >= 0 ? (
@@ -1244,6 +1246,8 @@ export function SalesSection() {
                       >
                         {sheetTicket.paymentMethod === "CASH"
                           ? "Efectivo"
+                          : sheetTicket.cardTypeName
+                          ? `Tarjeta · ${sheetTicket.cardTypeName}`
                           : "Tarjeta"}
                       </Text>
                     </YStack>
@@ -1341,10 +1345,7 @@ export function SalesSection() {
                               </Text>
                             ) : null}
                           </YStack>
-                          <YStack
-                            style={{ alignItems: "flex-end" }}
-                            gap="$0.5"
-                          >
+                          <YStack style={{ alignItems: "flex-end" }} gap="$0.5">
                             <Text
                               fontSize="$3"
                               fontWeight="600"
@@ -1382,7 +1383,8 @@ export function SalesSection() {
                 {(() => {
                   const ticketCogs = sheetItems.reduce(
                     (s, it) =>
-                      s + (it.costPrice != null ? it.costPrice * it.quantity : 0),
+                      s +
+                      (it.costPrice != null ? it.costPrice * it.quantity : 0),
                     0,
                   );
                   const ticketProfit = sheetTicket.total - ticketCogs;
@@ -1436,7 +1438,11 @@ export function SalesSection() {
                               alignItems: "center",
                             }}
                           >
-                            <Text fontSize="$5" fontWeight="bold" color="$color">
+                            <Text
+                              fontSize="$5"
+                              fontWeight="bold"
+                              color="$color"
+                            >
                               Ganancia
                             </Text>
                             <Text
@@ -1446,8 +1452,8 @@ export function SalesSection() {
                                 isVoided
                                   ? "$red10"
                                   : ticketProfit >= 0
-                                    ? "$green10"
-                                    : "$red10"
+                                  ? "$green10"
+                                  : "$red10"
                               }
                               style={
                                 isVoided

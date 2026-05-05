@@ -972,11 +972,10 @@ export async function seedBasicSimulation(
     const costPrice = Math.round(p.price * 0.72 * 100) / 100;
     const salePrice = Math.round(p.price * 1.22 * 100) / 100;
     const result = await db.runAsync(
-      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, details, storeId)
-       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
+      `INSERT INTO products (name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, details, storeId)
+       VALUES (?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
       p.name,
       p.code,
-      p.price,
       costPrice,
       salePrice,
       unitIdBySymbol.get(p.unit) ?? 1,
@@ -1210,11 +1209,10 @@ export async function seedSimulation(
     const costPx = Math.round(salePx * profile.costPct * 100) / 100;
 
     const result = await db.runAsync(
-      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, details, storeId)
-       VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
+      `INSERT INTO products (name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, details, storeId)
+       VALUES (?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
       p.name,
       p.code,
-      p.price,
       costPx,
       salePx,
       unitIdBySymbol.get(p.unit) ?? 1,

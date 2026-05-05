@@ -1,16 +1,16 @@
 import type { DateRange, Period } from "@/components/admin/period-selector";
 import {
-    currentWeekMonday,
-    currentYear,
-    currentYearMonth,
-    dayLabel,
-    monthLabel,
-    rangeLabel,
-    shiftDay,
-    shiftMonth,
-    shiftWeek,
-    todayISO,
-    weekLabel,
+  currentWeekMonday,
+  currentYear,
+  currentYearMonth,
+  dayLabel,
+  monthLabel,
+  rangeLabel,
+  shiftDay,
+  shiftMonth,
+  shiftWeek,
+  todayISO,
+  weekLabel,
 } from "@/utils/format";
 import { useCallback, useMemo, useState } from "react";
 
@@ -39,7 +39,7 @@ export interface PeriodNavigation {
 }
 
 export function usePeriodNavigation(
-  initialPeriod: Period = "month",
+  initialPeriod: Period = "day",
 ): PeriodNavigation {
   const [period, setPeriod] = useState<Period>(initialPeriod);
   const [selectedDay, setSelectedDay] = useState(todayISO);

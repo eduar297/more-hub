@@ -266,8 +266,8 @@ export async function runPurchaseSuggestions(
       totalSold > 0 ? rateSecondHalf * 0.6 + dailySalesRate * 0.4 : 0;
 
     // ── Cost & margin ───────────────────────────────────────────────────
-    const avgUnitCost = costMap.get(p.id) ?? p.costPrice ?? p.pricePerBaseUnit;
-    const salePrice = p.salePrice ?? p.pricePerBaseUnit;
+    const avgUnitCost = costMap.get(p.id) ?? p.costPrice ?? 0;
+    const salePrice = p.salePrice ?? 0;
     const profitPerUnit = salePrice - avgUnitCost;
     const marginPct = salePrice > 0 ? profitPerUnit / salePrice : 0;
     const roi = avgUnitCost > 0 ? profitPerUnit / avgUnitCost : 0;

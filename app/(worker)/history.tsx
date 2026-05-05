@@ -8,42 +8,42 @@ import { usePeriodNavigation } from "@/hooks/use-period-navigation";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
 import type { Ticket, TicketItem } from "@/models/ticket";
 import {
-    daysInMonth,
-    fmtMoney,
-    fmtMoneyFull,
-    weekEndISO,
+  daysInMonth,
+  fmtMoney,
+  fmtMoneyFull,
+  weekEndISO,
 } from "@/utils/format";
 import {
-    Banknote,
-    Check,
-    ClipboardList,
-    Clock,
-    CreditCard,
-    DollarSign,
-    Package,
-    ShoppingCart,
-    X,
+  Banknote,
+  Check,
+  ClipboardList,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Package,
+  ShoppingCart,
+  X,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    Card,
-    Separator,
-    Spinner,
-    Text,
-    XStack,
-    YStack,
-    useTheme,
+  Card,
+  Separator,
+  Spinner,
+  Text,
+  XStack,
+  YStack,
+  useTheme,
 } from "tamagui";
 
 function formatTime(iso: string) {
@@ -204,7 +204,7 @@ function TicketRow({
         </XStack>
         <XStack style={{ alignItems: "center" }} gap="$2">
           <Text fontSize="$2" color="$color10">
-            {ticket.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} ·{" "}
+            {ticket.paymentMethod === "CASH" ? "Efectivo" : "Tarjeta"} · ·{" "}
             {formatTime(ticket.createdAt)}
           </Text>
         </XStack>
@@ -462,6 +462,8 @@ export default function HistoryScreen() {
                     <Text fontSize="$3" color="$color10">
                       {selectedTicket.paymentMethod === "CASH"
                         ? "Efectivo"
+                        : selectedTicket.cardTypeName
+                        ? `Tarjeta · ${selectedTicket.cardTypeName}`
                         : "Tarjeta"}
                     </Text>
                   </XStack>

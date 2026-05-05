@@ -68,10 +68,23 @@ async function ensureTables(db: SQLiteDatabase) {
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
 
+    CREATE TABLE IF NOT EXISTS card_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      cardNumber TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+      createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+
     CREATE TABLE IF NOT EXISTS tickets (
       id TEXT PRIMARY KEY,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       paymentMethod TEXT CHECK (paymentMethod IN ('CASH','CARD')) NOT NULL,
+      cardTypeId INTEGER,
+      cardTypeName TEXT,
       total REAL NOT NULL,
       itemCount INTEGER NOT NULL,
       workerId INTEGER,
@@ -82,7 +95,8 @@ async function ensureTables(db: SQLiteDatabase) {
       voidedBy INTEGER REFERENCES users(id),
       voidReason TEXT,
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-      FOREIGN KEY (workerId) REFERENCES users(id)
+      FOREIGN KEY (workerId) REFERENCES users(id),
+      FOREIGN KEY (cardTypeId) REFERENCES card_types(id)
     );
 
     CREATE TABLE IF NOT EXISTS ticket_items (
@@ -390,7 +404,7 @@ async function ensureTriggers(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 34;
+  const DATABASE_VERSION = 37;
 
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
@@ -967,7 +981,6 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         code TEXT UNIQUE,
-        pricePerBaseUnit REAL NOT NULL,
         costPrice REAL,
         salePrice REAL,
         visible INTEGER NOT NULL DEFAULT 1,
@@ -1232,6 +1245,98 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
     console.log("✅ Admin database reset completed with clean schema");
     currentVersion = 34;
+  }
+
+  // Version 34 → 35: Add card types support
+  if (currentVersion === 34) {
+    await db.execAsync(`
+      -- Create card_types table
+      CREATE TABLE IF NOT EXISTS card_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        cardNumber TEXT,
+        isActive INTEGER NOT NULL DEFAULT 1,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      );
+
+      -- Add card type fields to tickets table
+      ALTER TABLE tickets ADD COLUMN cardTypeId INTEGER REFERENCES card_types(id);
+      ALTER TABLE tickets ADD COLUMN cardTypeName TEXT;
+    `);
+
+    // Insert default Cuban card types
+    await db.execAsync(`
+      INSERT INTO card_types (name, description, isActive, storeId) VALUES
+        ('Transfermóvil', 'Transferencias móviles', 1, 1),
+        ('EnZona', 'Pagos digitales EnZona', 1, 1),
+        ('BCC', 'Banco Central de Cuba', 1, 1),
+        ('BPA', 'Banco Popular de Ahorro', 1, 1),
+        ('BICSA', 'Banco de Inversión y Comercio Exterior', 1, 1),
+        ('Bandec', 'Banco de Desarrollo Económico y Social', 1, 1),
+        ('BFI', 'Banco Financiero Internacional', 1, 1),
+        ('QvaPay', 'Monedero digital QvaPay', 1, 1);
+    `);
+
+    console.log("✅ Card types support added");
+    currentVersion = 35;
+  }
+
+  // v36: Add cardNumber to card_types
+  if (currentVersion === 35) {
+    console.log("🔄 Adding cardNumber to card_types...");
+    await db.execAsync(`
+      ALTER TABLE card_types ADD COLUMN cardNumber TEXT;
+    `);
+    console.log("✅ cardNumber column added to card_types");
+    currentVersion = 36;
+  }
+
+  // v37: Clean up unused product columns
+  if (currentVersion === 36) {
+    console.log(
+      "🧹 Cleaning up unused product columns from manual additions...",
+    );
+
+    // Recreate products table without unused columns (purchaseUnitSalePrice, conversionFactor, purchaseUnitId)
+    await db.execAsync(`
+      CREATE TABLE products_clean (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        code TEXT UNIQUE,
+        costPrice REAL,
+        salePrice REAL,
+        visible INTEGER NOT NULL DEFAULT 1,
+        baseUnitId INTEGER NOT NULL,
+        stockBaseQty REAL NOT NULL DEFAULT 0,
+        saleMode TEXT CHECK (saleMode IN ('UNIT','VARIABLE')) NOT NULL,
+        photoUri TEXT,
+        photoHash TEXT,
+        cloudPhotoPath TEXT,
+        details TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (baseUnitId) REFERENCES units(id)
+      );
+      
+      -- Copy only the columns we want to keep
+      INSERT INTO products_clean 
+        (id, name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, 
+         photoUri, photoHash, cloudPhotoPath, details, storeId, createdAt, updatedAt)
+      SELECT 
+        id, name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode,
+        photoUri, photoHash, cloudPhotoPath, details, storeId, createdAt, updatedAt
+      FROM products;
+      
+      -- Drop old table and rename new one
+      DROP TABLE products;
+      ALTER TABLE products_clean RENAME TO products;
+    `);
+    console.log("✅ Unused product columns removed");
+    currentVersion = 37;
   }
 
   await ensureTriggers(db);

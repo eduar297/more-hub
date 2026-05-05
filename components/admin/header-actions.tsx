@@ -91,7 +91,7 @@ export function HeaderActions() {
           flexDirection: "row",
           alignItems: "center",
           gap: 18,
-          marginHorizontal: 8,
+          marginHorizontal: 6,
         }}
       >
         <TouchableOpacity
@@ -106,9 +106,11 @@ export function HeaderActions() {
             backgroundColor: c.blue as any,
             padding: 4,
             borderRadius: 20,
+            borderColor: c.headerText,
+            borderWidth: 1,
           }}
         >
-          <RefreshCw size={20} color="#fff" />
+          <RefreshCw size={19} color="#fff" />
         </TouchableOpacity>
         <Animated.View
           style={{

@@ -9,6 +9,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
 import { useScannerGun } from "@/hooks/use-scanner-gun";
 import { useTicketRepository } from "@/hooks/use-ticket-repository";
+import type { CardType } from "@/models/card-type";
 import type { Product } from "@/models/product";
 import type { PaymentMethod } from "@/models/ticket";
 import { getTieredPrice } from "@/utils/pricing";
@@ -38,6 +39,9 @@ export function AdminSales() {
   const [showSearchSheet, setShowSearchSheet] = useState(false);
   const [visibleProducts, setVisibleProducts] = useState<Product[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [selectedCardType, setSelectedCardType] = useState<CardType | null>(
+    null,
+  );
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -214,18 +218,30 @@ export function AdminSales() {
       }));
       await tickets.create({
         paymentMethod,
+        cardTypeId: selectedCardType?.id ?? null,
+        cardTypeName: selectedCardType?.name ?? null,
         workerId: user?.id ?? null,
-        workerName: user?.name ? `${user.name} (Admin)` : "Administrador",
+        workerName: user?.name ? `${user.name}` : "Admin",
         items: saleItems,
       });
       clearCart();
+      setSelectedCardType(null);
       productRepo.findAllVisible().then(setVisibleProducts);
     } catch (e) {
       setError("Error registrando venta: " + (e as Error).message);
     } finally {
       setConfirming(false);
     }
-  }, [cart, paymentMethod, stockErrors, tickets, clearCart, user, productRepo]);
+  }, [
+    cart,
+    paymentMethod,
+    selectedCardType,
+    stockErrors,
+    tickets,
+    clearCart,
+    user,
+    productRepo,
+  ]);
 
   // ── FlatList helpers ───────────────────────────────────────────────────────
 
@@ -432,6 +448,8 @@ export function AdminSales() {
         cartTotal={cartTotal}
         paymentMethod={paymentMethod}
         onPaymentMethodChange={setPaymentMethod}
+        selectedCardType={selectedCardType}
+        onCardTypeChange={setSelectedCardType}
         confirming={confirming}
         onConfirm={handleConfirmSale}
       />

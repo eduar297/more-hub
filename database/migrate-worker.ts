@@ -42,7 +42,6 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       code TEXT UNIQUE,
-      pricePerBaseUnit REAL NOT NULL,
       costPrice REAL,
       salePrice REAL,
       visible INTEGER NOT NULL DEFAULT 1,
@@ -57,6 +56,17 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       FOREIGN KEY (baseUnitId) REFERENCES units(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS card_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      cardNumber TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+      createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS product_price_tiers (
@@ -87,6 +97,8 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
       total REAL NOT NULL,
       itemCount INTEGER NOT NULL,
       paymentMethod TEXT CHECK (paymentMethod IN ('CASH','CARD')) NOT NULL,
+      cardTypeId INTEGER,
+      cardTypeName TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
       workerId INTEGER REFERENCES users(id),
       workerName TEXT,
@@ -129,7 +141,7 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
   `);
 
   // ── Versioned migrations ────────────────────────────────────────────────
-  const WORKER_DB_VERSION = 10;
+  const WORKER_DB_VERSION = 12;
   const result = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version",
   );
@@ -374,7 +386,6 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         code TEXT UNIQUE,
-        pricePerBaseUnit REAL NOT NULL,
         costPrice REAL,
         salePrice REAL,
         visible INTEGER NOT NULL DEFAULT 1,
@@ -466,11 +477,65 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
     currentVersion = 10;
   }
 
+  // v10 → 11: Add cardNumber to card_types
+  if (currentVersion === 10) {
+    console.log("🔄 Adding cardNumber to card_types...");
+    await addColumnIfMissing("card_types", "cardNumber", "TEXT");
+    console.log("✅ cardNumber column added to card_types");
+    currentVersion = 11;
+  }
+
+  // v11 → 12: Clean up unused product columns
+  if (currentVersion === 11) {
+    console.log(
+      "🧹 Cleaning up unused product columns from manual additions...",
+    );
+
+    // Recreate products table without unused columns (purchaseUnitSalePrice, conversionFactor, purchaseUnitId)
+    await db.execAsync(`
+      CREATE TABLE products_clean (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        code TEXT UNIQUE,
+        costPrice REAL,
+        salePrice REAL,
+        visible INTEGER NOT NULL DEFAULT 1,
+        baseUnitId INTEGER NOT NULL,
+        stockBaseQty REAL NOT NULL DEFAULT 0,
+        saleMode TEXT CHECK (saleMode IN ('UNIT','VARIABLE')) NOT NULL,
+        photoUri TEXT,
+        photoHash TEXT,
+        cloudPhotoPath TEXT,
+        details TEXT,
+        storeId INTEGER NOT NULL DEFAULT 1 REFERENCES stores(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (baseUnitId) REFERENCES units(id)
+      );
+      
+      -- Copy only the columns we want to keep
+      INSERT INTO products_clean 
+        (id, name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, 
+         photoUri, photoHash, cloudPhotoPath, details, storeId, createdAt, updatedAt)
+      SELECT 
+        id, name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode,
+        photoUri, photoHash, cloudPhotoPath, details, storeId, createdAt, updatedAt
+      FROM products;
+      
+      -- Drop old table and rename new one
+      DROP TABLE products;
+      ALTER TABLE products_clean RENAME TO products;
+    `);
+    console.log("✅ Unused product columns removed from worker database");
+    currentVersion = 12;
+  }
+
   // Ensure updatedAt triggers exist (idempotent)
   const triggerTables = [
     "stores",
     "products",
     "users",
+    "card_types",
     "tickets",
     "ticket_items",
     "product_price_tiers",

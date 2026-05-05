@@ -18,8 +18,6 @@ export interface Product {
   id: number;
   name: string;
   code: string;
-  /** Legacy field kept for DB compat. Use costPrice / salePrice instead. */
-  pricePerBaseUnit: number;
   /** Cost price (purchase). Used for margin calculations. */
   costPrice: number;
   /** Actual selling price shown to workers. */

@@ -291,6 +291,7 @@ export function OverviewSection() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     nav.period,
     nav.selectedDay,
@@ -639,7 +640,7 @@ export function OverviewSection() {
                       )}
                       <Text
                         flex={1}
-                        fontSize="$3"
+                        fontSize="$2"
                         color="$color"
                         numberOfLines={1}
                       >

@@ -129,7 +129,6 @@ export async function computeCatalogHash(data: {
       id: p.id,
       name: p.name,
       code: p.code,
-      pricePerBaseUnit: p.pricePerBaseUnit,
       costPrice: p.costPrice,
       salePrice: p.salePrice,
       visible: p.visible,

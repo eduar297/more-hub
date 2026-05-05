@@ -1,9 +1,9 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
 import {
-  PriceTierEditorRow,
-  PriceTiersEditor,
-  normalizePriceTierRows,
-  validatePriceTierRows,
+    PriceTierEditorRow,
+    PriceTiersEditor,
+    normalizePriceTierRows,
+    validatePriceTierRows,
 } from "@/components/product/price-tiers-editor";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
@@ -11,24 +11,24 @@ import { useColors } from "@/hooks/use-colors";
 import type { CreateProductInput, Product, SaleMode } from "@/models/product";
 import type { Unit } from "@/models/unit";
 import {
-  Eye,
-  EyeOff,
-  Package,
-  PackagePlus,
-  Trash2,
+    Eye,
+    EyeOff,
+    Package,
+    PackagePlus,
+    Trash2,
 } from "@tamagui/lucide-icons";
 import { useEffect, useId, useState } from "react";
 import { Image, ScrollView, Switch, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import {
-  Button,
-  Input,
-  Label,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
+    Button,
+    Input,
+    Label,
+    Separator,
+    Spinner,
+    Text,
+    XStack,
+    YStack,
 } from "tamagui";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -183,7 +183,6 @@ export function ProductCard({
     onSave({
       name: name.trim(),
       code: product.code,
-      pricePerBaseUnit: parsedCost,
       costPrice: parsedCost,
       salePrice: parsedSale,
       visible,

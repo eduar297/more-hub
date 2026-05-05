@@ -89,7 +89,6 @@ const TABLE_MAPPINGS: TableMapping[] = [
       id: "id",
       name: "name",
       code: "code",
-      pricePerBaseUnit: "price_per_base_unit",
       costPrice: "cost_price",
       salePrice: "sale_price",
       visible: "visible",

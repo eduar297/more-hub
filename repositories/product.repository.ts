@@ -1,8 +1,8 @@
 import type {
-  CreateProductInput,
-  PriceTierInput,
-  Product,
-  UpdateProductInput,
+    CreateProductInput,
+    PriceTierInput,
+    Product,
+    UpdateProductInput,
 } from "@/models/product";
 import { File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
@@ -147,11 +147,10 @@ export class ProductRepository extends BaseRepository<
 
   async create(input: CreateProductInput): Promise<Product> {
     await this.db.runAsync(
-      `INSERT INTO products (name, code, pricePerBaseUnit, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, details, storeId)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (name, code, costPrice, salePrice, visible, baseUnitId, stockBaseQty, saleMode, photoUri, details, storeId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       input.name,
       input.code,
-      input.costPrice,
       input.costPrice,
       input.salePrice,
       input.visible ? 1 : 0,
@@ -194,7 +193,6 @@ export class ProductRepository extends BaseRepository<
       code: "code",
       costPrice: "costPrice",
       salePrice: "salePrice",
-      pricePerBaseUnit: "pricePerBaseUnit",
       baseUnitId: "baseUnitId",
       stockBaseQty: "stockBaseQty",
       saleMode: "saleMode",
@@ -223,12 +221,6 @@ export class ProductRepository extends BaseRepository<
       vals.push(hash);
       sets.push("cloudPhotoPath = ?");
       vals.push(null);
-    }
-
-    // Keep pricePerBaseUnit in sync with costPrice for backward compat
-    if (input.costPrice !== undefined && input.pricePerBaseUnit === undefined) {
-      sets.push("pricePerBaseUnit = ?");
-      vals.push(input.costPrice);
     }
 
     if (sets.length > 0) {

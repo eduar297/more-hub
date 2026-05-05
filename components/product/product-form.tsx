@@ -1,9 +1,9 @@
 import { BarcodeDisplay } from "@/components/product/barcode-display";
 import {
-    PriceTierEditorRow,
-    PriceTiersEditor,
-    normalizePriceTierRows,
-    validatePriceTierRows,
+  PriceTierEditorRow,
+  PriceTiersEditor,
+  normalizePriceTierRows,
+  validatePriceTierRows,
 } from "@/components/product/price-tiers-editor";
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { UnitPicker } from "@/components/ui/unit-picker";
@@ -115,7 +115,6 @@ export function ProductForm({
     onSubmit({
       name: name.trim(),
       code,
-      pricePerBaseUnit: parsedCost,
       costPrice: parsedCost,
       salePrice: parsedSale,
       visible,

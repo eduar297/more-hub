@@ -5,6 +5,10 @@ export interface Ticket {
   id: string;
   createdAt: string;
   paymentMethod: PaymentMethod;
+  /** Card type ID (only for CARD payments) */
+  cardTypeId: number | null;
+  /** Card type name snapshot (only for CARD payments) */
+  cardTypeName: string | null;
   total: number;
   itemCount: number;
   workerId: number | null;
@@ -38,6 +42,8 @@ export interface TicketItem {
 
 export interface CreateTicketInput {
   paymentMethod: PaymentMethod;
+  cardTypeId?: number | null;
+  cardTypeName?: string | null;
   workerId?: number | null;
   workerName?: string | null;
   items: {

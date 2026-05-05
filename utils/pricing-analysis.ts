@@ -75,13 +75,20 @@ export async function runPricingAnalysis(
 ): Promise<PricingReport> {
   // ── Auto-detect date range from earliest data ───────────────────────────
   const now = new Date();
-  const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}-${String(now.getDate()).padStart(2, "0")}`;
 
   const earliest = await db.getFirstAsync<{ d: string | null }>(
     `SELECT MIN(d) AS d FROM (
-       SELECT MIN(date(createdAt)) AS d FROM tickets${storeId !== undefined ? " WHERE storeId = " + Number(storeId) : ""}
+       SELECT MIN(date(createdAt)) AS d FROM tickets${
+         storeId !== undefined ? " WHERE storeId = " + Number(storeId) : ""
+       }
        UNION ALL
-       SELECT MIN(date(createdAt)) AS d FROM purchases${storeId !== undefined ? " WHERE storeId = " + Number(storeId) : ""}
+       SELECT MIN(date(createdAt)) AS d FROM purchases${
+         storeId !== undefined ? " WHERE storeId = " + Number(storeId) : ""
+       }
      )`,
   );
 
@@ -91,7 +98,9 @@ export async function runPricingAnalysis(
   } else {
     // No data — fall back to last 6 months
     const fallback = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-    from = `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, "0")}-01`;
+    from = `${fallback.getFullYear()}-${String(
+      fallback.getMonth() + 1,
+    ).padStart(2, "0")}-01`;
   }
   const analysedMonths = monthsBetween(from, to);
 
@@ -122,7 +131,9 @@ export async function runPricingAnalysis(
               NULLIF(SUM(ti.quantity), 0) AS avgCost
      FROM ticket_items ti
      JOIN tickets t ON t.id = ti.ticketId
-     WHERE date(t.createdAt) >= ? AND date(t.createdAt) <= ?${storeId !== undefined ? " AND t.storeId = ?" : ""}
+     WHERE date(t.createdAt) >= ? AND date(t.createdAt) <= ?${
+       storeId !== undefined ? " AND t.storeId = ?" : ""
+     }
      GROUP BY ti.productId`,
     storeId !== undefined ? [from, to, storeId] : [from, to],
   );
@@ -140,7 +151,9 @@ export async function runPricingAnalysis(
               NULLIF(SUM(quantityRemaining), 0) AS avgCost,
             SUM(quantityRemaining) AS totalQty
      FROM purchase_batches
-     WHERE quantityRemaining > 0${storeId !== undefined ? " AND storeId = ?" : ""}
+     WHERE quantityRemaining > 0${
+       storeId !== undefined ? " AND storeId = ?" : ""
+     }
      GROUP BY productId`,
     storeId !== undefined ? [storeId] : [],
   );
@@ -150,7 +163,9 @@ export async function runPricingAnalysis(
   const expResult = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) AS total
      FROM expenses
-     WHERE date >= ? AND date <= ?${storeId !== undefined ? " AND storeId = ?" : ""}`,
+     WHERE date >= ? AND date <= ?${
+       storeId !== undefined ? " AND storeId = ?" : ""
+     }`,
     storeId !== undefined ? [from, to, storeId] : [from, to],
   );
   const totalExpenses = expResult?.total ?? 0;
@@ -178,7 +193,7 @@ export async function runPricingAnalysis(
   };
   const margins = products
     .map((p) => {
-      const cost = realisedCost(p.id, p.costPrice ?? p.pricePerBaseUnit);
+      const cost = realisedCost(p.id, p.costPrice ?? 0);
       return p.salePrice > 0 ? (p.salePrice - cost) / p.salePrice : 0;
     })
     .sort((a, b) => a - b);
@@ -187,10 +202,7 @@ export async function runPricingAnalysis(
 
   // ── Per-product analysis ──────────────────────────────────────────────
   const analyses: ProductAnalysis[] = products.map((p) => {
-    const avgPurchaseCost = realisedCost(
-      p.id,
-      p.costPrice ?? p.pricePerBaseUnit,
-    );
+    const avgPurchaseCost = realisedCost(p.id, p.costPrice ?? 0);
 
     const sales = salesMap.get(p.id);
     const unitsSold = sales?.totalQty ?? 0;

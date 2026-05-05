@@ -32,9 +32,11 @@ export class TicketRepository extends BaseRepository<
 
     await this.db.withExclusiveTransactionAsync(async (tx) => {
       await tx.runAsync(
-        `INSERT INTO tickets (id, paymentMethod, total, itemCount, workerId, workerName, storeId) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tickets (id, paymentMethod, cardTypeId, cardTypeName, total, itemCount, workerId, workerName, storeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ticketId,
         input.paymentMethod,
+        input.cardTypeId ?? null,
+        input.cardTypeName ?? null,
         total,
         input.items.length,
         input.workerId ?? null,

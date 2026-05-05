@@ -1,8 +1,8 @@
 import type { Product } from "@/models/product";
 import {
-    getBestPrice,
-    getTierPreview,
-    hasVolumePricing,
+  getBestPrice,
+  getTierPreview,
+  hasVolumePricing,
 } from "@/utils/pricing";
 import { Check, Package, Search, ShoppingCart, X } from "@tamagui/lucide-icons";
 import { memo, useCallback, useMemo, useState } from "react";
