@@ -15,12 +15,12 @@ import type { PaymentMethod } from "@/models/ticket";
 import type { CartItemWire } from "@/services/lan/protocol";
 import { getTieredPrice } from "@/utils/pricing";
 import {
-  AlertCircle,
-  Bluetooth,
-  Receipt,
-  ScanLine,
-  Search,
-  X,
+    AlertCircle,
+    Bluetooth,
+    Receipt,
+    ScanLine,
+    Search,
+    X,
 } from "@tamagui/lucide-icons";
 
 import { useFocusEffect } from "expo-router";
@@ -246,8 +246,8 @@ export default function WorkerScreen() {
       await tickets.create({
         paymentMethod,
         cardTypeId: selectedCardType?.id ?? null,
-        cardTypeName: selectedCardType 
-          ? selectedCardType.cardNumber 
+        cardTypeName: selectedCardType
+          ? selectedCardType.cardNumber
             ? `${selectedCardType.name} (${selectedCardType.cardNumber})`
             : selectedCardType.name
           : null,
