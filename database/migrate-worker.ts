@@ -147,9 +147,6 @@ export async function migrateWorkerDb(db: SQLiteDatabase) {
   );
   let currentVersion = result?.user_version ?? 0;
 
-  console.log({ WORKER_DB_VERSION });
-  console.log({ currentVersion });
-
   /** Safely add a column only if it doesn't already exist. */
   const addColumnIfMissing = async (
     table: string,

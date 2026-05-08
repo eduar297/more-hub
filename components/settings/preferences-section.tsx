@@ -4,31 +4,31 @@ import { useDevice } from "@/contexts/device-context";
 import { usePreferences } from "@/contexts/preferences-context";
 import { useStore } from "@/contexts/store-context";
 import {
-    resetDatabase,
-    seedBasicSimulation,
-    seedSimulation,
+  resetDatabase,
+  seedBasicSimulation,
+  seedSimulation,
 } from "@/database/seed-simulation";
 import { useColors } from "@/hooks/use-colors";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import { hashPin } from "@/utils/auth";
 import {
-    Database,
-    Play,
-    RefreshCw,
-    Store,
-    Trash2,
-    TriangleAlert,
+  Database,
+  Play,
+  RefreshCw,
+  Store,
+  Trash2,
+  TriangleAlert,
 } from "@tamagui/lucide-icons";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { NotificationCards } from "./notifications-section";
 import { settingStyles as styles } from "./shared";
@@ -193,6 +193,7 @@ export function PreferencesSection() {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       verifyAdminPin,
       pinDialogMode,

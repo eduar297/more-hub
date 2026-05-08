@@ -1,21 +1,21 @@
 import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
 } from "react";
 
 import {
-    type DeviceRole,
-    clearActivation,
-    clearDeviceRole,
-    getActivationStatus,
-    getDeviceId,
-    getDeviceRole,
-    saveActivation,
-    setDeviceRole,
+  type DeviceRole,
+  clearActivation,
+  clearDeviceRole,
+  getActivationStatus,
+  getDeviceId,
+  getDeviceRole,
+  saveActivation,
+  setDeviceRole,
 } from "@/utils/device";
 
 interface DeviceContextValue {

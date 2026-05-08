@@ -24,7 +24,7 @@ import {
     User,
     Wifi,
 } from "@tamagui/lucide-icons";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -179,16 +179,30 @@ function WaitingForAdmin({ onReset }: { onReset: () => void }) {
 
 // ── Layout ──────────────────────────────────────────────────────────────────
 
-/**
- * Thin shell: guards against rendering the SQLite-dependent inner layout
- * while a device reset is in progress (SQLiteProvider may already be unmounting).
- */
 export default function WorkerLayout() {
-  const { isResetting } = useDevice();
+  const { deviceRole, isResetting, completeReset } = useDevice();
+  const router = useRouter();
 
-  // During reset, SQLiteProvider is about to unmount. Return nothing so
-  // WorkerLayoutInner (which calls useSQLiteContext) is never invoked.
-  if (isResetting) {
+  // When reset starts, navigate to "/" from INSIDE the Stack (this layout is
+  // a child of the Stack, so router.replace has the correct navigator context).
+  // Calling it from RoleShell (above the Stack) didn't work when WaitingForAdmin
+  // was rendered without a Tabs navigator. Fallback timer ensures completeReset
+  // fires even if navigation never lands on index.tsx for some reason.
+  useEffect(() => {
+    if (!isResetting) return;
+    console.log("[WorkerLayout] isResetting — replacing with /");
+    router.replace("/");
+    const id = setTimeout(() => {
+      console.log("[WorkerLayout] fallback completeReset()");
+      completeReset();
+    }, 600);
+    return () => clearTimeout(id);
+  }, [isResetting, router, completeReset]);
+
+  // Only guard on deviceRole. Keeping the layout active during isResetting
+  // preserves the navigation context so router.replace works.
+  // After completeReset(), deviceRole becomes null and this guard fires safely.
+  if (deviceRole !== "WORKER") {
     return null;
   }
 

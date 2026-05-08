@@ -131,19 +131,20 @@ function DisplayProviders({ children }: { children: React.ReactNode }) {
 // ── Role-aware shell: wraps providers based on device role ──────────────────
 
 function RoleShell() {
-  const { deviceRole, isLoading, isResetting, completeReset } = useDevice();
+  const { deviceRole, isLoading, isResetting } = useDevice();
   const router = useRouter();
 
-  // When isResetting becomes true, navigate to "/" then finalize the reset.
-  // During this window deviceRole still holds the OLD value, so providers
-  // remain mounted and useSQLiteContext() won't crash.
+  // Navigation while isResetting=true is handled by the role layout itself
+  // (e.g. WorkerLayout calls router.replace("/") from inside the Stack so it
+  // has the correct navigator context). RoleShell only handles the post-reset
+  // case: once deviceRole is cleared and providers are gone, ensure the new
+  // AppStack lands on "/" instead of leaving us on the stale role URL.
   useEffect(() => {
-    if (isResetting) {
+    if (!isLoading && !deviceRole && !isResetting) {
+      console.log("[RoleShell] deviceRole cleared — navigating to /");
       router.replace("/");
-      const timer = setTimeout(() => completeReset(), 600);
-      return () => clearTimeout(timer);
     }
-  }, [isResetting, router, completeReset]);
+  }, [deviceRole, isLoading, isResetting, router]);
 
   if (isLoading) {
     return (

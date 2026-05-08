@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
+import { useDevice } from "@/contexts/device-context";
 import { useColors } from "@/hooks/use-colors";
 import {
     BarChart3,
@@ -12,6 +13,18 @@ import {
 import { useTheme } from "tamagui";
 
 export default function AdminLayout() {
+  const { isResetting, deviceRole } = useDevice();
+
+  // Same guard as WorkerLayout: prevent rendering (and any useSQLiteContext
+  // calls in child screens) while providers are being swapped out.
+  if (isResetting || deviceRole !== "ADMIN") {
+    return null;
+  }
+
+  return <AdminLayoutInner />;
+}
+
+function AdminLayoutInner() {
   const c = useColors();
   const theme = useTheme();
   const tint = theme.blue10?.val;

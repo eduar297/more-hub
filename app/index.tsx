@@ -14,7 +14,7 @@ import {
 } from "@tamagui/lucide-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, FlatList } from "react-native";
+import { ActivityIndicator, Dimensions, FlatList } from "react-native";
 import { ScrollView, Text, useTheme, View, XStack, YStack } from "tamagui";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -164,7 +164,14 @@ function Slide({
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { deviceRole, selectRole, resetDevice, isResetting } = useDevice();
+  const { deviceRole, selectRole, resetDevice, isResetting, completeReset } =
+    useDevice();
+  console.log(
+    "[HomeScreen] render deviceRole=",
+    deviceRole,
+    "isResetting=",
+    isResetting,
+  );
   const isDark =
     (theme.background?.val ?? "").startsWith("#0") ||
     (theme.background?.val ?? "").startsWith("#1");
@@ -199,8 +206,17 @@ export default function HomeScreen() {
     }, 2000);
   }, [resetDevice]);
 
-  // If device already has a role, redirect to the corresponding panel
-  // Skip redirect while a reset is in progress (deviceRole still holds old value)
+  // When this screen mounts during a reset, it means navigation has landed
+  // at root. Only NOW is it safe to null-out deviceRole and drop providers.
+  useEffect(() => {
+    if (isResetting) {
+      console.log("[Index] mounted during reset — calling completeReset()");
+      completeReset();
+    }
+  }, [isResetting, completeReset]);
+
+  // If device already has a role, redirect to the corresponding panel.
+  // Skip redirect while a reset is in progress (deviceRole still holds old value).
   useEffect(() => {
     if (isResetting) return;
     if (deviceRole === "ADMIN") router.replace("/(admin)/dashboard" as any);
@@ -248,8 +264,8 @@ export default function HomeScreen() {
     setShowActivation(false);
   }, []);
 
-  // Don't render full UI if already has a role (will redirect)
-  // But show a tappable area for secret reset (5 quick taps)
+  // Don't render full UI if already has a role (will redirect shortly).
+  // During reset, show a spinner while completeReset() / navigation settle.
   if (deviceRole)
     return (
       <YStack
@@ -257,8 +273,11 @@ export default function HomeScreen() {
         bg="$background"
         items="center"
         justify="center"
+        gap="$3"
         onPress={handleSecretTap}
-      />
+      >
+        {isResetting && <ActivityIndicator size="large" />}
+      </YStack>
     );
 
   return (
