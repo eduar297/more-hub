@@ -246,47 +246,63 @@ export function CloudSyncSection() {
         </Text>
       </View>
 
-      {/* Upload button */}
-      <TouchableOpacity
-        style={[
-          styles.actionBtn,
-          { backgroundColor: isBusy ? "#6b7280" : c.blue },
-        ]}
-        onPress={handleUpload}
-        disabled={isBusy}
-        activeOpacity={0.8}
-      >
-        {state === "uploading" ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <ArrowUpFromLine size={18} color="#fff" />
-        )}
-        <Text style={styles.actionBtnText}>Respaldar en la nube</Text>
-      </TouchableOpacity>
+      <View style={styles.actionsContainer}>
+        {/* Upload card */}
+        <TouchableOpacity
+          style={[
+            styles.actionCard,
+            { backgroundColor: c.card, borderColor: c.green },
+            isBusy && styles.disabledCard,
+          ]}
+          onPress={handleUpload}
+          disabled={isBusy}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: c.greenLight }]}>
+            {state === "uploading" ? (
+              <ActivityIndicator color={c.green} size="small" />
+            ) : (
+              <ArrowUpFromLine size={22} color={c.green as any} />
+            )}
+          </View>
+          <View style={styles.actionTextContainer}>
+            <Text style={[styles.actionTitle, { color: c.text }]}>
+              Respaldar en la nube
+            </Text>
+            <Text style={[styles.actionDescription, { color: c.muted }]}>
+              Sube tus datos actuales para crear un punto de restauración.
+            </Text>
+          </View>
+        </TouchableOpacity>
 
-      {/* Download button */}
-      <TouchableOpacity
-        style={[
-          styles.actionBtn,
-          styles.actionBtnOutline,
-          {
-            borderColor: c.blue,
-            opacity: isBusy ? 0.6 : 1,
-          },
-        ]}
-        onPress={handleDownload}
-        disabled={isBusy}
-        activeOpacity={0.8}
-      >
-        {state === "downloading" ? (
-          <ActivityIndicator color={c.blue} size="small" />
-        ) : (
-          <ArrowDownToLine size={18} color={c.blue as any} />
-        )}
-        <Text style={[styles.actionBtnText, { color: c.blue }]}>
-          Restaurar desde la nube
-        </Text>
-      </TouchableOpacity>
+        {/* Download card */}
+        <TouchableOpacity
+          style={[
+            styles.actionCard,
+            { backgroundColor: c.card, borderColor: c.danger },
+            isBusy && styles.disabledCard,
+          ]}
+          onPress={handleDownload}
+          disabled={isBusy}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: c.dangerBg }]}>
+            {state === "downloading" ? (
+              <ActivityIndicator color={c.danger} size="small" />
+            ) : (
+              <ArrowDownToLine size={22} color={c.danger as any} />
+            )}
+          </View>
+          <View style={styles.actionTextContainer}>
+            <Text style={[styles.actionTitle, { color: c.text }]}>
+              Restaurar desde la nube
+            </Text>
+            <Text style={[styles.actionDescription, { color: c.muted }]}>
+              Reemplaza los datos locales con el último respaldo guardado.
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Progress card */}
       {progress && isBusy && (
@@ -360,22 +376,39 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 17, fontWeight: "600" },
   headerSub: { fontSize: 13 },
-  actionBtn: {
+  actionsContainer: {
+    gap: 16,
+    marginVertical: 8,
+  },
+  actionCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  actionBtnOutline: {
-    backgroundColor: "transparent",
+    gap: 16,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1.5,
   },
-  actionBtnText: {
-    color: "#fff",
+  disabledCard: {
+    opacity: 0.6,
+  },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionTextContainer: {
+    flex: 1,
+    gap: 2,
+  },
+  actionTitle: {
     fontSize: 15,
     fontWeight: "600",
+  },
+  actionDescription: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   card: {
     borderRadius: 12,
