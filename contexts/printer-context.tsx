@@ -287,7 +287,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       if (!writable) {
         await manager.cancelDeviceConnection(dev.id).catch(() => {});
         throw new Error(
-          "Esa impresora no expone una característica BLE escribible.",
+          "Esa impresora no tiene una característica BLE que permita escribir.",
         );
       }
 
@@ -354,7 +354,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     }
     const state = await manager.state();
     if (state !== "PoweredOn") {
-      setError("Encendé el Bluetooth y volvé a buscar.");
+      setError("Enciende el Bluetooth y vuelve a buscar.");
       return;
     }
 
@@ -432,7 +432,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       if (!printerAddress) {
         const msg =
-          "No hay impresora — abrí Configuración → Impresora y conectá una.";
+          "No hay impresora — abre Configuración → Impresora y conecta una.";
         setError(msg);
         throw new Error(msg);
       }

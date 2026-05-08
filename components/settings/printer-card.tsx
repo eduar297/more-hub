@@ -13,7 +13,6 @@ import {
   Unlink,
 } from "@tamagui/lucide-icons";
 import React, { useCallback } from "react";
-import type { Device } from "react-native-ble-plx";
 import {
   ActivityIndicator,
   Platform,
@@ -24,19 +23,23 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import type { Device } from "react-native-ble-plx";
 import { settingStyles as shared } from "./shared";
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 function fmtRelative(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+  const date = new Date(iso);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Hace un momento";
+  if (mins < 1) return "Ahora";
   if (mins < 60) return `Hace ${mins} min`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `Hace ${hours} h`;
   const days = Math.floor(hours / 24);
-  return `Hace ${days} día${days > 1 ? "s" : ""}`;
+  return `Hace ${days} día${days === 1 ? "" : "s"}`;
 }
 
 // ── sub-components ───────────────────────────────────────────────────────────
@@ -53,7 +56,10 @@ function ScanButton({
   const c = useColors();
   return (
     <TouchableOpacity
-      style={[styles.primaryBtn, { backgroundColor: c.blue, opacity: scanning ? 0.7 : 1 }]}
+      style={[
+        styles.primaryBtn,
+        { backgroundColor: c.blue, opacity: scanning ? 0.7 : 1 },
+      ]}
       onPress={onPress}
       disabled={scanning}
       activeOpacity={0.85}
@@ -86,7 +92,10 @@ function DeviceRow({
     <TouchableOpacity
       style={[
         styles.deviceRow,
-        { backgroundColor: isSelected ? c.blueLight : c.input, borderColor: isSelected ? c.blue : c.border },
+        {
+          backgroundColor: isSelected ? c.blueLight : c.input,
+          borderColor: isSelected ? c.blue : c.border,
+        },
       ]}
       onPress={() => onConnect(device)}
       activeOpacity={0.85}
@@ -119,7 +128,10 @@ function RecentRow({
     <View
       style={[
         styles.recentRow,
-        { backgroundColor: isActive ? c.blueLight : c.input, borderColor: isActive ? c.blue : c.border },
+        {
+          backgroundColor: isActive ? c.blueLight : c.input,
+          borderColor: isActive ? c.blue : c.border,
+        },
       ]}
     >
       <TouchableOpacity
@@ -129,7 +141,10 @@ function RecentRow({
       >
         <Bluetooth size={14} color={(isActive ? c.blue : c.muted) as any} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.deviceName, { color: c.text }]} numberOfLines={1}>
+          <Text
+            style={[styles.deviceName, { color: c.text }]}
+            numberOfLines={1}
+          >
             {recent.name}
           </Text>
           <View style={styles.recentMeta}>
@@ -138,7 +153,10 @@ function RecentRow({
               {fmtRelative(recent.lastConnectedAt)}
             </Text>
             <Text style={[styles.deviceId, { color: c.muted }]}>
-              · {recent.id.length > 20 ? `${recent.id.slice(0, 10)}…${recent.id.slice(-6)}` : recent.id}
+              ·{" "}
+              {recent.id.length > 20
+                ? `${recent.id.slice(0, 10)}…${recent.id.slice(-6)}`
+                : recent.id}
             </Text>
           </View>
         </View>
@@ -186,17 +204,23 @@ export function PrinterSettingsCard() {
   }, [printTest, currentStore]);
 
   const handleConnect = useCallback(
-    (device: Device) => { connect(device).catch(() => {}); },
+    (device: Device) => {
+      connect(device).catch(() => {});
+    },
     [connect],
   );
 
   const handleConnectRecent = useCallback(
-    (recent: RecentPrinter) => { connectRecent(recent).catch(() => {}); },
+    (recent: RecentPrinter) => {
+      connectRecent(recent).catch(() => {});
+    },
     [connectRecent],
   );
 
   const handleForgetRecent = useCallback(
-    (id: string) => { forgetRecent(id).catch(() => {}); },
+    (id: string) => {
+      forgetRecent(id).catch(() => {});
+    },
     [forgetRecent],
   );
 
@@ -211,37 +235,64 @@ export function PrinterSettingsCard() {
       keyboardShouldPersistTaps="handled"
     >
       {/* ── Status card ─────────────────────────────────────────── */}
-      <View style={[shared.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
+      <View
+        style={[
+          shared.profileCard,
+          { backgroundColor: c.card, borderColor: c.border },
+        ]}
+      >
         <View style={shared.cardTitleRow}>
           <Printer size={14} color={c.blue as any} />
-          <Text style={[shared.cardTitle, { color: c.text }]}>Estado de la impresora</Text>
+          <Text style={[shared.cardTitle, { color: c.text }]}>
+            Estado de la impresora
+          </Text>
         </View>
 
         <View style={[styles.statusBox, { backgroundColor: c.input }]}>
           <View style={styles.statusHeader}>
-            <Text style={[styles.statusLabel, { color: c.muted }]}>CONEXIÓN</Text>
-            <View style={[styles.dot, { backgroundColor: connected ? c.green : isConfigured ? "#f59e0b" : c.muted }]} />
+            <Text style={[styles.statusLabel, { color: c.muted }]}>
+              CONEXIÓN
+            </Text>
+            <View
+              style={[
+                styles.dot,
+                {
+                  backgroundColor: connected
+                    ? c.green
+                    : isConfigured
+                    ? "#f59e0b"
+                    : c.muted,
+                },
+              ]}
+            />
           </View>
-          <Text style={[styles.statusValue, { color: c.text }]} numberOfLines={1}>
-            {isConfigured ? (printerName ?? "Impresora guardada") : "Sin impresora configurada"}
+          <Text
+            style={[styles.statusValue, { color: c.text }]}
+            numberOfLines={1}
+          >
+            {isConfigured
+              ? printerName ?? "Impresora guardada"
+              : "Sin impresora configurada"}
           </Text>
           {isConfigured && (
             <Text style={[styles.statusMeta, { color: c.muted }]}>
               {printerAddress}
               {"  ·  "}
-              {connected ? "Conectada ahora" : "Se conecta al imprimir"}
+              {connected ? "Conectada" : "Se conectará al imprimir"}
             </Text>
           )}
           {!isConfigured && (
             <Text style={[styles.statusMeta, { color: c.muted }]}>
-              Buscá una impresora y conectala para empezar a imprimir tickets.
+              Busca una impresora y conéctate para empezar a imprimir recibos.
             </Text>
           )}
         </View>
 
         {!!error && (
           <View style={[shared.feedbackRow, { backgroundColor: c.dangerBg }]}>
-            <Text style={[shared.feedbackText, { color: c.danger }]}>{error}</Text>
+            <Text style={[shared.feedbackText, { color: c.danger }]}>
+              {error}
+            </Text>
           </View>
         )}
 
@@ -259,7 +310,9 @@ export function PrinterSettingsCard() {
               activeOpacity={0.85}
             >
               <Unlink size={14} color={c.muted as any} />
-              <Text style={[styles.outlineBtnText, { color: c.muted }]}>Quitar</Text>
+              <Text style={[styles.outlineBtnText, { color: c.muted }]}>
+                Desconectar
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -268,7 +321,10 @@ export function PrinterSettingsCard() {
         <TouchableOpacity
           style={[
             styles.outlineBtn,
-            { borderColor: c.border, opacity: printing || !isConfigured ? 0.45 : 1 },
+            {
+              borderColor: c.border,
+              opacity: printing || !isConfigured ? 0.45 : 1,
+            },
           ]}
           onPress={handleTest}
           disabled={printing || !isConfigured}
@@ -279,7 +335,9 @@ export function PrinterSettingsCard() {
           ) : (
             <>
               <TestTube2 size={14} color={c.text as any} />
-              <Text style={[styles.outlineBtnText, { color: c.text }]}>Probar impresión</Text>
+              <Text style={[styles.outlineBtnText, { color: c.text }]}>
+                Imprimir prueba
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -287,12 +345,21 @@ export function PrinterSettingsCard() {
 
       {/* ── Scan results ─────────────────────────────────────────── */}
       {devices.length > 0 && (
-        <View style={[shared.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
+        <View
+          style={[
+            shared.profileCard,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
           <View style={shared.cardTitleRow}>
             <Bluetooth size={14} color={c.blue as any} />
-            <Text style={[shared.cardTitle, { color: c.text }]}>Encontradas</Text>
+            <Text style={[shared.cardTitle, { color: c.text }]}>
+              Encontrados
+            </Text>
             <View style={[styles.badge, { backgroundColor: c.blueLight }]}>
-              <Text style={[styles.badgeText, { color: c.blue }]}>{devices.length}</Text>
+              <Text style={[styles.badgeText, { color: c.blue }]}>
+                {devices.length}
+              </Text>
             </View>
             <TouchableOpacity
               style={[styles.rescanBtn, { borderColor: c.border }]}
@@ -322,13 +389,18 @@ export function PrinterSettingsCard() {
 
       {/* ── Recent connections ───────────────────────────────────── */}
       {recentNotInScan.length > 0 && (
-        <View style={[shared.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
+        <View
+          style={[
+            shared.profileCard,
+            { backgroundColor: c.card, borderColor: c.border },
+          ]}
+        >
           <View style={shared.cardTitleRow}>
             <Clock size={14} color={c.blue as any} />
-            <Text style={[shared.cardTitle, { color: c.text }]}>Conexiones recientes</Text>
+            <Text style={[shared.cardTitle, { color: c.text }]}>Recientes</Text>
           </View>
           <Text style={[styles.sectionHint, { color: c.muted }]}>
-            Toca para reconectar directamente sin escanear.
+            Toca para reconectar sin escanear.
           </Text>
           <View style={styles.deviceList}>
             {recentNotInScan.map((r) => (
@@ -345,20 +417,28 @@ export function PrinterSettingsCard() {
       )}
 
       {/* ── Preferences ─────────────────────────────────────────── */}
-      <View style={[shared.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
+      <View
+        style={[
+          shared.profileCard,
+          { backgroundColor: c.card, borderColor: c.border },
+        ]}
+      >
         <View style={shared.cardTitleRow}>
           <Printer size={14} color={c.blue as any} />
-          <Text style={[shared.cardTitle, { color: c.text }]}>Preferencias</Text>
+          <Text style={[shared.cardTitle, { color: c.text }]}>
+            Preferencias
+          </Text>
         </View>
 
         <View style={shared.prefRow}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[shared.workerName, { color: c.text }]}>
-              Imprimir automáticamente
+              Impresión automática
             </Text>
             <Text style={[shared.workerMeta, { color: c.muted }]}>
-              Imprime el ticket apenas se confirma la venta. Podés desactivarlo
-              por venta en el momento del cobro.
+              Imprime el recibo automáticamente al confirmar una venta. Puedes
+              desactivar esta opción para ventas individuales al momento de
+              pagar.
             </Text>
           </View>
           <Switch
@@ -371,24 +451,32 @@ export function PrinterSettingsCard() {
       </View>
 
       {/* ── Tips ────────────────────────────────────────────────── */}
-      <View style={[shared.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
+      <View
+        style={[
+          shared.profileCard,
+          { backgroundColor: c.card, borderColor: c.border },
+        ]}
+      >
         <View style={shared.cardTitleRow}>
-          <Text style={[shared.cardTitle, { color: c.muted }]}>Consejos</Text>
+          <Text style={[shared.cardTitle, { color: c.muted }]}>
+            Sugerencias
+          </Text>
         </View>
         <Text style={[styles.tip, { color: c.muted }]}>
-          • Encendé la impresora antes de buscar.
+          • Enciende la impresora antes de escanear.
         </Text>
         <Text style={[styles.tip, { color: c.muted }]}>
-          • La app usa Bluetooth Low Energy (BLE). Si tu impresora solo soporta
-          Classic, usá el emparejamiento del sistema.
+          • La aplicación utiliza Bluetooth Low Energy (BLE). Si tu impresora
+          solo es compatible con Bluetooth clásico, utiliza el emparejamiento
+          del sistema.
         </Text>
         <Text style={[styles.tip, { color: c.muted }]}>
-          • Al imprimir por primera vez la app se conecta sola — no hace falta
-          mantenerla emparejada todo el tiempo.
+          • La aplicación se conecta automáticamente la primera vez que
+          imprimes, no es necesario mantenerla emparejada.
         </Text>
         <Text style={[styles.tip, { color: c.muted }]}>
-          • Si la impresora no aparece al buscar, apagala, volvé a encenderla y
-          buscá de nuevo.
+          • Si la impresora no aparece al escanear, apágala, vuelve a encenderla
+          y escanea de nuevo.
         </Text>
       </View>
     </ScrollView>
