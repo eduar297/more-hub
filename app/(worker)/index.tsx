@@ -4,6 +4,8 @@ import { EnhancedProductSearchModal } from "@/components/worker/enhanced-product
 import type { CartItem } from "@/components/worker/types";
 import { useAuth } from "@/contexts/auth-context";
 import { useLan } from "@/contexts/lan-context";
+import { usePrinter } from "@/contexts/printer-context";
+import { useStore } from "@/contexts/store-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useProductRepository } from "@/hooks/use-product-repository";
@@ -36,6 +38,8 @@ export default function WorkerScreen() {
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
   const { user } = useAuth();
+  const { currentStore } = useStore();
+  const { autoPrint, printTicket } = usePrinter();
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -48,6 +52,12 @@ export default function WorkerScreen() {
   );
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [printOnSale, setPrintOnSale] = useState(autoPrint);
+
+  // Sync per-sale toggle with stored preference whenever the sheet (re)opens
+  useEffect(() => {
+    if (showCheckout) setPrintOnSale(autoPrint);
+  }, [showCheckout, autoPrint]);
 
   // LAN broadcasting
   const { broadcastCart, broadcastClear, broadcastCheckout, catalogVersion } =
@@ -243,7 +253,7 @@ export default function WorkerScreen() {
         quantity: c.quantity,
         unitPrice: c.unitPrice,
       }));
-      await tickets.create({
+      const ticket = await tickets.create({
         paymentMethod,
         cardTypeId: selectedCardType?.id ?? null,
         cardTypeName: selectedCardType
@@ -259,13 +269,33 @@ export default function WorkerScreen() {
       clearCart();
       // Reload products so stock reflects the sale just made
       productRepo.findAllVisible().then(setVisibleProducts);
+
+      // Print if enabled — fire-and-forget, don't block the UI
+      if (printOnSale) {
+        tickets
+          .findItemsByTicketId(ticket.id)
+          .then((items) =>
+            printTicket(ticket, items, currentStore?.name ?? null),
+          )
+          .catch((e) => console.warn("[Worker] print failed:", e));
+      }
     } catch (e) {
       setError("Error registrando venta: " + (e as Error).message);
     } finally {
       setConfirming(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, paymentMethod, selectedCardType, stockErrors, tickets, clearCart]);
+  }, [
+    cart,
+    paymentMethod,
+    selectedCardType,
+    stockErrors,
+    tickets,
+    clearCart,
+    printOnSale,
+    printTicket,
+    currentStore,
+  ]);
 
   // Stable FlatList helpers (avoid re-creating closures on every render)
   const cartKeyExtractor = useCallback(
@@ -489,6 +519,8 @@ export default function WorkerScreen() {
         onCardTypeChange={setSelectedCardType}
         confirming={confirming}
         onConfirm={handleConfirmSale}
+        printOnSale={printOnSale}
+        onPrintOnSaleChange={setPrintOnSale}
       />
 
       {/* Hidden input for scanner gun (Bluetooth HID keyboard) */}

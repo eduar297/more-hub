@@ -21,7 +21,9 @@
         "NSLocalNetworkUsageDescription": "Esta app usa la red local para descubrir impresoras y otros dispositivos.",
         "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para guardar las coordenadas de tu tienda en el mapa.",
         "NSCameraUsageDescription": "Usamos la cámara para escanear códigos de barras y tomar fotos de productos.",
-        "NSPhotoLibraryUsageDescription": "Accedemos a tu galería para seleccionar fotos de productos y tiendas."
+        "NSPhotoLibraryUsageDescription": "Accedemos a tu galería para seleccionar fotos de productos y tiendas.",
+        "NSBluetoothAlwaysUsageDescription": "Usamos Bluetooth para conectarnos a la impresora térmica de tickets.",
+        "NSBluetoothPeripheralUsageDescription": "Usamos Bluetooth para conectarnos a la impresora térmica de tickets."
       }
     },
     "android": {
@@ -35,7 +37,11 @@
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "READ_MEDIA_IMAGES"
+        "READ_MEDIA_IMAGES",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN"
       ]
     },
     "web": {

@@ -1,5 +1,6 @@
 import type { CartItem } from "@/components/worker/types";
 import { ICON_BTN_BG } from "@/constants/colors";
+import { usePrinter } from "@/contexts/printer-context";
 import { useCardTypeRepository } from "@/hooks/use-card-type-repository";
 import { useColors } from "@/hooks/use-colors";
 import type { CardType } from "@/models/card-type";
@@ -8,11 +9,12 @@ import {
     Banknote,
     ChevronDown,
     CreditCard,
+    Printer,
     ShoppingCart,
     X,
 } from "@tamagui/lucide-icons";
 import { memo, useCallback, useEffect, useState } from "react";
-import { Modal, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import { Modal, ScrollView, StyleSheet, Switch, TouchableOpacity } from "react-native";
 import {
     SafeAreaView,
     useSafeAreaInsets,
@@ -30,6 +32,9 @@ interface CheckoutSheetProps {
   onCardTypeChange: (cardType: CardType | null) => void;
   confirming: boolean;
   onConfirm: () => void;
+  /** Whether to print this ticket after the sale is confirmed. */
+  printOnSale: boolean;
+  onPrintOnSaleChange: (v: boolean) => void;
 }
 
 export const CheckoutSheet = memo(function CheckoutSheet({
@@ -43,10 +48,13 @@ export const CheckoutSheet = memo(function CheckoutSheet({
   onCardTypeChange,
   confirming,
   onConfirm,
+  printOnSale,
+  onPrintOnSaleChange,
 }: CheckoutSheetProps) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const cardTypeRepo = useCardTypeRepository();
+  const { printerName, printerAddress } = usePrinter();
   const [cardTypes, setCardTypes] = useState<CardType[]>([]);
   const [showCardTypes, setShowCardTypes] = useState(false);
 
@@ -55,6 +63,10 @@ export const CheckoutSheet = memo(function CheckoutSheet({
       cardTypeRepo.findAllActive().then(setCardTypes);
     }
   }, [open, cardTypeRepo]);
+
+  const printerHint = printerAddress
+    ? printerName ?? "Impresora guardada"
+    : "Sin impresora — configurala en Ajustes";
 
   const handleCardTypeSelect = useCallback(
     (cardType: CardType) => {
@@ -257,6 +269,42 @@ export const CheckoutSheet = memo(function CheckoutSheet({
               </YStack>
             )}
           </YStack>
+
+          {/* Print toggle */}
+          <Card
+            borderWidth={1}
+            borderColor="$borderColor"
+            style={{ borderRadius: 14 }}
+            overflow="hidden"
+            bg="$color2"
+            p="$3"
+          >
+            <XStack
+              style={{ alignItems: "center", justifyContent: "space-between" }}
+              gap="$3"
+            >
+              <XStack
+                style={{ alignItems: "center", flex: 1 }}
+                gap="$2"
+              >
+                <Printer size={18} color={c.blue as any} />
+                <YStack flex={1} gap={2}>
+                  <Text fontSize="$4" fontWeight="700" color="$color">
+                    Imprimir ticket
+                  </Text>
+                  <Text fontSize="$2" color="$color10">
+                    {printerHint}
+                  </Text>
+                </YStack>
+              </XStack>
+              <Switch
+                value={printOnSale}
+                onValueChange={onPrintOnSaleChange}
+                trackColor={{ false: c.border, true: c.blue }}
+                accessibilityLabel="Imprimir ticket al confirmar"
+              />
+            </XStack>
+          </Card>
         </ScrollView>
 
         {/* Sticky bottom bar */}

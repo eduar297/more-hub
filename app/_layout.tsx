@@ -4,6 +4,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { DeviceProvider, useDevice } from "@/contexts/device-context";
 import { LanProvider } from "@/contexts/lan-context";
 import { PreferencesProvider } from "@/contexts/preferences-context";
+import { PrinterProvider } from "@/contexts/printer-context";
 import { StoreProvider } from "@/contexts/store-context";
 import { migrateDbIfNeeded } from "@/database/migrate";
 import { migrateWorkerDb } from "@/database/migrate-worker";
@@ -87,14 +88,16 @@ function AdminProviders({ children }: { children: React.ReactNode }) {
     >
       <StoreProvider>
         <PreferencesProvider>
-          <AuthProvider>
-            <LanProvider>
-              <NotificationProvider>
-                {children}
-                <StoreBubble />
-              </NotificationProvider>
-            </LanProvider>
-          </AuthProvider>
+          <PrinterProvider>
+            <AuthProvider>
+              <LanProvider>
+                <NotificationProvider>
+                  {children}
+                  <StoreBubble />
+                </NotificationProvider>
+              </LanProvider>
+            </AuthProvider>
+          </PrinterProvider>
         </PreferencesProvider>
       </StoreProvider>
     </SQLiteProvider>
@@ -112,11 +115,13 @@ function WorkerProviders({ children }: { children: React.ReactNode }) {
       onError={onError}
     >
       <StoreProvider>
-        <AuthProvider>
-          <LanProvider>
-            <NotificationProvider>{children}</NotificationProvider>
-          </LanProvider>
-        </AuthProvider>
+        <PrinterProvider>
+          <AuthProvider>
+            <LanProvider>
+              <NotificationProvider>{children}</NotificationProvider>
+            </LanProvider>
+          </AuthProvider>
+        </PrinterProvider>
       </StoreProvider>
     </SQLiteProvider>
   );

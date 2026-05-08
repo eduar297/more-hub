@@ -1,7 +1,6 @@
-import { Tabs } from "expo-router";
-import React from "react";
-
+import { LoginSheet } from "@/components/auth/login-sheet";
 import { HapticTab } from "@/components/haptic-tab";
+import { useAuth } from "@/contexts/auth-context";
 import { useDevice } from "@/contexts/device-context";
 import { useColors } from "@/hooks/use-colors";
 import {
@@ -10,14 +9,29 @@ import {
     ShoppingBag,
     Store,
 } from "@tamagui/lucide-icons";
+import { Tabs, useRouter } from "expo-router";
+import React, { useCallback, useEffect } from "react";
+import { Alert } from "react-native";
 import { useTheme } from "tamagui";
 
 export default function AdminLayout() {
-  const { isResetting, deviceRole } = useDevice();
+  const { isResetting, deviceRole, completeReset } = useDevice();
+  const router = useRouter();
 
-  // Same guard as WorkerLayout: prevent rendering (and any useSQLiteContext
-  // calls in child screens) while providers are being swapped out.
-  if (isResetting || deviceRole !== "ADMIN") {
+  // Mirror WorkerLayout: navigate to "/" when reset starts so providers can
+  // safely unmount. Without this, AdminLayout returns null with no navigation
+  // context, completeReset() is never called, and SecureStore is left wiped —
+  // forcing re-activation on the next app launch.
+  useEffect(() => {
+    if (!isResetting) return;
+    router.replace("/");
+    const id = setTimeout(() => {
+      completeReset();
+    }, 600);
+    return () => clearTimeout(id);
+  }, [isResetting, router, completeReset]);
+
+  if (deviceRole !== "ADMIN") {
     return null;
   }
 
@@ -28,6 +42,34 @@ function AdminLayoutInner() {
   const c = useColors();
   const theme = useTheme();
   const tint = theme.blue10?.val;
+  const { user } = useAuth();
+  const { resetDevice } = useDevice();
+
+  const handleChangeRole = useCallback(() => {
+    Alert.alert(
+      "Cambiar rol del dispositivo",
+      "Esto borrará el rol y la activación. ¿Continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cambiar rol",
+          style: "destructive",
+          onPress: () => resetDevice(),
+        },
+      ],
+    );
+  }, [resetDevice]);
+
+  if (!user) {
+    return (
+      <LoginSheet
+        open
+        role="ADMIN"
+        onClose={handleChangeRole}
+        onSuccess={() => {}}
+      />
+    );
+  }
 
   return (
     <Tabs

@@ -11,7 +11,7 @@ export default function SettingsLayout() {
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Ajustes" }} />
+      <Stack.Screen name="index" options={{ title: "Mi Tienda" }} />
     </Stack>
   );
 }

@@ -3,6 +3,7 @@ import { EnhancedCartItemRow } from "@/components/worker/enhanced-cart-item-row"
 import { EnhancedProductSearchModal } from "@/components/worker/enhanced-product-search-modal";
 import type { CartItem } from "@/components/worker/types";
 import { useAuth } from "@/contexts/auth-context";
+import { usePrinter } from "@/contexts/printer-context";
 import { useStore } from "@/contexts/store-context";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -21,7 +22,7 @@ import {
   Search,
 } from "@tamagui/lucide-icons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Modal, TextInput } from "react-native";
 import { Button, Text, XStack, YStack } from "tamagui";
 
@@ -31,7 +32,8 @@ export function AdminSales() {
   const colorScheme = useColorScheme();
   const themeName = colorScheme === "dark" ? "dark" : "light";
   const { user } = useAuth();
-  const { syncVersion } = useStore();
+  const { syncVersion, currentStore } = useStore();
+  const { autoPrint, printTicket } = usePrinter();
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -44,6 +46,12 @@ export function AdminSales() {
   );
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [printOnSale, setPrintOnSale] = useState(autoPrint);
+
+  // Reset per-sale toggle to the stored preference each time the sheet opens
+  useEffect(() => {
+    if (showCheckout) setPrintOnSale(autoPrint);
+  }, [showCheckout, autoPrint]);
 
   useFocusEffect(
     useCallback(() => {
@@ -216,7 +224,7 @@ export function AdminSales() {
         quantity: c.quantity,
         unitPrice: c.unitPrice,
       }));
-      await tickets.create({
+      const ticket = await tickets.create({
         paymentMethod,
         cardTypeId: selectedCardType?.id ?? null,
         cardTypeName: selectedCardType?.name ?? null,
@@ -227,6 +235,16 @@ export function AdminSales() {
       clearCart();
       setSelectedCardType(null);
       productRepo.findAllVisible().then(setVisibleProducts);
+
+      // Print if enabled — fire-and-forget, don't block the UI
+      if (printOnSale) {
+        tickets
+          .findItemsByTicketId(ticket.id)
+          .then((items) =>
+            printTicket(ticket, items, currentStore?.name ?? null),
+          )
+          .catch((e) => console.warn("[Admin] print failed:", e));
+      }
     } catch (e) {
       setError("Error registrando venta: " + (e as Error).message);
     } finally {
@@ -241,6 +259,9 @@ export function AdminSales() {
     clearCart,
     user,
     productRepo,
+    printOnSale,
+    printTicket,
+    currentStore,
   ]);
 
   // ── FlatList helpers ───────────────────────────────────────────────────────
@@ -452,6 +473,8 @@ export function AdminSales() {
         onCardTypeChange={setSelectedCardType}
         confirming={confirming}
         onConfirm={handleConfirmSale}
+        printOnSale={printOnSale}
+        onPrintOnSaleChange={setPrintOnSale}
       />
 
       {/* Hidden input for scanner gun */}

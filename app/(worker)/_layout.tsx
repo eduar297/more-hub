@@ -19,6 +19,7 @@ import {
 import {
     Download,
     LayoutList,
+    Printer,
     ScanLine,
     Server,
     User,
@@ -530,6 +531,13 @@ function WorkerLayoutInner() {
         options={{
           title: "Servidor",
           tabBarIcon: ({ color }) => <Server size={26} color={color as any} />,
+        }}
+      />
+      <Tabs.Screen
+        name="printer"
+        options={{
+          title: "Impresora",
+          tabBarIcon: ({ color }) => <Printer size={26} color={color as any} />,
         }}
       />
       <Tabs.Screen

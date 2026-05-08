@@ -84,3 +84,6 @@ gradle-app.setting
 *.log
 *.tmp
 *.temp
+
+# claude skills
+.claude/

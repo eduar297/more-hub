@@ -8,6 +8,7 @@ import {
     WorkersSection,
 } from "@/components/settings";
 import { CardTypesSection } from "@/components/settings/card-types-section";
+import { PrinterSettingsCard } from "@/components/settings/printer-card";
 import type { SyncMode } from "@/components/settings/sync-mode-selector";
 import { SyncModeSelector } from "@/components/settings/sync-mode-selector";
 import type { TabDef } from "@/components/ui/screen-tabs";
@@ -16,6 +17,7 @@ import { useColors } from "@/hooks/use-colors";
 import {
     CreditCard,
     Globe,
+    Printer,
     RefreshCw,
     Settings,
     Store,
@@ -30,6 +32,7 @@ type SettingTab =
   | "profile"
   | "stores"
   | "cards"
+  | "printer"
   | "prefs"
   | "sync"
   | "web";
@@ -39,6 +42,7 @@ const TABS: TabDef<SettingTab>[] = [
   { key: "workers", label: "Vendedores", Icon: Users },
   { key: "stores", label: "Tiendas", Icon: Store },
   { key: "cards", label: "Tarjetas", Icon: CreditCard },
+  { key: "printer", label: "Impresora", Icon: Printer },
   { key: "sync", label: "Sincronizar", Icon: RefreshCw },
   { key: "web", label: "Página Web", Icon: Globe },
   { key: "prefs", label: "Preferencias", Icon: Settings },
@@ -64,6 +68,9 @@ export default function SettingsScreen() {
       </View>
       <View style={activeTab === "cards" ? styles.visible : styles.hidden}>
         <CardTypesSection />
+      </View>
+      <View style={activeTab === "printer" ? styles.visible : styles.hidden}>
+        <PrinterSettingsCard />
       </View>
       <View style={activeTab === "sync" ? styles.visible : styles.hidden}>
         <SyncModeSelector value={syncMode} onChange={setSyncMode} />

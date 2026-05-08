@@ -1,5 +1,6 @@
 import { PhotoPicker } from "@/components/ui/photo-picker";
 import { useAuth } from "@/contexts/auth-context";
+import { useDevice } from "@/contexts/device-context";
 import { useColors } from "@/hooks/use-colors";
 import { useUserRepository } from "@/hooks/use-user-repository";
 import { hashPin } from "@/utils/auth";
@@ -8,11 +9,14 @@ import {
   Camera,
   CheckCircle,
   Lock,
+  LogOut,
+  RefreshCw,
   UserCog,
 } from "@tamagui/lucide-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   Text,
@@ -24,7 +28,8 @@ import { settingStyles as styles } from "./shared";
 
 export function ProfileSection() {
   const c = useColors();
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
+  const { resetDevice } = useDevice();
   const userRepo = useUserRepository();
 
   const [name, setName] = useState(user?.name ?? "");
@@ -39,26 +44,31 @@ export function ProfileSection() {
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Auto-load admin user if not logged in (admin devices skip login screen)
-  useEffect(() => {
-    if (user) return;
-    (async () => {
-      try {
-        const admins = await userRepo.findByRole("ADMIN");
-        if (admins.length > 0) {
-          const a = admins[0];
-          setUser({
-            id: a.id,
-            name: a.name,
-            role: a.role,
-            photoUri: a.photoUri,
-          });
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, [user, userRepo, setUser]);
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Cerrar sesión del panel de administración?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Cerrar sesión", style: "destructive", onPress: () => logout() },
+      ],
+    );
+  }, [logout]);
+
+  const handleChangeRole = useCallback(() => {
+    Alert.alert(
+      "Cambiar rol del dispositivo",
+      "Esto borrará el rol y la activación de este dispositivo. ¿Continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cambiar rol",
+          style: "destructive",
+          onPress: () => resetDevice(),
+        },
+      ],
+    );
+  }, [resetDevice]);
 
   useEffect(() => {
     setName(user?.name ?? "");
@@ -334,6 +344,38 @@ export function ProfileSection() {
             </View>
           )}
         </View>
+
+        {/* Cerrar sesión */}
+        <TouchableOpacity
+          style={[
+            styles.dangerBtn,
+            { borderColor: c.danger, backgroundColor: c.dangerBg },
+          ]}
+          onPress={handleLogout}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
+          <LogOut size={16} color={c.danger as any} />
+          <Text style={[styles.dangerBtnText, { color: c.danger }]}>
+            Cerrar sesión
+          </Text>
+        </TouchableOpacity>
+
+        {/* Cambiar rol */}
+        <TouchableOpacity
+          style={[
+            styles.dangerBtn,
+            { borderColor: c.border, backgroundColor: c.input },
+          ]}
+          onPress={handleChangeRole}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
+          <RefreshCw size={16} color={c.muted as any} />
+          <Text style={[styles.dangerBtnText, { color: c.muted }]}>
+            Cambiar rol del dispositivo
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ── Fixed footer ───────────────────────────────────── */}
