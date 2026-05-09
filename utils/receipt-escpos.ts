@@ -1,9 +1,11 @@
 import type { Ticket, TicketItem } from "@/models/ticket";
 import { fmtMoneyFull } from "@/utils/format";
 
-/** Width in characters for an 80mm thermal printer (POS-8360-L is 80mm). */
-export const POS_WIDTH_80 = 48;
-export const POS_WIDTH_58 = 32;
+/** Width in characters for an 80mm thermal printer (POS-8360-L is 80mm).
+ *  46 instead of 48 leaves ~1 char of right margin so prices don't print
+ *  flush against the paper edge. */
+export const POS_WIDTH_80 = 46;
+export const POS_WIDTH_58 = 30;
 
 // ── ESC/POS command bytes ──────────────────────────────────────────────────
 // All cheap thermal printers (POS-8360-L, POS-58, POS-80, MTP, GP-Lxxx, etc.)
@@ -155,10 +157,14 @@ export function buildReceiptBytes({
   const parts: Uint8Array[] = [];
   parts.push(INIT, SET_CP858);
 
-  // Header — store name (centered, double size, bold)
+  // Header — store name (centered, double size, bold).
+  // We emit the text WITHOUT a trailing LF, switch back to normal size, and
+  // THEN emit the LF so it is consumed in normal (1×) height mode. Without
+  // this the LF runs in double-height mode and inserts an extra blank line.
   parts.push(alignBytes(1), boldBytes(true), sizeBytes(2, 2));
-  parts.push(ln(storeName ?? "MoreHub"));
+  parts.push(textBytes(storeName ?? "MoreHub"));
   parts.push(sizeBytes(1, 1), boldBytes(false));
+  parts.push(NL);
   parts.push(ln(`Ticket #${String(ticket.id).slice(0, 8)}`));
   parts.push(ln(date));
 
@@ -221,8 +227,9 @@ export function buildTestBytes(
   const parts: Uint8Array[] = [];
   parts.push(INIT, SET_CP858);
   parts.push(alignBytes(1), boldBytes(true), sizeBytes(2, 2));
-  parts.push(ln(storeName ?? "MoreHub"));
+  parts.push(textBytes(storeName ?? "MoreHub"));
   parts.push(sizeBytes(1, 1), boldBytes(false));
+  parts.push(NL);
   parts.push(ln("Prueba de impresora"));
   parts.push(ln(new Date().toLocaleString("es")));
   parts.push(ln(hr));
