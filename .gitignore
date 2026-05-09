@@ -87,3 +87,9 @@ gradle-app.setting
 
 # claude skills
 .claude/
+
+# graphify
+graphify-out/
+
+# github
+.github/
